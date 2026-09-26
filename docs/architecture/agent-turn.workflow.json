@@ -172,7 +172,7 @@
       "col": 3,
       "type": "frontend",
       "label": "Capacidades",
-      "sublabel": "tool_ids + callback_enabled da versão (app/app/ai/agents)",
+      "sublabel": "pacotes + uso real + callback_enabled (app/app/ai/agents)",
       "width": 150
     },
     {
