@@ -1084,6 +1084,31 @@ export const DICIONARIO: Traducoes = {
   "Provedor parceiro": { es: "Proveedor asociado" },
   Conexão: { es: "Conexión" },
   "Modelos do parceiro": { es: "Plantillas del proveedor" },
+  Editando: { es: "Editando" },
+  "nome, idioma e categoria não mudam depois de criado.": {
+    es: "el nombre, el idioma y la categoría no cambian después de creada.",
+  },
+  "Ao salvar, a plataforma revisa o modelo de novo. A Meta limita quantas vezes um modelo aprovado pode ser editado; se passar do limite, a resposta dela aparece aqui.":
+    {
+      es: "Al guardar, la plataforma vuelve a revisar la plantilla. Meta limita cuántas veces se puede editar una plantilla aprobada; si pasás el límite, su respuesta aparece acá.",
+    },
+  "Salvar e enviar para revisão": { es: "Guardar y enviar a revisión" },
+  "Modelo atualizado e enviado para revisão.": { es: "Plantilla actualizada y enviada a revisión." },
+  "Modelo apagado.": { es: "Plantilla eliminada." },
+  "Apagar o modelo": { es: "¿Eliminar la plantilla" },
+  "Ele é apagado também na plataforma do WhatsApp, e não dá para desfazer. A Meta não deixa usar o mesmo nome de novo por 30 dias.":
+    {
+      es: "También se elimina en la plataforma de WhatsApp y no se puede deshacer. Meta no deja usar el mismo nombre de nuevo por 30 días.",
+    },
+  "Este modelo está em uso:": { es: "Esta plantilla está en uso:" },
+  "Sem ele, esse passo do follow-up é pulado e o agente não consegue mandá-lo. Troque antes, ou apague assim mesmo.":
+    {
+      es: "Sin ella, ese paso del seguimiento se saltea y el agente no puede enviarla. Cambiala antes, o eliminala igual.",
+    },
+  "Apagar assim mesmo": { es: "Eliminar igual" },
+  "Este modelo está em uso. Confirme para apagar assim mesmo.": {
+    es: "Esta plantilla está en uso. Confirmá para eliminarla igual.",
+  },
   "Templates da Meta": { es: "Plantillas de Meta" },
   Sincronizar: { es: "Sincronizar" },
   "Criar modelo": { es: "Crear plantilla" },
@@ -2078,7 +2103,17 @@ export const DICIONARIO: Traducoes = {
   "Mensagem escrita pela IA": { es: "Mensaje escrito por la IA" },
   "Modelo de mensagem pronto": { es: "Plantilla de mensaje predefinida" },
   "Instrução para a IA": { es: "Instrucción para la IA" },
-  "Se a IA não conseguir escrever, mandar este modelo": { es: "Si la IA no puede redactar el mensaje, enviar esta plantilla" },
+  "Se a janela de 24 horas já tiver fechado, mandar este modelo aprovado no lugar da IA": {
+    es: "Si la ventana de 24 horas ya se cerró, enviar esta plantilla aprobada en lugar de la IA",
+  },
+  "Nenhum modelo aprovado no WhatsApp ainda. Crie um em Conexões → Modelos e ele aparece aqui quando for aprovado.": {
+    es: "Todavía no hay plantillas aprobadas en WhatsApp. Crea una en Conexiones → Plantillas y aparecerá aquí cuando se apruebe.",
+  },
+  "Textos prontos": { es: "Textos predefinidos" },
+  "Aprovados no WhatsApp": { es: "Aprobadas en WhatsApp" },
+  "Depois de 24 horas sem resposta do cliente, só um modelo aprovado no WhatsApp chega até ele.": {
+    es: "Después de 24 horas sin respuesta del cliente, solo le llega una plantilla aprobada en WhatsApp.",
+  },
   "Modelo de mensagem": { es: "Plantilla de mensaje" },
   "Nota (opcional)": { es: "Nota (opcional)" },
   "Fluxo reprovado na validação — corrija os nós destacados.": {
@@ -6849,6 +6884,9 @@ export const DICIONARIO: Traducoes = {
   "Pediu ao agente para interpretar a resposta": { es: "Le pidió al agente que interpretara la respuesta" },
   "Conferiu se a mensagem já tinha saído": { es: "Verificó si el mensaje ya había salido" },
   "Mensagem enviada": { es: "Mensaje enviado" },
+  "Segurou o fluxo por causa de um retorno agendado": {
+    es: "Frenó el flujo por un regreso programado",
+  },
   "O agente interpretou a resposta": { es: "El agente interpretó la respuesta" },
   "Fluxo concluído": { es: "Flujo concluido" },
   "O fluxo parou de tentar": { es: "El flujo dejó de intentarlo" },
