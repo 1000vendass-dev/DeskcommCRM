@@ -50,7 +50,9 @@
 --     acontecer, e o `do update` jamais rodava.
 --   * Expurgo das linhas `deleted` com mais de 90 dias, no MESMO cron diário
 --     de retenção (`app/api/v1/cron/media-retention` → esta função): resolve o
---     item 2 sem cron novo. `failed` NÃO é expurgada — a issue manda não mexer
+--     item 2 sem cron novo. A linha `deleted` de pedido LGPD
+--     (`request_id` não nulo) NÃO é expurgada: é o único registro por objeto
+--     de que a mídia do titular saiu do bucket (nada audita a remoção física). `failed` NÃO é expurgada — a issue manda não mexer
 --     nela, e ela é o registro de uma remoção que não passou das 3 tentativas.
 --
 -- Mesma assinatura (um argumento): criar um segundo parâmetro por `create or
@@ -77,13 +79,18 @@ declare
   -- Janela do expurgo, em UM lugar só: é a constante que se muda amanhã.
   v_janela_deleted interval := interval '90 days';
 begin
-  -- 0. EXPURGO: a linha `deleted` já cumpriu o papel (o arquivo saiu do
-  --    bucket) e nada mais precisa dela — sem isto a fila cresce sem teto
-  --    (#1739, item 2). Só `deleted`: `skipped` é «o objeto já não existe»,
-  --    `failed` é a prova de uma remoção que nunca passou das 3 tentativas, e
-  --    a issue manda não mexer em nenhuma das duas.
+  -- 0. EXPURGO: a linha `deleted` da RETENÇÃO já cumpriu o papel (o arquivo
+  --    saiu do bucket) e nada mais precisa dela — sem isto a fila cresce sem
+  --    teto (#1739, item 2). Só `deleted`: `skipped` é «o objeto já não
+  --    existe», `failed` é a prova de uma remoção que nunca passou das 3
+  --    tentativas, e a issue manda não mexer em nenhuma das duas.
+  --    E só a de retenção (`request_id is null`): a linha de pedido LGPD é o
+  --    ÚNICO registro por objeto de que a mídia do titular saiu do bucket — o
+  --    worker só troca o `status` e nada audita a remoção física. Ela sai
+  --    sozinha se o pedido for apagado (FK `on delete set null`).
   delete from public.storage_redaction_queue
    where status = 'deleted'
+     and request_id is null
      and coalesce(processed_at, enqueued_at) < now() - v_janela_deleted;
 
   -- 1. VENCIDAS: arquivo de mensagem mais velho que a retenção da organização.

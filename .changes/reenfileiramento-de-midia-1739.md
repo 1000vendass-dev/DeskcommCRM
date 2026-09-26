@@ -13,6 +13,9 @@ anonimização da LGPD, e nenhuma das duas conseguia alcançá-lo depois.
 Agora o conflito reabre a linha só quando ela já terminou — `deleted` ou
 `skipped` volta a `pending` com as tentativas zeradas — e não toca em `pending`
 nem `failed` em curso, que é justamente o `where` que garante isso. O cron
-diário de retenção passa também a expurgar linha `deleted` com mais de 90 dias,
-para a fila deixar de crescer sem teto. Nada a fazer para quem já roda o
-sistema.
+diário de retenção passa também a expurgar a linha `deleted` da retenção com
+mais de 90 dias, para a fila deixar de crescer sem teto; a linha ligada a um
+pedido LGPD permanece, porque é o registro de que a mídia do titular foi
+removida. Nada a fazer para quem já roda o sistema.
+
+Contribuição de @webtecnica (#1763).
