@@ -127,6 +127,13 @@
       "col": 1,
       "type": "component",
       "label": "Script público v1: origem da visita"
+    },
+    {
+      "id": "canal",
+      "lane": "motor",
+      "col": 6,
+      "type": "component",
+      "label": "Canal da conversa com a ponte (reportConversion)"
     }
   ],
   "edges": [
@@ -249,6 +256,18 @@
       "from": "script",
       "to": "captura",
       "label": "clique no número configurado"
+    },
+    {
+      "id": "e20",
+      "from": "handler",
+      "to": "canal",
+      "label": "sem conexão direta: pergunta pela capacidade"
+    },
+    {
+      "id": "e21",
+      "from": "canal",
+      "to": "registro",
+      "label": "resultado pelo handler"
     }
   ]
 }
