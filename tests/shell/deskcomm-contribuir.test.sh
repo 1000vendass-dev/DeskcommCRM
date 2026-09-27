@@ -28,6 +28,8 @@
 #      pré-voo: o "próximo NNNN" não aponta para o número que ela já usa.
 #   5-ter. o complemento.sh acusa as DUAS migrations de mesmo NNNN dentro do
 #      próprio PR, e não só as de fora.
+#   5-quater. e acusa também sem checkout do PR (o modo do TRIAGEM.md, §4: o
+#      HEAD é a main de quem tria); com UMA migration só, nenhuma acusa a si.
 #   6. sessao.sh lembra o contribuidor e cala para o mantenedor.
 #   7. O bloco do Passo 0 do SKILL.md — extraído do guia e EXECUTADO, em bash e zsh —
 #      sempre dá uma resposta ou um erro que se explica: também numa subpasta do clone,
@@ -335,9 +337,9 @@ assert_contains "$saida" "próximo NNNN medido em produto/main ∪ outras refs d
 assert_not_contains "$saida" "próximo NNNN medido em produto/main ∪ outras refs do clone: 0201 (teto 0200)" "e não devolve o número que a própria branch usa"
 
 # ── 5-ter. As duas migrations de mesmo NNNN do PR se acusam ──────────────────
-# No `complemento.sh` a conta é a mesma: sem o HEAD, a população só tinha a base,
-# e nenhum dos dois arquivos do PR acusava o outro. O `gh` é dublado
-# porque a cabeça do PR é o HEAD deste clone (o modo do TRIAGEM.md, §4).
+# No `complemento.sh` a conta é a mesma: sem a cabeça do PR, a população só tinha
+# a base, e nenhum dos dois arquivos do PR acusava o outro. Aqui quem tria está
+# com o checkout NO PR (a cabeça é o HEAD); o modo do §4 é o 5-quater.
 echo "5-ter. o complemento.sh acusa as duas migrations de mesmo NNNN dentro do próprio PR"
 clone="$TMP/c5-ter"; clonar "$clone" "alguem@fork.dev"
 cfg "$clone" remote.produto.url "https://github.com/melgarafael/DeskcommCRM.git"
@@ -356,7 +358,7 @@ cp "$RAIZ/triagem/scripts/complemento.sh" "$clone/triagem/scripts/"
 # dublê não depende de como o PATH chega ao `bash` filho (num "$TMP" com ':' — o
 # do Windows — um diretório no PATH se parte em dois e o dublê não é achado).
 gh() {
-  # a cabeça do PR É o HEAD deste clone (o modo do TRIAGEM.md, §4).
+  # a cabeça do PR É o HEAD deste clone (checkout do PR).
   local base; base="$(git merge-base origin/main HEAD)"
   case "$1 $2" in
     'pr diff') git diff "$base"...HEAD ;;
@@ -373,8 +375,62 @@ export -f gh
 saida="$(cd "$clone" && bash triagem/scripts/complemento.sh 1780 2>&1)"; code=$?
 unset -f gh
 assert_exit "$code" 0 "o complemento roda"
-assert_contains "$saida" "20260928000000_0201_a.sql colide_em=HEAD" "a primeira 0201 acusa a irmã do próprio PR"
-assert_contains "$saida" "20260928010000_0201_b.sql colide_em=HEAD" "e a segunda acusa a primeira"
+cabeca="$(git -C "$clone" rev-parse HEAD)"
+assert_contains "$saida" "20260928000000_0201_a.sql colide_em=$cabeca" "a primeira 0201 acusa a irmã do próprio PR"
+assert_contains "$saida" "20260928010000_0201_b.sql colide_em=$cabeca" "e a segunda acusa a primeira"
+
+# ── 5-quater. Sem checkout do PR, a cabeça vem do gh, não do HEAD ─────────────
+# O TRIAGEM.md, §4, roda o complemento do clone de QUEM TRIA, depois de
+# `git fetch origin pull/<n>/head`: o HEAD é a main, e a cabeça do PR só existe
+# numa ref que `pop_refs_de_outrem` descarta (`refs/remotes/pr/N`). Contar o HEAD
+# ali media a main contra ela mesma, e a duplicata interna passava calada.
+echo "5-quater. o complemento acusa a duplicata interna com o HEAD na main de quem tria"
+# $1 = número do PR, $2... = arquivos de migration da cabeça dele
+pr_sem_checkout() {
+  local n="$1"; shift
+  git -C "$clone" switch -q -c "tmp/$n" main
+  local i=0 m; for m in "$@"; do
+    i=$((i + 1)); printf 'select %s;\n' "$i" > "$clone/supabase/migrations/$m"
+    printf -- '-- apêndice %s\n' "$m" >> "$clone/supabase/baseline.sql"
+    printf '| `%s` |\n' "$m" >> "$clone/supabase/migrations/MANIFEST.md"
+  done
+  git -C "$clone" add -A; git -C "$clone" commit -q -m "PR $n"
+  git -C "$clone" update-ref "refs/remotes/pr/$n" HEAD
+  git -C "$clone" switch -q main; git -C "$clone" branch -q -D "tmp/$n"
+}
+clone="$TMP/c5-quater"; clonar "$clone" "alguem@fork.dev"
+cfg "$clone" remote.produto.url "https://github.com/melgarafael/DeskcommCRM.git"
+cfg "$clone" remote.produto.fetch "+refs/heads/*:refs/remotes/produto/*"
+cfg "$clone" "url.$principal.insteadOf" "https://github.com/melgarafael/DeskcommCRM.git"
+git -C "$clone" fetch -q produto
+pr_sem_checkout 1781 20260928000000_0201_a.sql 20260928010000_0201_b.sql
+pr_sem_checkout 1782 20260928000000_0201_so.sql
+mkdir -p "$clone/triagem/scripts"
+cp "$RAIZ/triagem/scripts/complemento.sh" "$clone/triagem/scripts/"
+gh() {
+  # a cabeça do PR é a refs/remotes/pr/N; o HEAD fica na main de quem tria.
+  local n cab base; n="$3"; cab="$(git rev-parse "refs/remotes/pr/$n")"; base="$(git merge-base origin/main "$cab")"
+  case "$1 $2" in
+    'pr diff') git diff "$base...$cab" ;;
+    'pr view')
+      for a in "$@"; do
+        case "$a" in
+          files) git diff --name-only "$base...$cab" ;;
+          headRefOid) printf '%s\n' "$cab" ;;
+        esac
+      done ;;
+  esac
+}
+export -f gh
+saida="$(cd "$clone" && bash triagem/scripts/complemento.sh 1781 2>&1)"; code=$?
+controle="$(cd "$clone" && bash triagem/scripts/complemento.sh 1782 2>&1)"
+unset -f gh
+cabeca="$(git -C "$clone" rev-parse refs/remotes/pr/1781)"
+assert_exit "$code" 0 "o complemento roda com o HEAD na main"
+assert_contains "$(git -C "$clone" branch --show-current)" "^main$" "quem tria segue na main"
+assert_contains "$saida" "20260928000000_0201_a.sql colide_em=$cabeca" "a primeira 0201 acusa a irmã pela cabeça do gh"
+assert_contains "$saida" "20260928010000_0201_b.sql colide_em=$cabeca" "e a segunda acusa a primeira"
+assert_contains "$controle" "20260928000000_0201_so.sql colide_em=0" "controle: a migration única não acusa a si mesma"
 
 echo "6. sessao.sh (hook de início de sessão)"
 clone="$TMP/c6"; clonar "$clone" "alguem@fork.dev"; cfg "$clone" --unset core.hooksPath
