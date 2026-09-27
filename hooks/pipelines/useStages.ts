@@ -42,7 +42,7 @@ export interface PatchDeEtapa {
    * previsão volta a reportar a etapa no balde "sem probabilidade".
    */
   win_probability?: number | null;
-  /** Negócio que entra nesta etapa abre um aviso na Central (migration 0436). */
+  /** Negócio que entra nesta etapa abre um aviso na Central (migration 0440). */
   avisar_na_central?: boolean;
 }
 

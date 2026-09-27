@@ -1,5 +1,5 @@
 /**
- * A ETAPA QUE AVISA A EQUIPE NA CENTRAL, provada pela tela (migration 0436).
+ * A ETAPA QUE AVISA A EQUIPE NA CENTRAL, provada pela tela (migration 0440).
  *
  * Na ordem em que o dono de uma loja que vende pelo WhatsApp faria: em
  * Configurações › Funis › Etapas ele liga «Avisar a equipe na Central quando um

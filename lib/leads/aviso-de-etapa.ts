@@ -1,5 +1,5 @@
 /**
- * O texto do aviso de etapa (`crm_stages.avisar_na_central`, migration 0436).
+ * O texto do aviso de etapa (`crm_stages.avisar_na_central`, migration 0440).
  *
  * Módulo PURO, sem banco: quem escreve o aviso
  * (`./aviso-de-etapa.handler.ts`) monta o título por aqui, e é por este mesmo

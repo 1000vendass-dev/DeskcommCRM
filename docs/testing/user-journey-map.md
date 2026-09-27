@@ -3006,7 +3006,7 @@ Port do #1130 (@vgamkt), PR 3 de 4. Spec: `tests/e2e/fluxo-de-atendimento.spec.t
 
 ## Avisos que pedem gente — a etapa que avisa na Central `[P1]` (2026-09-27)
 
-Migration 0436. Spec: `tests/e2e/etapa-avisa-na-central.spec.ts` (job e2e, parte 2). Organização, administrador, funil e negócio criados pela service role no Supabase local; o movimento do card pela rota do quadro com a sessão do usuário; o dreno do `event_log` chamado pela rota do cron.
+Migration 0440. Spec: `tests/e2e/etapa-avisa-na-central.spec.ts` (job e2e, parte 2). Organização, administrador, funil e negócio criados pela service role no Supabase local; o movimento do card pela rota do quadro com a sessão do usuário; o dreno do `event_log` chamado pela rota do cron.
 
 | Caso | Esperado |
 |---|---|
