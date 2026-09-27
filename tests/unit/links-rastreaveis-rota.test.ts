@@ -30,7 +30,7 @@ describe("rota pública do link", () => {
     expect(r.headers.get("location")).toContain("https://wa.me/");
     expect(q.eq).toHaveBeenCalledWith("id", id);
     expect(q.eq).toHaveBeenCalledWith("enabled", true);
-    expect(m.dest.mock.calls[0][1].organization_id).toBe("org-a");
+    expect(m.dest.mock.calls[0]![1].organization_id).toBe("org-a");
   });
   it("link inexistente/desativado não cria clique", async () => {
     q.maybeSingle.mockResolvedValue({ data: null, error: null });

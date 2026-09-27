@@ -246,11 +246,15 @@ export function LinksRastreaveis({
             <option value="organico">{t("Orgânico")}</option>
           </select>
         </div>
-        {(["utm_source", "utm_medium", "utm_campaign"] as const).map((key, i) => (
+        {(
+          [
+            ["utm_source", t("Origem da campanha")],
+            ["utm_medium", t("Meio da campanha")],
+            ["utm_campaign", t("Nome da campanha")],
+          ] as const
+        ).map(([key, label]) => (
           <div key={key}>
-            <Label htmlFor={key}>
-              {t(["Origem da campanha", "Meio da campanha", "Nome da campanha"][i])}
-            </Label>
+            <Label htmlFor={key}>{label}</Label>
             <Input
               id={key}
               maxLength={200}

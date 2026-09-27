@@ -41,7 +41,7 @@ describe("links rastreáveis", () => {
         ),
       );
       expect(from).toHaveBeenCalledWith("google_ads_click_refs");
-      const row = insert.mock.calls[0][0];
+      const row = insert.mock.calls[0]![0];
       expect(row.organization_id).toBe("org-a");
       expect(row.tracking_link_id).toBe(link.id);
       expect(row[key]).toBe("clique-real");
@@ -58,7 +58,7 @@ describe("links rastreáveis", () => {
       new URLSearchParams("gclid={gclid}&utm_source={source}&password=abc"),
     );
     expect(from).toHaveBeenCalledWith("meta_ads_click_refs");
-    expect(insert.mock.calls[0][0].query_raw).toEqual({
+    expect(insert.mock.calls[0]![0].query_raw).toEqual({
       utm_source: "organico",
       utm_campaign: "Campanha",
     });

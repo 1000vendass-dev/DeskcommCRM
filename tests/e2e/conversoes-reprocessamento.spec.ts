@@ -270,7 +270,7 @@ test("links nomeados: cadastro pela tela, captura pública e desativação", asy
       maxRedirects: 0,
     });
     expect(response.status()).toBe(302);
-    const dest = new URL(response.headers().location);
+    const dest = new URL(response.headers().location!);
     expect(dest.origin).toBe("https://wa.me");
     expect(dest.searchParams.get("text")).toMatch(/^Olá teste de link \[ref:[2-9A-HJ-NP-Z]{6}\]$/);
     await pane.getByLabel("Link ativo", { exact: true }).uncheck();
