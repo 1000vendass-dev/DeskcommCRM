@@ -392,7 +392,12 @@ Provado por sabotagem em `evidence/handoff-avisa-antes/sabotagem-ordem-invertida
 
 Guardas: `tests/invariants/handoff-avisa-o-lead.test.ts` (turno real contra
 Postgres do baseline), `tests/unit/handoff-avisa-o-lead.test.ts` (varredura AST
-dos dois motores) e `tests/unit/aviso-ao-lead.test.ts` (o texto).
+dos dois motores), `tests/unit/aviso-ao-lead.test.ts` (o texto) e
+`tests/unit/aviso-so-quando-a-ia-falou.test.ts` (as duas guardas do lado do CRM:
+sem fala prévia da IA na conversa o aviso não sai — numa instalação real, o
+sentimento disparou a passagem numa organização sem agente publicado e o cliente
+recebeu "já acionei o time" do nada —, e no máximo um aviso por conversa a cada
+24 h, contado no banco).
 
 ---
 

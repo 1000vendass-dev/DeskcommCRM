@@ -58,6 +58,9 @@ import { logger } from "@/lib/logger";
 /** Ator do envio — é o automático falando, não uma pessoa. */
 const ATOR_DO_AVISO = "handoff-orchestrator";
 
+/** Um aviso por conversa dentro desta janela (ver as guardas em `avisarLeadDoCrm`). */
+const JANELA_DO_AVISO_MS = 24 * 60 * 60 * 1000;
+
 export interface AvisoDoCrmInput {
   serviceBoundary?: ServiceBoundary;
   organizationId: string;
@@ -106,6 +109,57 @@ export async function avisarLeadDoCrm(
   input: AvisoDoCrmInput,
 ): Promise<DesfechoDoAvisoDoCrm> {
   try {
+    // ═══ DUAS GUARDAS ANTES DE QUALQUER TEXTO ═══
+    //
+    // 1. A IA precisa ter FALADO nesta conversa. O aviso existe para o cliente
+    //    não ficar falando com o vazio quando a IA se retira — mas numa
+    //    instalação sem agente publicado (ou numa conversa que sempre foi
+    //    humana), não há retirada a anunciar. Medido numa instalação real: o
+    //    worker de sentimento roda para TODA mensagem, com ou sem agente,
+    //    disparou `low_sentiment` numa organização sem agente ativo, e dois
+    //    clientes receberam "Já acionei o time" sem nunca terem falado com IA.
+    //    O próprio aviso NÃO conta como fala (`aviso_de_escalacao`): sem essa
+    //    distinção, o primeiro aviso indevido legitimaria o segundo.
+    //
+    // 2. UM aviso por conversa por janela de 24 h, contado no BANCO. No mesmo
+    //    incidente um cliente recebeu o aviso QUATRO vezes em cinco minutos: o
+    //    envio travou (canal fora do ar), o disparo foi refeito, e cada nova
+    //    tentativa virou mensagem nova — o `requestId` não segura, porque cada
+    //    disparo é uma chamada nova. A janela deixa passar o retrigger honesto
+    //    (uma passagem nova amanhã avisa) e mata a repetição.
+    //
+    // As guardas moram deste lado (o CRM) porque é o único alcançável sem um
+    // turno de agente: o aviso do motor só roda de dentro de um turno ativo, em
+    // que a IA já falou por construção.
+    //
+    // Leitura que falha não avisa (fail-closed, como o gate de elegibilidade do
+    // orquestrador): mandar a frase para quem nunca falou com IA é o defeito que
+    // estas guardas existem para impedir.
+    const { data: falas, error: erroDasFalas } = await admin
+      .from("messages")
+      .select("metadata, created_at")
+      .eq("organization_id", input.organizationId)
+      .eq("conversation_id", input.conversationId)
+      .eq("direction", "outbound")
+      .eq("sent_via", "ai")
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (erroDasFalas) {
+      logger.warn("[handoff-orchestrator] falas da IA não lidas — aviso não enviado", {
+        conversation_id: input.conversationId,
+        error: erroDasFalas.message.slice(0, 200),
+      });
+      return { avisado: false, porque: "falas_da_ia_nao_lidas" };
+    }
+    const linhas = (falas ?? []) as { metadata: Record<string, unknown> | null; created_at: string }[];
+    const iaJaFalou = linhas.some((m) => m.metadata?.aviso_de_escalacao !== true);
+    if (!iaJaFalou) return { avisado: false, porque: "ia_nunca_falou_nesta_conversa" };
+    const corte = Date.now() - JANELA_DO_AVISO_MS;
+    const avisoRecente = linhas.some(
+      (m) => m.metadata?.aviso_de_escalacao === true && new Date(m.created_at).getTime() > corte,
+    );
+    if (avisoRecente) return { avisado: false, porque: "aviso_ja_enviado_na_janela" };
+
     // O aviso sai no idioma da ORGANIZAÇÃO (ver `textoDoAviso`). A leitura que
     // falha não pode derrubar o aviso: sem idioma, sai em português, como antes.
     let idioma: string | null = null;
