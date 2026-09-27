@@ -533,7 +533,8 @@ describe("nenhuma prosa em português escapa de t()", () => {
  *
  * Não é hipótese: é a dívida medida na `main` de 18/08/2026 — 103 chamadas
  * resolvidas, 196 valores exigidos do dicionário, 9 deles ausentes em 3 arquivos
- * (5 chamadas). São esses 9 que a `DIVIDA_CONGELADA` abaixo congela.
+ * (5 chamadas). Esses 9 foram congelados na `DIVIDA_CONGELADA` abaixo e pagos
+ * no #1808; a lista vazia é o estado a manter.
  *
  * Os outros 615 sítios dinâmicos seguem não resolvidos DE PROPÓSITO: o argumento
  * é dado de runtime (identificador solto, `algo.campo`, `TABELA[x] ?? x`), e
