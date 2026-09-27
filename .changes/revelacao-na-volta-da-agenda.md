@@ -1,18 +1,11 @@
 ---
 impacto: nada_mudou
 secao: corrigido
-titulo: Voltar e avançar numa spec espera a revelação da página, como carregar e recarregar
+titulo: Voltar e avançar numa spec e2e também esperam a revelação da página
 ---
 
-Quem usa a Agenda e volta para ela por `goBack` — a navegação de volta do
-navegador — podia encontrar a tela contada duas vezes, e o sintoma era um teste
-que reprovava sozinho, sem ninguém ter mudado nada na Agenda. A tela estava
-bem: a cópia extra que aparecia era a da revelação da página, que o navegador
-esvazia sozinho poucos instantes depois. O que faltava era a navegação de
-volta esperar esse esvaziamento, como carregar e recarregar já esperavam. Agora
-espera, e a agenda é desenhada uma vez só depois de voltar para ela.
+A suíte de e2e passa a esperar o streaming SSR terminar de revelar a página também depois de voltar (`goBack`) e avançar (`goForward`), como carregar e recarregar já esperavam desde o #1706; uma spec que volta a uma tela deixa de poder achar a cópia escondida da revelação e reprovar sozinha.
 
-Nada a fazer para quem já roda o sistema: a mudança é na suíte de testes, e o
-aplicativo se comporta exatamente como antes.
+Nada a fazer para quem já roda o sistema: a mudança é na suíte de testes, e o aplicativo se comporta exatamente como antes.
 
 Contribuição de @webtecnica (#884).

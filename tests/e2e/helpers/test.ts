@@ -1,7 +1,8 @@
 /**
- * O `test` da suíte: o do Playwright, com uma diferença — `page.goto` e
- * `page.reload` só devolvem quando o streaming SSR terminou de REVELAR a página
- * (issue #1374). Toda spec importa daqui, não de `@playwright/test`; a cerca é
+ * O `test` da suíte: o do Playwright, com uma diferença — `page.goto`,
+ * `page.reload`, `page.goBack` e `page.goForward` só devolvem quando o streaming
+ * SSR terminou de REVELAR a página (issues #1374 e #884). Toda spec importa
+ * daqui, não de `@playwright/test`; a cerca é
  * `tests/unit/e2e-specs-usam-o-test-da-suite.test.ts`.
  *
  * ═══ Por que `load` não basta ═══════════════════════════════════════════════
@@ -30,7 +31,7 @@
  */
 import { test as base, type Page } from "@playwright/test";
 
-import { METODOS_DE_NAVEGACAO_REVELADOS } from "./revelacao-nas-cargas";
+import { embrulharANavegacao, METODOS_DE_NAVEGACAO_REVELADOS } from "./revelacao-nas-cargas";
 
 export * from "@playwright/test";
 export { METODOS_DE_NAVEGACAO_REVELADOS };
@@ -62,39 +63,16 @@ export async function esperarARevelacao(page: Page): Promise<void> {
 const comEspera = new WeakSet<Page>();
 
 /**
- * ⚠️ A COBERTURA VIVE EM `METODOS_DE_NAVEGACAO_REVELADOS`, e é o que este
- * embrulho consome — a lista mora em `revelacao-nas-cargas.ts` porque é ela que
- * se prova. A #884 nasceu de um método de fora dela: `goBack`, que é como uma
- * spec "volta para a Agenda". Acrescentar aqui um método sem acrescentar na
- * lista continua sendo invisível para o `verify`, e o próximo `goBack` da
- * suíte volta a ler o documento no meio da revelação.
+ * ⚠️ A COBERTURA VIVE EM `METODOS_DE_NAVEGACAO_REVELADOS`, e o embrulho em
+ * `embrulharANavegacao` — os dois em `revelacao-nas-cargas.ts`, porque é lá que
+ * o teste unit os prova. A #884 nasceu de um método de fora da cobertura:
+ * `goBack`. Não embrulhe método à mão aqui: a cerca de
+ * `tests/unit/revelacao-cobre-a-navegacao-inteira.test.ts` reprova.
  */
 function esperarARevelacaoNasCargas(page: Page): void {
   if (comEspera.has(page)) return;
   comEspera.add(page);
-
-  for (const metodo of METODOS_DE_NAVEGACAO_REVELADOS) {
-    const original = (page as unknown as Record<string, unknown>)[metodo];
-    if (typeof original !== "function") continue;
-    // `bind` antes de chamar, e não depois: o embrulho abaixo é lido no próximo
-    // `esperarARevelacaoNasCargas`, e a página já guardada no `WeakSet` não
-    // volta por aqui.
-    const ligado = (original as (...args: unknown[]) => unknown).bind(page);
-    (page as unknown as Record<string, unknown>)[metodo] = async (
-      ...args: unknown[]
-    ): Promise<unknown> => {
-      const resposta = await ligado(...args);
-      // `commit` pede de propósito a página antes de ela existir — esperar a
-      // revelação ali seria esperar por uma caixa que ninguém vai fechar.
-      // `goBack`/`goForward` não recebem opções; o guarda é sobre o ARGUMENTO
-      // e não sobre o método, e por isso vale para os dois.
-      const opcoes = args[args.length - 1];
-      const pediuCommit =
-        typeof opcoes === "object" && opcoes !== null && (opcoes as { waitUntil?: string }).waitUntil === "commit";
-      if (!pediuCommit) await esperarARevelacao(page);
-      return resposta;
-    };
-  }
+  embrulharANavegacao(page, () => esperarARevelacao(page));
 }
 
 export const test = base.extend({

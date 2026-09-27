@@ -1,5 +1,9 @@
+import type { Page } from "@playwright/test";
+
 /**
- * Quais métodos de navegação a espera da revelação DOVE envolver.
+ * Quais métodos de navegação a espera da revelação DEVE envolver — e o embrulho
+ * que os envolve, em função pura, para o `verify` provar o embrulho REAL sem
+ * navegador (no mesmo padrão de `caixa-ssr.ts` e `instrumento-da-pagina.ts`).
  *
  * ═══ O defeito que este arquivo existe para fechar (issue #884) ═════════════
  *
@@ -39,3 +43,30 @@ export const METODOS_DE_NAVEGACAO_REVELADOS: readonly string[] = [
   "goBack",
   "goForward",
 ];
+
+/**
+ * Embrulha em `pagina` cada método de `METODOS_DE_NAVEGACAO_REVELADOS` para só
+ * devolver depois de `esperar()`. É o que `test.ts` chama; o teste unit chama a
+ * MESMA função com um dublê — e a cerca de texto de lá reprova `test.ts` que
+ * volte a embrulhar algum método à mão, fora desta função.
+ */
+export function embrulharANavegacao(pagina: Page, esperar: () => Promise<void>): void {
+  const alvo = pagina as unknown as Record<string, unknown>;
+  for (const metodo of METODOS_DE_NAVEGACAO_REVELADOS) {
+    const original = alvo[metodo];
+    if (typeof original !== "function") continue;
+    const ligado = (original as (...args: unknown[]) => unknown).bind(pagina);
+    alvo[metodo] = async (...args: unknown[]): Promise<unknown> => {
+      const resposta = await ligado(...args);
+      // `commit` pede de propósito a página antes de ela existir — esperar a
+      // revelação ali seria esperar por uma caixa que ninguém vai fechar.
+      // `goBack`/`goForward` também aceitam `waitUntil`; o guarda é sobre o
+      // ARGUMENTO e não sobre o método, e por isso vale para os quatro.
+      const opcoes = args[args.length - 1];
+      const pediuCommit =
+        typeof opcoes === "object" && opcoes !== null && (opcoes as { waitUntil?: string }).waitUntil === "commit";
+      if (!pediuCommit) await esperar();
+      return resposta;
+    };
+  }
+}
