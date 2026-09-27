@@ -102,7 +102,8 @@ create or replace function public.fn_marcar_configuracao_regra_google()
 returns trigger language plpgsql set search_path = public as $$
 begin
   if tg_op = 'INSERT' then
-    new.configured_at := now();
+    -- A migração importa o carimbo legado; inserções normais usam DEFAULT now().
+    new.configured_at := coalesce(new.configured_at, now());
   elsif new.stage_id is distinct from old.stage_id
      or new.google_action_id is distinct from old.google_action_id
      or (new.enabled and not old.enabled) then
@@ -125,9 +126,10 @@ create trigger trg_marcar_configuracao_regra_google
 -- sempre. `on conflict do nothing`: reaplicar não duplica nem sobrescreve a
 -- regra que o admin já editou. O `configured_at` herdado preserva a trava.
 insert into public.google_ads_conversion_rules
-  (organization_id, stage_id, event_name, label, google_action_id, category)
+  (organization_id, stage_id, event_name, label, google_action_id, category, configured_at)
 select c.organization_id, c.google_qualification_stage_id, 'QualifiedLead',
-       'Lead qualificado', c.google_qualification_action_id, 'QUALIFIED_LEAD'
+       'Lead qualificado', c.google_qualification_action_id, 'QUALIFIED_LEAD',
+       coalesce(c.google_qualification_configured_at, now())
   from public.ad_platform_connections c
   join public.crm_stages s
     on s.organization_id = c.organization_id and s.id = c.google_qualification_stage_id
@@ -135,15 +137,6 @@ select c.organization_id, c.google_qualification_stage_id, 'QualifiedLead',
    and c.google_qualification_stage_id is not null
    and c.google_qualification_action_id ~ '^[0-9]{1,32}$'
 on conflict do nothing;
-
-update public.google_ads_conversion_rules r
-   set configured_at = c.google_qualification_configured_at
-  from public.ad_platform_connections c
- where r.organization_id = c.organization_id
-   and c.platform = 'google_ads'
-   and r.event_name = 'QualifiedLead'
-   and c.google_qualification_configured_at is not null
-   and r.configured_at > c.google_qualification_configured_at;
 
 alter table public.ad_platform_connections
   add column if not exists google_purchase_value_mode text not null default 'obrigatorio',

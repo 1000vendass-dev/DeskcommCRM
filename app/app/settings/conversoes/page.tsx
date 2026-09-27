@@ -1,3 +1,5 @@
+import { LinksRastreaveis } from "./_linksRastreaveis";
+import { listarLinks, metricasLinks } from "@/lib/plataformas-de-anuncio/rastreio/links";
 /**
  * Configurações → Conversões. Onde o dono do tráfego conecta a conta de anúncios
  * e vê quais vendas foram (ou não foram) reportadas de volta.
@@ -98,8 +100,8 @@ export default async function ConversoesPage({
   }
   const parametros = await searchParams;
   const { erro: erroDoGoogle, ok: okDoGoogle } = parametros;
-  const aba: "configuracao" | "historico" | "diagnostico" =
-    parametros.aba === "historico" || parametros.aba === "diagnostico"
+  const aba: "configuracao" | "historico" | "diagnostico" | "links" =
+    parametros.aba === "historico" || parametros.aba === "diagnostico" || parametros.aba === "links"
       ? parametros.aba
       : "configuracao";
 
@@ -181,6 +183,11 @@ export default async function ConversoesPage({
         }).catch(() => null)
       : null;
 
+  const links =
+    aba === "links" ? await listarLinks(admin, activeOrg.orgId).catch(() => null) : null;
+  const metricas =
+    aba === "links" ? await metricasLinks(admin, activeOrg.orgId).catch(() => null) : null;
+
   const numerosConectados = canais
     .map((c) => c.phone_number)
     .filter((n): n is string => Boolean(n));
@@ -218,6 +225,7 @@ export default async function ConversoesPage({
             ["configuracao", t("Configuração")],
             ["historico", t("Histórico de envios")],
             ["diagnostico", t("Diagnóstico")],
+            ["links", t("Links rastreáveis")],
           ] as const
         ).map(([chave, rotulo]) => (
           <a
@@ -235,7 +243,15 @@ export default async function ConversoesPage({
         ))}
       </nav>
 
-      {aba === "historico" ? (
+      {aba === "links" ? (
+        links ? (
+          <LinksRastreaveis links={links} metricas={metricas} idioma={idioma} />
+        ) : (
+          <p role="alert">
+            {t("Não foi possível ler os links. Atualize a página para tentar novamente.")}
+          </p>
+        )
+      ) : aba === "historico" ? (
         historico ? (
           <HistoricoDeEnvios
             linhas={historico.linhas}

@@ -3003,3 +3003,10 @@ Port do #1130 (@vgamkt), PR 3 de 4. Spec: `tests/e2e/fluxo-de-atendimento.spec.t
 | J33.4 | Três mensagens pelo webhook do WAHA; a ficha mostra o roteiro «Concluído» com CPF e modelo (caixa medida por `boundingBox` e estilo computado) |
 
 **NÃO coberto por esta spec:** o turno do agente roda com o worker e o modelo de verdade — no CI não há nenhum dos dois, e a spec chama as mesmas funções do motor (`prepararRoteiroDoTurno`, `garantirPerguntaDoRoteiro`) com o validador devolvendo `indefinido`. A pergunta enviada ao cliente pelo WhatsApp e a leitura pelo validador de modelo ficam para a prova do PR 4.
+
+### Continuação de conversões: links nomeados (27/09/2026)
+
+- [P1] Configurações → Conversões → Links rastreáveis: criar, recarregar, editar/desativar, copiar link/script e verificar instalação.
+- Unidade: `tests/unit/links-rastreaveis.test.ts`, `tests/unit/links-rastreaveis-action.test.ts`, `tests/unit/script-do-site.test.ts` cobrem captura, fallback, tenant, MFA e compatibilidade.
+- Banco: `tests/invariants/links-rastreaveis-isolados.test.ts` cobre ACL e FK composta; execução local pendente por ausência de Docker.
+- Prova visual em ambiente fresco e envio real ao Google/Meta ainda pendentes; unitários não substituem estes aceites.

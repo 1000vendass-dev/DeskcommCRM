@@ -73,7 +73,10 @@ export async function salvarRegrasDeConversaoGoogle(
   if (supportWriteError(authUser.support)) return { ok: false, error: "forbidden_role" };
   const activeOrg = await resolveActiveOrg(authUser);
   if (!activeOrg) return { ok: false, error: "forbidden_tenant" };
-  if (!authUser.is_platform_admin && ROLE_RANK[activeOrg.role] < ROLE_RANK.admin) {
+  if (
+    !(authUser.is_platform_admin && !authUser.support) &&
+    ROLE_RANK[activeOrg.role] < ROLE_RANK.admin
+  ) {
     return { ok: false, error: "forbidden_role" };
   }
   if (await mfaEmDivida()) return { ok: false, error: "mfa_required" };

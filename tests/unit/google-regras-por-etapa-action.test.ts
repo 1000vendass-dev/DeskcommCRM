@@ -181,3 +181,13 @@ describe("salvar regras de conversão por etapa", () => {
     expect(upserts).toHaveLength(0);
   });
 });
+
+it("administrador de plataforma em suporte não ultrapassa o papel do tenant", async () => {
+  mock.user.mockResolvedValue({ id: "u", is_platform_admin: true, support: {} });
+  mock.org.mockResolvedValue({ orgId: "org-autenticada", role: "viewer" });
+  expect(await salvarRegrasDeConversaoGoogle([regra(A)])).toEqual({
+    ok: false,
+    error: "forbidden_role",
+  });
+  expect(mock.admin).not.toHaveBeenCalled();
+});

@@ -37,7 +37,10 @@ async function autorizar(escrita: boolean) {
     return { ok: false as const, error: "forbidden_role" as const };
   const activeOrg = await resolveActiveOrg(authUser);
   if (!activeOrg) return { ok: false as const, error: "forbidden_tenant" as const };
-  if (!authUser.is_platform_admin && ROLE_RANK[activeOrg.role] < ROLE_RANK.admin)
+  if (
+    !(authUser.is_platform_admin && !authUser.support) &&
+    ROLE_RANK[activeOrg.role] < ROLE_RANK.admin
+  )
     return { ok: false as const, error: "forbidden_role" as const };
   if (escrita && (await mfaEmDivida()))
     return { ok: false as const, error: "mfa_required" as const };
