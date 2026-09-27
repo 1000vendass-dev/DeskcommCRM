@@ -3016,12 +3016,14 @@ Port do #1130 (@vgamkt), PR 3 de 4. Spec: `tests/e2e/fluxo-de-atendimento.spec.t
 Busca nas mensagens já carregadas (#1795, extraída do #1793 de @gustavorodcruz96).
 Spec: `tests/e2e/busca-na-conversa.spec.ts` (job e2e, parte 3; seed próprio: um
 canal e duas conversas, a B também contém o termo para o "não vaza" não passar por
-falta do que marcar). Evidência: `evidence/busca-na-conversa/`.
+falta do que marcar). Evidência: `evidence/busca-na-conversa/` (gerada no job;
+o CI só publica artefato em falha). Medido no run 36309605444, parte 3, head
+`5ece7265f`: `✓ busca-na-conversa.spec.ts (8.8s)`, parte `90 passed`.
 
 | # | Caso | Expectativa | Resultado |
 |---|------|-------------|-----------|
-| J34.1 | A lupa é a primeira da barra de ações | `aria-expanded="false"` e na primeira fileira da barra (1280px, medido por `getBoundingClientRect`) | a medir no CI |
-| J34.2 | Clicar abre o campo com o foco | `searchbox` "Buscar nas mensagens carregadas" focado | a medir no CI |
-| J34.3 | Termo em 2 de 4 mensagens (uma em maiúsculas) | contador "Resultados nas mensagens carregadas: 2"; as 2 bolhas com o anel no `box-shadow` COMPUTADO (`0 0 0 4px`, cor ≠ fundo), uma enviada e uma recebida; as outras 2 sem anel | a medir no CI |
-| J34.4 | Esc fecha | campo, contador e marcas somem; o foco volta à lupa | a medir no CI |
-| J34.5 | Trocar de conversa pela lista, sem recarregar | a conversa B (que tem o termo) abre sem campo, sem contador e sem marca; abrir a busca nela começa vazia | a medir no CI |
+| J34.1 | A lupa é a primeira da barra de ações | `aria-expanded="false"` e na primeira fileira da barra (1280px, medido por `getBoundingClientRect`) | PASS — a lupa não acrescenta fileira: 2 com ela e 2 sem ela (contrafactual `display:none`); a barra já quebrava em 2 nesse estado (Arquivar desce) |
+| J34.2 | Clicar abre o campo com o foco | `searchbox` "Buscar nas mensagens carregadas" focado | PASS |
+| J34.3 | Termo em 2 de 4 mensagens (uma em maiúsculas) | contador "Resultados nas mensagens carregadas: 2"; as 2 bolhas com o anel no `box-shadow` COMPUTADO (`0 0 0 4px`, cor ≠ fundo), uma enviada e uma recebida; as outras 2 sem anel | PASS — anel `rgb(28, 26, 22) 0 0 0 4px` sobre recebida `rgb(245, 243, 238)` e enviada `rgb(80, 109, 72)`; sem anel nas outras |
+| J34.4 | Esc fecha | campo, contador e marcas somem; o foco volta à lupa | PASS |
+| J34.5 | Trocar de conversa pela lista, sem recarregar | a conversa B (que tem o termo) abre sem campo, sem contador e sem marca; abrir a busca nela começa vazia | PASS |
