@@ -500,7 +500,7 @@ export function StagesSection({
 
               {/* Numa venda com pagamento na entrega o momento que pede ação é o
                   pedido confirmado, não o ganho — e quem sabe qual etapa é essa é
-                  a organização. Ver a migration 0436. */}
+                  a organização. Ver a migration 0440. */}
               <label className="flex items-center gap-2 text-xs text-text-muted">
                 <Switch
                   checked={etapa.avisar_na_central === true}

@@ -603,7 +603,7 @@ describe("StagesSection — arquivar", () => {
   });
 });
 
-describe("StagesSection — a etapa que avisa na Central (migration 0436)", () => {
+describe("StagesSection — a etapa que avisa na Central (migration 0440)", () => {
   it("a chave vem desligada e ligá-la manda só `avisar_na_central: true` para AQUELA etapa", async () => {
     const user = userEvent.setup();
     vi.mocked(apiClient.patch).mockResolvedValue({ data: { etapas: [] } });
