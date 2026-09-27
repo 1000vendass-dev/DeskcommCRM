@@ -29,7 +29,7 @@ import { InboxKeyboardShortcuts } from "./InboxKeyboardShortcuts";
 import { ShortcutsHelpDialog } from "./ShortcutsHelpDialog";
 import { OpenConversationProvider } from "@/hooks/notifications/OpenConversationContext";
 // ADR-05: ícone de feature sai do mapa canônico, nunca do pacote direto.
-import { CaretLeft, ChatCircle, IdentificationCard } from "@/lib/ui/icons";
+import { CaretLeft, ChatCircle, IdentificationCard, MagnifyingGlass, X } from "@/lib/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -171,6 +171,8 @@ export function InboxLayout({ initialSelectedId = null, rascunho = null }: Inbox
   const [helpOpen, setHelpOpen] = useState(false);
   /** A ficha do contato como painel deslizante — só existe abaixo do `xl`. */
   const [fichaAberta, setFichaAberta] = useState(false);
+  const [buscaAberta, setBuscaAberta] = useState(false);
+  const [buscaMensagem, setBuscaMensagem] = useState("");
   /**
    * A mensagem escolhida para responder "em cima".
    *
@@ -296,6 +298,8 @@ export function InboxLayout({ initialSelectedId = null, rascunho = null }: Inbox
   // `null`, e sem isso o botão de voltar não teria o que chamar.
   //
   const handleSelect = useCallback((id: string | null) => {
+    setBuscaAberta(false);
+    setBuscaMensagem("");
     if (id === selectedId) return;
     setSelectedId(id);
     // Sem isto, escolher "responder" numa conversa e trocar para outra levaria
@@ -522,10 +526,43 @@ export function InboxLayout({ initialSelectedId = null, rascunho = null }: Inbox
               key={selectedConversation.id}
               conversation={selectedConversation}
               onAbrirConversa={handleSelect}
+              onBuscar={() => setBuscaAberta((v) => !v)}
+              buscaAberta={buscaAberta}
             />
+            {buscaAberta && (
+              <div className="flex items-center gap-2 border-b bg-background px-4 py-2">
+                <MagnifyingGlass size={18} aria-hidden />
+                <input
+                  autoFocus
+                  className="min-w-0 flex-1 bg-transparent py-1 text-sm outline-hidden"
+                  aria-label={t("Buscar nas mensagens carregadas")}
+                  placeholder={t("Buscar nas mensagens carregadas")}
+                  value={buscaMensagem}
+                  onChange={(e) => setBuscaMensagem(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                      setBuscaAberta(false);
+                      setBuscaMensagem("");
+                    }
+                  }}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t("Fechar busca")}
+                  onClick={() => {
+                    setBuscaAberta(false);
+                    setBuscaMensagem("");
+                  }}
+                >
+                  <X size={18} />
+                </Button>
+              </div>
+            )}
             <div className="min-h-0 flex-1 overflow-hidden">
               <ChatThread
                 conversationId={selectedConversation.id}
+                searchTerm={buscaAberta ? buscaMensagem : ""}
                 provider={selectedConversation.channel_sessions?.provider ?? null}
                 onResponder={setRespondendo}
                 // O cartão da passagem escolhe o gesto a partir de quem é o dono

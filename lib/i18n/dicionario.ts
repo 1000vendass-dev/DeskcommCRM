@@ -37,6 +37,11 @@ import type { Idioma } from "./idiomas";
 type Traducoes = Record<string, Partial<Record<Exclude<Idioma, "pt-BR">, string>>>;
 
 export const DICIONARIO: Traducoes = {
+  // ─── NOVA INTERFACE DO ATENDIMENTO: conversa, filtros e busca ───
+  "resultados nas mensagens carregadas": { es: "resultados en los mensajes cargados" },
+  "Buscar nesta conversa": { es: "Buscar en esta conversación" },
+  "Buscar nas mensagens carregadas": { es: "Buscar en los mensajes cargados" },
+  "Fechar busca": { es: "Cerrar búsqueda" },
   "Estado": { es: "Estado" },
   // Links rastreáveis.
   "Links rastreáveis": { es: "Enlaces rastreables" },

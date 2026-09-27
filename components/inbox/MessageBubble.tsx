@@ -26,6 +26,7 @@ import {
 
 interface Props {
   message: Message;
+  searchMatch?: boolean;
   debugCitations?: boolean;
   /** Escolher esta mensagem para responder "em cima" dela. */
   onResponder?: (m: Message) => void;
@@ -63,6 +64,7 @@ function AckIndicator({ status, t }: { status: string; t: (texto: string) => str
 
 export function MessageBubble({
   message,
+  searchMatch = false,
   debugCitations,
   onResponder,
   citada,
@@ -188,6 +190,7 @@ export function MessageBubble({
 
   return (
     <div
+      data-search-match={searchMatch || undefined}
       className={cn(
         "group flex w-full min-w-0 items-center gap-1 px-4 py-1",
         isOutbound ? "justify-end" : "justify-start",

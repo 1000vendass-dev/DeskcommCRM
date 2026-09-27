@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { JanelaSelo } from "@/components/inbox/JanelaSelo";
 import { ChannelLogo } from "@/components/inbox/ChannelLogo";
-import { Phone, ArrowRight } from "@/lib/ui/icons";
+import { Phone, ArrowRight, MagnifyingGlass } from "@/lib/ui/icons";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { useClaimConversation } from "@/hooks/inbox/useClaimConversation";
 import { useReleaseConversation } from "@/hooks/inbox/useReleaseConversation";
@@ -39,6 +39,8 @@ import { phoneForDisplay } from "@/lib/channels/phone-variants";
 
 interface Props {
   conversation: ConversationWithContact;
+  onBuscar?: () => void;
+  buscaAberta?: boolean;
   /** Seleciona outra conversa no Inbox — a aba Número do Transferir abre a do outro número. */
   onAbrirConversa?: (id: string) => void;
 }
@@ -69,7 +71,12 @@ const STATUS_LABEL: Record<string, string> = {
   archived: "Arquivada",
 };
 
-export function ConversationHeader({ conversation, onAbrirConversa }: Props) {
+export function ConversationHeader({
+  conversation,
+  onAbrirConversa,
+  onBuscar,
+  buscaAberta,
+}: Props) {
   const t = useT();
   const { user } = useAuth();
   const claim = useClaimConversation();
@@ -321,6 +328,17 @@ export function ConversationHeader({ conversation, onAbrirConversa }: Props) {
           onClick={() => reopen.mutate({ conversation_id: conversation.id, expected_revision: conversation.service_revision })}>
           {t("Reabrir")}
         </Button>}
+        {onBuscar && (
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={onBuscar}
+            aria-label={t("Buscar nesta conversa")}
+            aria-expanded={buscaAberta}
+          >
+            <MagnifyingGlass size={18} />
+          </Button>
+        )}
         {/* ARQUIVAR (#923): tira da frente sem destruir.
             A conversa já arquivada não mostra o botão — arquivar duas vezes não
             é um gesto que exista, e o botão só reapareceria como um clique que
