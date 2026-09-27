@@ -20,13 +20,19 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   que "0" não seja lido como "não existe na conversa". Mensagens apagadas ou
   ocultas ficam de fora. Esc ou o botão de fechar encerram a busca, e trocar de
   conversa também.
-  Contribuição de @gustavorodcruz96 (extraída do #1793).
+  Contribuição de @gustavorodcruz96 (#1793, trazida no #1795).
 
 - **Histórico e diagnóstico das conversões de anúncios** Em Configurações › Conversões, consulte envios por período, situação, plataforma, evento e negócio, com identificação da entrega e protocolo. O diagnóstico mostra ausência de configuração, falhas recentes e envios antigos; uma consulta indisponível aparece como erro, sem sugerir que está tudo funcionando.
 
+  Contribuição de @gustavorodcruz96 (#1789).
+
 - **Conversões do Google Ads por etapa do funil, venda sem valor e telefone criptografado** Em Configurações › Conversões, cada etapa aberta do funil pode enviar a sua própria ação de conversão ao Google Ads quando um negócio entra nela, com nome, categoria e filtro de canal de entrada (todos, só WhatsApp ou só fora dele). O botão "Usar o recomendado" liga as etapas sugeridas, e "Criar no Google" cria a ação de importação de cliques direto na conta quando a instalação tem developer token do Google Ads. A qualificação de etapa única que já existia vira a primeira regra, com o mesmo nome de evento — nada já enviado é reenviado. A venda do negócio ganho pode sair sem valor (nunca como zero), conforme a opção "Valor do negócio"; o padrão continua exigindo valor. Opcionalmente, o telefone do contato vai junto em SHA-256 (E.164), nunca em claro.
 
+  Contribuição de @gustavorodcruz96 (#1789).
+
 - **Links rastreáveis por campanha e instalação do script no site** Configurações › Conversões › Links rastreáveis permite criar, editar e desativar links de WhatsApp por campanha, copiar o script do site e verificar seu carregamento no navegador. A mensagem recebe um código que liga o clique ao contato quando o visitante a envia. A tela mostra cliques, contatos e negócios dos registros ainda retidos, sem apresentar isso como total histórico ou pessoas únicas. Se a gravação do clique falhar, o atendimento continua disponível, sem código de atribuição falso.
+
+  Contribuição de @gustavorodcruz96 (#1789).
 
 ### Alterado
 
@@ -40,7 +46,7 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   uma falha ao ler a verificação continua impedindo o acesso quando ela seria
   exigida. Nada fica guardado entre uma requisição e outra.
 
-  Contribuição de @gustavorodcruz96 (#1793).
+  Contribuição de @gustavorodcruz96 (#1793, trazida no #1794).
 
 ### Corrigido
 
@@ -52,6 +58,8 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   conexões ativas. O número de uma conexão em uso continua recusado, que é o que
   evita um aviso respondendo ao outro sem parar.
 
+  Contribuição de @hiro-nikaitou (#1797, issue #1779).
+
 - **Host da Graph em `http` externo deixa de ser aceito em produção** `META_GRAPH_BASE_URL` e `META_ADS_GRAPH_BASE_URL` aceitavam `http://` em qualquer
   ambiente. Em produção o token da Meta viaja no cabeçalho de toda chamada, e um
   endereço externo em `http` o mandaria em texto claro por todo o caminho.
@@ -61,6 +69,8 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   IPv6, `localhost` e nome de serviço sem ponto. Fora daí o valor cai no host real,
   com o mesmo aviso de antes. Fora de produção nada mudou, e o receptor local da
   prova em tela continua aceito — é para isso que ele existe.
+
+  Contribuição de @hiro-nikaitou (#1791, issue #1788).
 
 - **A verificação em duas etapas não é dispensada quando a leitura dos fatores falha** Quando o serviço de login não responde no momento de conferir se a conta tem a verificação em duas etapas, a ação agora é recusada em vez de seguir como se a conta não tivesse o fator. Basta tentar de novo quando o serviço voltar.
 
@@ -75,6 +85,8 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   o negócio novo já traz da origem passa normalmente. Quem não declara etapa
   exigente nenhuma não vê diferença: a recusa só existe onde a exigência já
   estava ligada.
+
+  Contribuição de @hiro-nikaitou (#1798, issue #1710).
 
 ## [1.55.0] — 2026-09-27
 
