@@ -32,10 +32,70 @@ arquitetura_suportada_pelo_kit() {
   esac
 }
 
+# ── JÁ EXISTE UMA INSTALAÇÃO AQUI? (#1266) ───────────────────────────────────
+#
+# A guarda do #1042 vivia no TOPO dos dois scripts, e por isso matava antes de
+# chegar ao `construir_aqui_e_subir` (#1060/#1143) — a recuperação por build
+# local que existe exatamente para a VPS cuja arquitetura não bate com a das
+# imagens publicadas. As duas mudanças tinham teste verde isoladamente e
+# ninguém rodou as duas juntas: o resultado foi um `exit 1` na PRIMEIRA linha,
+# que deixava quem já tinha uma instalação ARM funcionando PERMANENTEMENTE sem
+# poder rodar `update.sh` de novo, e sem bandeira nenhuma.
+#
+# O sinal é o mesmo que o `enter_project` usa para achar o projeto: o compose E
+# um `.env`. Num kit recém-clonado não existe nenhum dos dois (o install.sh
+# escreve o `.env` bem depois de sourcear este arquivo), então uma instalação
+# NOVA continua sendo recusada — que é o que a guarda do #1042 acertou. Numa
+# instalação que JÁ EXISTE os dois estão lá, e é nesse caso que a recusa vira
+# aviso: o caminho de recuperação do #1060/#1143 existe e continua depois
+# daqui, sem nada a travar.
+#
+# O `.env` sozinho não serve: o `git clone` de uma instalação nova pode trazer
+# um `.env` de exemplo, e recusar (ou seguir) por causa dele seria adivinhar.
+instalacao_do_kit_ja_existe() {
+  local d
+  for d in "$PWD" "$PWD/deskcommcrm"; do
+    [ -f "$d/$COMPOSE" ] && [ -f "$d/.env" ] && return 0
+  done
+  return 1
+}
+
+# Ecoa: amd64 | recuperar | nova
+#
+# A decisão é PURA no que recebe: `uname` e a leitura do disco ficam fora, para
+# o teste simular as três respostas sem depender do runner nem de um diretório
+# de verdade. Quem traduz em mensagem é `verificar_arquitetura_do_kit`.
+veredito_da_arquitetura() {  # veredito_da_arquitetura <arquitetura> [0=nova | 1=instalação existente]
+  local arch="${1:-}" existe="${2:-0}"
+  arquitetura_suportada_pelo_kit "$arch" && { printf 'amd64'; return 0; }
+  [ "$existe" = 1 ] && { printf 'recuperar'; return 0; }
+  printf 'nova'
+}
+
 verificar_arquitetura_do_kit() {
-  local arch
+  local arch existe=0
   arch="$(uname -m 2>/dev/null || t "desconhecida")"
-  arquitetura_suportada_pelo_kit "$arch" && return 0
+  instalacao_do_kit_ja_existe && existe=1
+
+  case "$(veredito_da_arquitetura "$arch" "$existe")" in
+    amd64) return 0 ;;
+    recuperar)
+      # O update.sh relê este arquivo depois do checkout da versão nova, e a
+      # guarda roda de novo no topo: sem esta trava o dono lia o mesmo aviso
+      # duas vezes na mesma atualização. A variável não é exportada, então a
+      # trava vale para ESTE processo e nenhum script filho herda o silêncio.
+      [ -n "${_DESKCOMM_AVISO_ARQ_DADO:-}" ] && return 0
+      _DESKCOMM_AVISO_ARQ_DADO=1
+      # `printf` e não c_ylw: este ponto roda no TOPO do arquivo, e as cores só
+      # são definidas algumas linhas abaixo (é a mesma razão do `printf` da
+      # recusa logo abaixo). O aviso vai para o STDERR, como a recusa: o
+      # agent.sh manda a saída do update.sh para arquivo e o dono lê o fim dela.
+      printf '%s\n' \
+        "⚠ $(t "Este servidor usa arquitetura '{1}', e as imagens publicadas do DeskcommCRM são só linux/amd64." "$arch")" \
+        "  $(t "Como esta instalação JÁ EXISTE, sigo em frente: as imagens da versão alvo serão construídas nesta própria VPS.")" \
+        "  $(t "Leva de 15 a 25 minutos. Uma instalação NOVA nesta arquitetura precisaria de imagens multi-arquitetura, que o DeskcommCRM ainda não publica.")" >&2
+      return 0 ;;
+  esac
 
   printf '%s\n' \
     "✖ $(t "Este servidor usa arquitetura '{1}', mas as imagens publicadas do DeskcommCRM hoje são linux/amd64." "$arch")" \
