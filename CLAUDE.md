@@ -336,11 +336,11 @@ cp .env.example .env.local  # preencher
 docker compose up -d        # WAHA local
 pnpm dev                    # http://localhost:3000
 pnpm worker                 # agent-worker (processo separado do Next)
-pnpm dev:crons              # drena os crons de app/api/v1/cron/ localmente
+pnpm dev:crons              # chama localmente só os crons de PATHS em scripts/dev-crons.ts (não todos)
 ```
 
 Schema: aplique `supabase/baseline.sql`, **não** as migrations (a cadeia não sobe do zero).
-Stack local completa (Supabase + WAHA + Redis via `docker-compose.local.yml`), depois de rodar
+Stack local completa (Supabase via `scripts/local-supabase.sh`; app, worker, scheduler, WAHA e Redis via `docker-compose.local.yml`), depois de rodar
 `./ubuntu-local-installer.sh` uma vez: `pnpm local:up | local:down | local:status | local:logs`.
 Ver `README.md` pra detalhes de setup.
 
