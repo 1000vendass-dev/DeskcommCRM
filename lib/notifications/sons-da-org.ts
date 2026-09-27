@@ -13,7 +13,7 @@
  *                 (`handoff`) ou ficou sem saldo no provedor e as respostas
  *                 estão esperando a recarga (`espera-de-saldo.ts`).
  *
- * O arquivo vive no bucket PRIVADO `org-sounds` (migration 0438), em
+ * O arquivo vive no bucket PRIVADO `org-sounds` (migration 0441), em
  * `<organization_id>/<tipo>-<uuid>.<ext>`; o caminho fica em
  * `organizations.settings.sons_de_aviso`. A tela recebe URL assinada.
  * Sem arquivo, toca o bipe do produto — o aviso nunca fica mudo por falta de

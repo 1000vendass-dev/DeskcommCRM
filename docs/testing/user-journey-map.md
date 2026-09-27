@@ -3022,7 +3022,7 @@ Evidência: `evidence/etapa-avisa-na-central/01-chave-ligada-na-etapa.png` (a ch
 
 ### Os sons dos avisos `[P1]` (2026-09-27)
 
-Migration 0438. Spec: `tests/e2e/sons-dos-avisos.spec.ts` (job e2e, parte 1). O som é medido trocando, antes de a página carregar, `HTMLMediaElement.prototype.play` e `AudioContext.prototype.createOscillator` por versões que anotam a chamada — a decisão de tocar, qual som e quando são do produto.
+Migration 0441. Spec: `tests/e2e/sons-dos-avisos.spec.ts` (job e2e, parte 1). O som é medido trocando, antes de a página carregar, `HTMLMediaElement.prototype.play` e `AudioContext.prototype.createOscillator` por versões que anotam a chamada — a decisão de tocar, qual som e quando são do produto.
 
 | Caso | Esperado |
 |---|---|

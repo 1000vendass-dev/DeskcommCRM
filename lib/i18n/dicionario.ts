@@ -9238,7 +9238,7 @@ export const DICIONARIO: Traducoes = {
   "Avisar a equipe na Central quando um negócio entrar em": {
     es: "Avisar al equipo en la Central cuando un negocio entre en",
   },
-  // ─── sons dos avisos (migration 0438; app/app/settings/notifications/_sons.tsx) ───
+  // ─── sons dos avisos (migration 0441; app/app/settings/notifications/_sons.tsx) ───
   "Sons dos avisos": { es: "Sonidos de los avisos" },
   "Tocam com o site aberto quando o aviso chega na Central. MP3, OGG ou WAV de até 1 MB.": {
     es: "Suenan con el sitio abierto cuando el aviso llega a la Central. MP3, OGG o WAV de hasta 1 MB.",

@@ -40337,7 +40337,7 @@ comment on column public.crm_stages.avisar_na_central is
 
 notify pgrst, 'reload schema';
 
--- ---- o bucket dos sons dos avisos da Central (migration 0438) ----
+-- ---- o bucket dos sons dos avisos da Central (migration 0441) ----
 -- Privado; só o service_role lê e grava, pela rota `app/api/v1/settings/sons`.
 -- Teto e tipos são os de `lib/notifications/sons-da-org.ts` (1 MB, MP3/OGG/WAV),
 -- conferidos por `tests/invariants/sons-dos-avisos.test.ts`. Sem policy em
