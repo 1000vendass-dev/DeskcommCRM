@@ -251,6 +251,47 @@ export async function diasDesenhados(page: Page): Promise<string[]> {
 }
 
 /**
+ * Avança o mini-calendário do painel um mês e só devolve quando os dias em tela
+ * são os do mês NOVO — lidos da resposta que o mês novo pediu.
+ *
+ * ═══ O defeito que esta espera existe para fechar ════════════════════════════
+ *
+ * O mês visível mora em DOIS estados: o do painel (`mes`, que o clique troca na
+ * hora) e o do `_client.tsx` (`mesDoPainel`, que decide a consulta e só muda no
+ * efeito `onMesVisivel`, depois do commit). No meio há um quadro com outubro na
+ * tela e os horários de SETEMBRO por baixo — e a janela de setembro vai até
+ * `endOfMonth + 1 dia` (`janelaDoMesVisivel`), então traz o dia 1º. Nesse quadro
+ * o dia 1º de outubro aparece disponível e nenhum outro.
+ *
+ * A espera antiga era "algum dia disponível". O quadro de transição a satisfaz:
+ * a varredura seguinte leu o dia 1º, filtrou pela semana desenhada e achou nada.
+ * Medido no run 36292363538 (PR #1776, e2e-parte 2, 27/09 ~04h UTC — domingo,
+ * semana desenhada 04–10/out, dia 1º uma quinta), no trace: o `toBeVisible`
+ * depois do `mes-seguinte` passou em 2 ms, a varredura 17 ms depois devolveu
+ * `[]`, e o `GET horarios-livres` de outubro ainda estava pendente quando a spec
+ * reprovou. Precisa das três condições juntas — a semana desenhada inteira no
+ * mês seguinte, hoje com vaga no mês corrente e o dia 1º útil —, por isso só
+ * aparece em alguns fins de mês.
+ *
+ * O portão certo é a RESPOSTA do mês novo: a consulta dele só sai depois que o
+ * `_client` trocou de chave, e daí em diante a tela ou está carregando (nenhum
+ * dia disponível, e o `toBeVisible` espera) ou mostra o mês novo inteiro. O
+ * quadro com dados do mês velho é anterior à requisição e não volta.
+ */
+async function avancarMesDoPainel(page: Page): Promise<void> {
+  const consultaDoMesNovo = page.waitForResponse(
+    (r) => r.url().includes("/api/v1/agenda/horarios-livres") && r.request().method() === "GET",
+    { timeout: 20_000 },
+  );
+  await page.getByTestId("mes-seguinte").click();
+  await consultaDoMesNovo;
+  await expect(
+    page.locator('[data-testid^="dia-"][data-disponivel="true"]').first(),
+    "nem o mês seguinte oferece dia — a consulta deveria ter pedido o mês visível",
+  ).toBeVisible({ timeout: 20_000 });
+}
+
+/**
  * Escolhe, no painel de marcação já aberto, um dia que a grade esteja
  * desenhando — e devolve a chave escolhida.
  *
@@ -279,11 +320,7 @@ export async function escolherDiaDesenhado(page: Page, dias: readonly string[]):
 
   let candidatos = await disponiveis();
   if (candidatos.length === 0) {
-    await page.getByTestId("mes-seguinte").click();
-    await expect(
-      page.locator('[data-testid^="dia-"][data-disponivel="true"]').first(),
-      "nem o mês seguinte oferece dia — a consulta deveria ter pedido o mês visível",
-    ).toBeVisible({ timeout: 20_000 });
+    await avancarMesDoPainel(page);
     candidatos = await disponiveis();
   }
 
@@ -359,11 +396,7 @@ async function diasCheios(page: Page): Promise<string[]> {
   // mês seguinte, e o mini-calendário só torna clicável o que é `isSameMonth` do
   // mês em tela. Sem este passo as specs reprovariam nos dias 30/31 — a mesma
   // classe de vermelho-por-calendário que este módulo existe para fechar.
-  await page.getByTestId("mes-seguinte").click();
-  await expect(
-    page.locator('[data-testid^="dia-"][data-disponivel="true"]').first(),
-    "nem o mês seguinte oferece dia — a consulta deveria ter pedido o mês visível",
-  ).toBeVisible({ timeout: 20_000 });
+  await avancarMesDoPainel(page);
   return varrer();
 }
 
