@@ -19,6 +19,8 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   ou cancelado, o aviso sai do sino sozinho. O aviso não repete o assunto do
   caso: diz só que a IA pediu ajuda, no idioma da organização.
 
+  Contribuição de @jmpo (#1816).
+
 - **A etapa do funil pode avisar a equipe na Central quando um negócio entra nela** Em Configurações › Funis › Etapas, cada etapa ganhou a chave «Avisar a equipe
   na Central quando um negócio entrar aqui». Ligada, todo negócio que entra
   nela — pelo arrasto no quadro, pelo mover em lote, por uma automação ou pelo
@@ -29,7 +31,7 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   de separar e despachar, e o ganho só vem com a entrega. O aviso diz a etapa,
   nunca o nome ou o telefone do cliente, sai no idioma da organização e não se
   repete enquanto o anterior do mesmo negócio estiver aberto. Vem desligada em
-  todas as etapas: nada muda para quem não ligar. Contribuição de @jmpo.
+  todas as etapas: nada muda para quem não ligar. Contribuição de @jmpo (#1813).
 
 - **Os avisos que pedem gente chegam ao celular** Com o push ligado no aparelho (Configurações › Notificações), três avisos da
   Central passam a chegar como notificação no celular, mesmo com o CRM fechado:
@@ -40,7 +42,7 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   nem o telefone do cliente, e o toque abre a conversa, o negócio ou as
   credenciais. Precisa do par VAPID no `.env` (`VAPID_PUBLIC_KEY` e
   `VAPID_PRIVATE_KEY`), como o push de mensagem nova; sem ele, nada muda.
-  Contribuição de @jmpo.
+  Contribuição de @jmpo (#1815).
 
 - **Os avisos que pedem gente tocam o som que a organização escolher** Em Configurações › Notificações, a seção «Sons dos avisos» deixa trocar o som
   de dois momentos da Central: a etapa que avisa (um negócio entrou numa etapa
@@ -50,7 +52,7 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   sistema. Todo mundo ouve; trocar é de gestor para cima.
 
   O som toca com o site aberto, quando o aviso chega na Central — que passa a ser
-  relida a cada 30 segundos, em vez de a cada minuto. Contribuição de @jmpo.
+  relida a cada 30 segundos, em vez de a cada minuto. Contribuição de @jmpo (#1814).
 
 ### Corrigido
 
@@ -76,6 +78,8 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   ser devolvidas à Meta. Nesse mesmo canal, a conversa passa a guardar a hora em
   que cada mensagem foi entregue e lida, além do tique.
 
+  Contribuição de @jmpo (#1820).
+
 - **No número oficial intermediado, evento sem conta não entra e o estado do número só vale para o próprio número** Evento de mensagem ou de modelo que chega sem a conta de origem passa a ser
   ignorado e fica no arquivo de webhooks, em vez de entrar na caixa de entrada.
   Aviso de estado de número (suspenso, liberado, reativado) só muda o canal
@@ -84,6 +88,8 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   orientar o preenchimento do filtro de contas na inscrição do webhook no
   provedor.
 
+  Contribuição de @jmpo (#1821, completado no #1823).
+
 - **No número oficial intermediado, a caixa de entrada só recebe o que é do próprio número** O aviso que o provedor intermediado manda ao CRM é por espaço de trabalho, não
   por número: quem tinha mais de uma conta no mesmo espaço (outro número, ou as
   redes de outro negócio) via na conversa de um número mensagens enviadas por
@@ -91,10 +97,14 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   arquivo de webhooks como "evento de outra conta"; o evento sem conta (como o
   aviso de queda do número) continua valendo.
 
+  Contribuição de @jmpo (#1821).
+
 - **No número oficial intermediado, o lugar escolhido no mapa chega com o link do mapa** Quando o cliente compartilhava um lugar com nome — uma praça, um mercado — em
   vez da própria localização, a conversa mostrava só o nome do lugar, sem o link
   para abrir no mapa. Agora esse pino chega igual ao da localização atual: com o
   nome, o endereço e o link, e o assistente recebe o ponto para o pedido.
+
+  Contribuição de @jmpo (#1820).
 
 ## [1.56.1] — 2026-09-27
 
