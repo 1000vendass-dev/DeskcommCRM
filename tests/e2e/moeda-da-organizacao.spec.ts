@@ -27,7 +27,7 @@ import { test, expect, type Page } from "./helpers/test";
 import { lerCreds, loginComoAdmin } from "./helpers/login-admin";
 
 let creds = lerCreds();
-// ⚠️ `evidence/`, não `.superpowers/evidence/` — a segunda é gitignored de
+// ⚠️ `evidence/`, não `evidence/` — a segunda é gitignored de
 // propósito. Escrever nela fazia o journey map citar caminho que `git
 // ls-files` não conhece (reprova em `tests/unit/evidencia-citada.test.ts`) e,
 // mais grave: um rerun deste spec não atualizava a evidência que o mapa cita,

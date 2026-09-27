@@ -27,7 +27,7 @@ import { TETO_TOOLS_POR_AGENTE } from "@/lib/mcp/tools/selecao-por-pacote";
 import { loginComoAdmin } from "./helpers/login-admin";
 
 const CREDS_PATH = path.join(process.cwd(), ".e2e-creds.json");
-// Versionada de propósito: `.superpowers/evidence/` está no `.gitignore`, e o
+// Versionada de propósito: `evidence/` está no `.gitignore`, e o
 // gate `tests/unit/evidencia-citada.test.ts` reprova documento que cita imagem
 // que o repositório não entrega — imagem citada é lastro de afirmação.
 const EVIDENCIA = path.join(process.cwd(), "evidence", "ia-360-w1");
