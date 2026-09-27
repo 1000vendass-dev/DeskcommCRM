@@ -11,8 +11,8 @@
  * Esta página imita exatamente os dois estados do produto (`mes` do painel,
  * que troca no clique; `mesDoPainel` do `_client`, que troca depois e dispara a
  * consulta), com o relógio fixo no instante da falha. Com a espera antiga o
- * caso reprova com a mesma mensagem do CI; com a espera pela resposta do mês
- * novo, escolhe um dia da semana desenhada.
+ * caso reprova com a mesma mensagem do CI; esperando um dia da SEMANA DESENHADA
+ * acender, escolhe um deles.
  */
 import { test, expect } from "./helpers/test";
 
@@ -67,7 +67,7 @@ const PAGINA = `<!doctype html><html><body><div id="painel"></div>
   pedir(mes);
 </script></body></html>`;
 
-test("depois de 'mês seguinte', o dia escolhido sai da resposta do mês novo, não do quadro de transição", async ({
+test("depois de 'mês seguinte', o dia escolhido é da semana desenhada, não do quadro de transição", async ({
   page,
 }) => {
   await page.clock.setFixedTime(AGORA);
