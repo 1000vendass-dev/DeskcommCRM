@@ -92,7 +92,11 @@ if [ "$MIG" -gt 0 ]; then
     fi
     COMPL_REFS="$(pop_refs_de_outrem "$COMPL_BASE" 2>/dev/null || true)"
     [ -n "${COMPL_REFS// /}" ] || COMPL_REFS="HEAD"
-    COMPL_POP="$(pop_migrations $COMPL_REFS 2>/dev/null || true)"
+    # O HEAD entra SEMPRE: `pop_refs_de_outrem` tira a ref cujo SHA é o do HEAD,
+    # e sem devolvê-lo aqui a duplicata DENTRO do próprio PR sumia da conta —
+    # nenhum dos dois arquivos acusava o outro. O `grep -vE` que tira o próprio
+    # arquivo continua abaixo, e o irmão não é ele.
+    COMPL_POP="$(pop_migrations $COMPL_REFS HEAD 2>/dev/null || true)"
   else
     COMPL_BASE="origin/main"; COMPL_POP=""
   fi

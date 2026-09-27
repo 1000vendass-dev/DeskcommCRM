@@ -24,6 +24,10 @@
 #      e --desarmar limpa.
 #   5. pre-voo.sh acusa CHANGELOG à mão, migration sem tripla e branch atrasada,
 #      e sai com 0 (é medição, não veredito).
+#   5-bis. a migration que a PRÓPRIA branch já commitou entra na população do
+#      pré-voo: o "próximo NNNN" não aponta para o número que ela já usa.
+#   5-ter. o complemento.sh acusa as DUAS migrations de mesmo NNNN dentro do
+#      próprio PR, e não só as de fora.
 #   6. sessao.sh lembra o contribuidor e cala para o mantenedor.
 #   7. O bloco do Passo 0 do SKILL.md — extraído do guia e EXECUTADO, em bash e zsh —
 #      sempre dá uma resposta ou um erro que se explica: também numa subpasta do clone,
@@ -308,6 +312,69 @@ assert_contains "$saida" "checks obrigatórios NÃO MEDIDOS" "sem gh, declara o 
 git switch -q main 2>/dev/null
 saida="$(bash .agents/skills/deskcomm-contribuir/scripts/pre-voo.sh 2>&1)"
 assert_contains "$saida" "você está na 'main'" "na main, manda abrir branch"
+
+# ── 5-bis. A migration que a PRÓPRIA branch já commitou entra na população ────
+# `pop_refs_de_outrem` tira da conta a ref cujo SHA é o do HEAD (armadilha já
+# paga), e sem devolvê-lo a migration que a branch JÁ commitou sumia: o "próximo
+# NNNN" apontava para o número que ela já usava. O pré-voo mede a main do PRODUTO, então
+# o clone precisa de um remoto com a URL do principal — o mesmo preparo do 2-quater.
+echo "5-bis. o 'próximo NNNN' do pré-voo não aponta para o número que a branch já commitou"
+clone="$TMP/c5-bis"; clonar "$clone" "alguem@fork.dev"
+cfg "$clone" remote.produto.url "https://github.com/melgarafael/DeskcommCRM.git"
+cfg "$clone" remote.produto.fetch "+refs/heads/*:refs/remotes/produto/*"
+cfg "$clone" "url.$principal.insteadOf" "https://github.com/melgarafael/DeskcommCRM.git"
+git -C "$clone" fetch -q produto
+git -C "$clone" switch -q -c fix/minha
+printf 'select 2;\n' > "$clone/supabase/migrations/20260920120000_0201_minha.sql"
+printf -- '-- apêndice 0201\n' >> "$clone/supabase/baseline.sql"
+printf '| `20260920120000` | `0201_minha` |\n' >> "$clone/supabase/migrations/MANIFEST.md"
+git -C "$clone" add -A; git -C "$clone" commit -q -m "migration 0201 da própria branch"
+saida="$(cd "$clone" && bash .agents/skills/deskcomm-contribuir/scripts/pre-voo.sh 2>&1)"; code=$?
+assert_exit "$code" 0 "o pré-voo mede e sai com 0"
+assert_contains "$saida" "próximo NNNN medido em produto/main ∪ outras refs do clone: 0202 (teto 0201)" "o próximo livre passa por cima do 0201 que a branch commitou"
+assert_not_contains "$saida" "próximo NNNN medido em produto/main ∪ outras refs do clone: 0201 (teto 0200)" "e não devolve o número que a própria branch usa"
+
+# ── 5-ter. As duas migrations de mesmo NNNN do PR se acusam ──────────────────
+# No `complemento.sh` a conta é a mesma: sem o HEAD, a população só tinha a base,
+# e nenhum dos dois arquivos do PR acusava o outro. O `gh` é dublado
+# porque a cabeça do PR é o HEAD deste clone (o modo do TRIAGEM.md, §4).
+echo "5-ter. o complemento.sh acusa as duas migrations de mesmo NNNN dentro do próprio PR"
+clone="$TMP/c5-ter"; clonar "$clone" "alguem@fork.dev"
+cfg "$clone" remote.produto.url "https://github.com/melgarafael/DeskcommCRM.git"
+cfg "$clone" remote.produto.fetch "+refs/heads/*:refs/remotes/produto/*"
+cfg "$clone" "url.$principal.insteadOf" "https://github.com/melgarafael/DeskcommCRM.git"
+git -C "$clone" fetch -q produto
+git -C "$clone" switch -q -c tri/1780
+printf 'select 3;\n' > "$clone/supabase/migrations/20260928000000_0201_a.sql"
+printf 'select 4;\n' > "$clone/supabase/migrations/20260928010000_0201_b.sql"
+printf -- '-- apêndice 0201\n' >> "$clone/supabase/baseline.sql"
+printf '| `a` |\n| `b` |\n' >> "$clone/supabase/migrations/MANIFEST.md"
+git -C "$clone" add -A; git -C "$clone" commit -q -m "PR com duas 0201"
+mkdir -p "$clone/triagem/scripts"
+cp "$RAIZ/triagem/scripts/complemento.sh" "$clone/triagem/scripts/"
+# O `gh` é dublado por FUNÇÃO exportada, e não por um diretório no PATH: assim o
+# dublê não depende de como o PATH chega ao `bash` filho (num "$TMP" com ':' — o
+# do Windows — um diretório no PATH se parte em dois e o dublê não é achado).
+gh() {
+  # a cabeça do PR É o HEAD deste clone (o modo do TRIAGEM.md, §4).
+  local base; base="$(git merge-base origin/main HEAD)"
+  case "$1 $2" in
+    'pr diff') git diff "$base"...HEAD ;;
+    'pr view')
+      for a in "$@"; do
+        case "$a" in
+          files) git diff --name-only "$base"...HEAD ;;
+          headRefOid) git rev-parse HEAD ;;
+        esac
+      done ;;
+  esac
+}
+export -f gh
+saida="$(cd "$clone" && bash triagem/scripts/complemento.sh 1780 2>&1)"; code=$?
+unset -f gh
+assert_exit "$code" 0 "o complemento roda"
+assert_contains "$saida" "20260928000000_0201_a.sql colide_em=HEAD" "a primeira 0201 acusa a irmã do próprio PR"
+assert_contains "$saida" "20260928010000_0201_b.sql colide_em=HEAD" "e a segunda acusa a primeira"
 
 echo "6. sessao.sh (hook de início de sessão)"
 clone="$TMP/c6"; clonar "$clone" "alguem@fork.dev"; cfg "$clone" --unset core.hooksPath
