@@ -21,10 +21,7 @@ FILES=$(gh pr view "$N" --json files --jq '.files[].path' 2>/dev/null)
 # (issue #1273)
 SHA_GH=$(gh pr view "$N" --json headRefOid --jq .headRefOid 2>/dev/null | head -1)
 SHA_TRI=$(git rev-parse -q --verify "refs/tri/${N}^{commit}" 2>/dev/null || true)
-SHA="$SHA_GH"
-if [ -n "$SHA_TRI" ] && [ -n "$SHA_GH" ] && [ "$SHA_TRI" != "$SHA_GH" ]; then
-  SHA="$SHA_GH"
-fi
+SHA="$SHA_GH"   # a cabeça ATUAL vence sempre uma refs/tri/N divergente
 if [ -z "$SHA" ] && [ -n "$SHA_TRI" ]; then
   SHA="$SHA_TRI"
   echo "sha_velho	refs/tri/${N}=${SHA_TRI:0:9} (o gh NÃO devolveu a cabeça atual; meça contra esta cópia, que pode estar atrasada)"
@@ -104,7 +101,7 @@ if [ "$MIG" -gt 0 ]; then
     NUM=$(pop_nnnn_de <<<"$NOME" 2>/dev/null || true)
     [ -n "$NUM" ] || NUM=$(sed -nE 's/^[0-9]{14}_([0-9]{4})_.+\.sql$/\1/p' <<<"$NOME")
     # O próprio arquivo do PR não é colisão dele: a lista de `pop_migrations` é a
-    #das outras refs, e a linha deste arquivo é o que o PR acrescenta.
+    # das outras refs, e a linha deste arquivo é o que o PR acrescenta.
     COLIDE=NAO_MEDIDO
     if [ -n "$COMPL_POP" ]; then
       COLIDE=$(grep -E " [0-9]{14}_${NUM}_.+\.sql$" <<<"$COMPL_POP" | grep -vE " ${NOME}\$" | awk '{print $1}' | sort -u | paste -sd, - || true)

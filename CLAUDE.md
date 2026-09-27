@@ -573,6 +573,11 @@ Processo padrão (siga sempre):
    `…_0326_relatorio_2024_anual.sql` o teto virava 2024) e media a árvore de
    trabalho, onde a 0336 já podia estar reservada por um PR aberto (#1273).
 
+   O `checar` mede o arquivo que você **já** acrescentou: sem migration nova, ele responde
+   `OK — nenhuma migration acrescentada` e não dá número. Crie o arquivo com um número provisório
+   e rode; ou, para alocar antes, use a enumeração do que está em voo em `triagem/TRIAGEM.md`
+   (modo de falha 37). O teto é a main **mais** tudo em voo, em NNNN **e** em timestamp.
+
    O nome do arquivo começa pelo **timestamp**, e timestamp e `NNNN` podem discordar: em
    09/09/2026 o `ls | tail -1` devolvia o `_0230_` (timestamp de 07/09) enquanto o maior `NNNN`
    era `_0231_` (timestamp de 05/09). Um contribuidor externo seguiu a instrução antiga ao pé da
