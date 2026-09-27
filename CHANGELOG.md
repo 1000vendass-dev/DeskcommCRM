@@ -24,13 +24,15 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   plataforma não devolver a variante, nada é apagado no escuro — a operação
   recusa com o motivo.
 
+  Contribuição de @webtecnica (#1761, issue #1734).
+
 - **A ferramenta de agenda lê um período inteiro, no fuso da empresa e em páginas** A ferramenta `crm_list_appointments` passa a aceitar `de`/`ate` (até 62 dias, a agenda inteira da organização) e paginação por `depois_de`/`proximo`, e cada compromisso traz o nome do contato e do atendente, o tipo, o local e os negócios vinculados — as chaves `contato_id`/`atendente_id` continuam na resposta. O filtro por `dia` passa a contar o dia no fuso da organização. A listagem da agenda pela API recusa com 422 um período acima de 62 dias.
 
   Não há ação para quem opera a VPS.
 
   Contribuição de @webtecnica (#1762).
 
-- **O dono pode impedir que um agente marque novos retornos sem desligar os acompanhamentos configurados** Cada agente passa a ter um controle separado para permitir ou impedir novos retornos prometidos por conta própria. Os acompanhamentos configurados, a consulta e o cancelamento de retornos existentes e os agendamentos de compromisso continuam disponíveis. Agentes existentes mantêm o comportamento atual. Contribuição de @lucasa15.
+- **O dono pode impedir que um agente marque novos retornos sem desligar os acompanhamentos configurados** Cada agente passa a ter um controle separado para permitir ou impedir novos retornos prometidos por conta própria. Os acompanhamentos configurados, a consulta e o cancelamento de retornos existentes e os agendamentos de compromisso continuam disponíveis. Agentes existentes mantêm o comportamento atual. Contribuição de @lucasa15 (#1764).
 
 - **Nome da etapa editável direto no cabeçalho do quadro** Em **`/app/pipelines/:id`**, quem é `manager` ou `admin` agora renomeia a etapa clicando no próprio cabeçalho da coluna — sem precisar ir a Configurações › Funis. Salva ao confirmar (Enter ou saindo do campo), nunca a cada tecla, pela mesma rota que a tela de Configurações já usa. Para `viewer`/`agent`, que também abrem este quadro, o cabeçalho continua só leitura.
 
@@ -57,6 +59,8 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   que não mudava de cor — no tema escuro ficava gritando no topo da tela.
 
   Crédito: @Draven9
+
+  Contribuição de @Draven9 (#1757, trazida no #1759).
 
 ### Alterado
 
