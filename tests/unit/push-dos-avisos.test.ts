@@ -52,7 +52,7 @@ beforeEach(() => {
 });
 
 describe("aviso da Central → celular", () => {
-  it("escuta o anúncio do aviso (migration 0439)", () => {
+  it("escuta o anúncio do aviso (migration 0442)", () => {
     expect(webPushInboundHandler.events).toContain("central.aviso_criado");
   });
 

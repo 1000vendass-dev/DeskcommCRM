@@ -1,5 +1,5 @@
 /**
- * `trg_aviso_da_central_criado` (migration 0439): todo aviso da Central de uma
+ * `trg_aviso_da_central_criado` (migration 0442): todo aviso da Central de uma
  * organização anuncia `central.aviso_criado`, para o push decidir o que vai ao
  * celular. Aviso de plataforma não anuncia, e a função não é RPC de ninguém.
  *
@@ -14,7 +14,7 @@ const ORG = "d0439000-0000-4000-8000-000000000001";
 
 beforeAll(() => {
   sql(`insert into organizations (id, slug, legal_name, display_name)
-       values ('${ORG}', 'org-0439-avisos', 'Avisos LTDA', 'Avisos') on conflict (id) do nothing;`);
+       values ('${ORG}', 'org-0442-avisos', 'Avisos LTDA', 'Avisos') on conflict (id) do nothing;`);
 });
 
 afterAll(() => {

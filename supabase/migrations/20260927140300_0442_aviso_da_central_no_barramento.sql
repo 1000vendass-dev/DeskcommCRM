@@ -1,4 +1,4 @@
--- 0439 — o aviso da Central anuncia no barramento que nasceu.
+-- 0442 — o aviso da Central anuncia no barramento que nasceu.
 --
 -- Os avisos que pedem gente (a IA passou a conversa para uma pessoa; a IA
 -- ficou sem saldo no provedor; um negócio entrou numa etapa que avisa, 0436)

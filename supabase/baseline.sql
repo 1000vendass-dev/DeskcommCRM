@@ -39241,7 +39241,7 @@ grant execute on function public.fn_metricas_links_rastreaveis(uuid) to service_
 
 notify pgrst, 'reload schema';
 
--- ---- o aviso da Central anuncia no barramento que nasceu (migration 0439) ----
+-- ---- o aviso da Central anuncia no barramento que nasceu (migration 0442) ----
 --
 -- Ver o cabeçalho da migration: trigger AFTER INSERT em `agent_inbox_items`
 -- emite `central.aviso_criado` (item, kind, ref) para o push decidir o que vai

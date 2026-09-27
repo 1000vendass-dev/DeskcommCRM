@@ -128,7 +128,7 @@ export const webPushInboundHandler: EventHandler = {
     "lead.won",
     "lead.lost",
     "user.mentioned",
-    // Os avisos que pedem gente (migration 0439) — ver `./push-dos-avisos.ts`.
+    // Os avisos que pedem gente (migration 0442) — ver `./push-dos-avisos.ts`.
     "central.aviso_criado",
   ],
   async handle(row): Promise<HandlerResult> {

@@ -8,11 +8,11 @@
  *   - a IA passou a conversa para uma pessoa (aviso `handoff`);
  *   - a IA ficou sem saldo no provedor e as respostas estão esperando a
  *     recarga (`lib/agent-engine/queue/espera-de-saldo.ts`);
- *   - um negócio entrou numa etapa que avisa (migration 0436).
+ *   - um negócio entrou numa etapa que avisa (migration 0440).
  *
  * São os MESMOS que têm som próprio: a regra de quais avisos pedem gente é uma
  * só (`somDoAviso`). Todos chegam pelo barramento como `central.aviso_criado`
- * (migration 0439); o resto da Central fica só na tela.
+ * (migration 0442); o resto da Central fica só na tela.
  *
  * O texto sai no idioma da ORGANIZAÇÃO — ninguém está logado quando o push sai
  * — e não carrega dado do cliente: o push aparece na tela bloqueada, e quem

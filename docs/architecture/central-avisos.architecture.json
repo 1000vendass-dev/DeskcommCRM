@@ -111,7 +111,7 @@
       "lane": "db",
       "col": 1,
       "type": "database",
-      "label": "trg_aviso_da_central_criado → event_log central.aviso_criado (0439, sem I/O)"
+      "label": "trg_aviso_da_central_criado → event_log central.aviso_criado (0442, sem I/O)"
     },
     {
       "id": "push",
