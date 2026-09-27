@@ -44,7 +44,7 @@
  * esconderia o arquivo novo dentro dele, que é o defeito que este gate existe
  * para pegar. E ela não APODRECE: o caso "a quarentena não guarda arquivo que
  * saiu da cobertura" exige que o item ainda exista E ainda cite o caminho, então
- * consertar tira a exceção de graça (ou deixa o vermelho demanding remoção).
+ * consertar tira a exceção de graça (ou deixa o vermelho cobrando a remoção).
  */
 import { execFileSync } from "node:child_process";
 
@@ -62,7 +62,7 @@ const CAMINHO = [".superpowers", "evidence"].join("/");
  * **artefato de medição** (`.json` com o path de origem da captura, `README.md` de
  * índice), e essa escrita é REGISTRO do que foi gravado, não INSTRUÇÃO do que
  * gravar. Incluí-la faria o gate reprovar o próprio lastro que ele manda
- * produzir. O folder de entrega (`evidence/`) continua varrido de outro jeito:
+ * produzir. A pasta de entrega (`evidence/`) continua vigiada de outro jeito:
  * `evidencia-citada.test.ts` cobra que a imagem citada exista no `git`.
  *
  * `.gitignore` também fica de fora, e é o único arquivo do repo que **precisa**
@@ -93,51 +93,37 @@ function ignoradoPorGit(caminho: string): boolean {
 /**
  * TODOS os arquivos com a menção, versionados OU não.
  *
- * `grep -r` (minúsculo) não desce por symlink de diretório, o que mantém
- * `node_modules` e as árvores vizinhas fora do caminho mesmo quando são link.
- * `-l` devolve o nome uma vez, sem linha; quem quer a contagem de ocorrências
- * usa `contagens()`, abaixo.
+ * `git grep --untracked` lê o disco (arquivo novo sem `git add` entra) e
+ * respeita o `.gitignore` (`node_modules`, `.next`, `.superpowers/`, worktrees
+ * aninhados em `.claude/worktrees/` ficam de fora sem lista à mão). A versão
+ * anterior usava `grep -r --exclude-dir=.claude/worktrees`, e o `grep` compara
+ * `--exclude-dir` com o NOME da pasta: padrão com barra nunca casa, e num
+ * checkout com worktrees aninhados a varredura devolveu 1079 arquivos, 1046
+ * deles dentro de `.claude/worktrees/`.
  *
  * Sai de `.` e não de uma lista de pastas: gate que varre diretório escolhido
  * varre o que o autor lembrou, e arquivo novo em pasta que ele não lembrou
- * passa em silêncio. Os `--exclude-dir` são só o ruído conhecido (build,
- * dependências, e `evidence/` pela razão do cabeçalho).
+ * passa em silêncio. Os `:(exclude)` são só `evidence/` da raiz e o
+ * `.gitignore`, pelas razões do cabeçalho.
  */
 function arquivosComAMencao(): string[] {
-  const exclui = [
-    ".git",
-    "node_modules",
-    ".next",
-    "dist",
-    "coverage",
-    "playwright-report",
-    "test-results",
-    "evidence",
-    //(worktrees aninhados de outras sessões: têm o gate delas próprio)
-    ".claude/worktrees",
-  ].map((d) => `--exclude-dir=${d}`);
-
   let saida = "";
   try {
-    saida = execFileSync("grep", ["-rlF", `--exclude=.gitignore`, CAMINHO, ".", ...exclui], {
-      cwd: RAIZ,
-      encoding: "utf8",
-      maxBuffer: 16 * 1024 * 1024,
-    });
+    saida = execFileSync(
+      "git",
+      ["grep", "-lF", "--untracked", "-e", CAMINHO, "--", ".", ":(exclude)evidence", ":(exclude).gitignore"],
+      { cwd: RAIZ, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
+    );
   } catch (e) {
-    // grep sai 1 quando não casa nada — que aqui é o resultado bom.
+    // `git grep` sai 1 quando não casa nada — que aqui é o resultado bom.
     const err = e as { status?: number; stderr?: string };
     if (err.status !== 1) {
       throw new Error(
-        `a varredura do caminho de evidência não rodou (grep saiu ${err.status}): ${err.stderr ?? ""}`,
+        `a varredura do caminho de evidência não rodou (git grep saiu ${err.status}): ${err.stderr ?? ""}`,
       );
     }
   }
-  return saida
-    .split("\n")
-    .filter(Boolean)
-    .map((l) => l.replace(/^\.\//, ""))
-    .sort();
+  return saida.split("\n").filter(Boolean).sort();
 }
 
 /**
@@ -189,7 +175,7 @@ const QUARENTENA = new Set([
   "experiments/extensoes/runtime/verify.mjs",
   "experiments/extensoes/runtime/workspace.test.mjs",
   // ── Instrumento que já aponta para o caminho certo e só EXPLICA o errado ──
-  // A prosa deste script contrasta `evidence/` com `evidence/` para
+  // A prosa deste script contrasta `evidence/` com o caminho ignorado para
   // dizer por que grava onde grava. É menção que DOCUMENTA a decisão, análoga à
   // prosa legítima que o `namespace-das-imagens.test.ts` permite.
   "scripts/evidencia-webhooks.ts",
@@ -200,21 +186,19 @@ const QUARENTENA = new Set([
   // São menções que DOCUMENTAM a decisão, como a prosa que o
   // `namespace-das-imagens.test.ts` permite — não instrução de gravar ali.
   //
-  // ⚠️ ESTES DOIS SÃO OS QUE MAIS VALEM REVISAR: são menção EXPLOSITADORA, e uma
-  // migração automática de caminho os transformou em `evidence/`, não `evidence/`
-  // — comentário que passa a se contradizer, que é pior do que citar o caminho
-  // proibido. Foi o caso de anti-apodrecimento do gate que flagrou a máquina ter
+  // ⚠️ ESTES DOIS SÃO OS QUE MAIS VALEM REVISAR: são menção EXPLICATIVA, e uma
+  // migração automática de caminho trocaria os dois lados do contraste por
+  // `evidence/` — comentário que passa a se contradizer, que é pior do que citar
+  // o caminho proibido. Foi o caso de anti-apodrecimento do gate que flagrou a máquina ter
   // mexido neles.
   "tests/e2e/capacidades-do-agente.spec.ts",
   "tests/e2e/moeda-da-organizacao.spec.ts",
   // ── Este arquivo: o próprio nome do caminho, nas asserções e nas mensagens ──
   "tests/unit/evidencia-no-caminho-versionado.test.ts",
-  // ── `CLAUDE.md` e o mapa de jornadas: doutrina com dono em PR próprio ─────
-  // A linha que manda o caminho errado é a raiz do defeito, e vive em arquivo de
-  // instrução do agente: editá-la depende de aprovação que está fora do meu
-  // escopo, então ela vai em PR próprio, com este gate já publicado para
-  // reprovar qualquer volta enquanto isso.
-  "CLAUDE.md",
+  // ── Mapa de jornadas e registros que citam capturas antigas pelo caminho ──
+  // Em sua maioria, achados datados que dizem onde a prova DAQUELE dia foi
+  // gravada. O `CLAUDE.md` saiu daqui quando a linha da doutrina passou a
+  // mandar para `evidence/`.
   "docs/testing/user-journey-map.md",
   "docs/interface-por-vinculo.md",
   "triagem/TRIAGEM.md",
@@ -256,9 +240,9 @@ describe("a evidência visual vai para o caminho que o git entrega", () => {
     // Sem este caso, um `grep` que devolvesse vazio por qualquer motivo (flag
     // errada, cwd errado, padrão quebrado) leria como "ninguém aponta para lá",
     // que é o verde que não mede nada.
-    const alvo = "tests/unit/evidencia-no-caminho-versionado.test.ts";
-    const saida = execFileSync("grep", ["-rlF", CAMINHO, alvo], { cwd: RAIZ, encoding: "utf8" });
-    expect(saida.trim()).toBe(alvo);
+    // Controle sobre a MESMA função que o gate usa, não sobre um grep à parte:
+    // este arquivo cita o caminho, então a varredura real tem de achá-lo.
+    expect(arquivosComAMencao()).toContain("tests/unit/evidencia-no-caminho-versionado.test.ts");
   });
 
   it("nenhuma superfície de doutrina ou de escrita aponta para o caminho ignorado", () => {
