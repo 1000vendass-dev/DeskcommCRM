@@ -3036,3 +3036,9 @@ Migration 0438. Spec: `tests/e2e/sons-dos-avisos.spec.ts` (job e2e, parte 1). O 
 **NÃO coberto por esta spec:** o som saindo de um alto-falante de verdade, e o navegador que recusa áudio antes de a pessoa interagir (o hook cai no bipe e, se nem isso, o aviso segue visível).
 
 Evidência: `evidence/sons-dos-avisos/01-som-personalizado.png` (a gestora com o som escolhido para «Precisa de uma pessoa») e `evidence/sons-dos-avisos/02-visualizadora.png` (a visualizadora, sem o botão de trocar).
+
+### O push dos avisos no celular `[P1]` (2026-09-27)
+
+Migration 0439. **Sem spec de tela, e é declarado:** o que muda é o que chega a um celular com o CRM fechado, e o CI não tem aparelho nem serviço de push de navegador. A regra (quais avisos, texto no idioma da organização, sem dado do cliente, destino da Central) está em `tests/unit/push-dos-avisos.test.ts`; o anúncio do aviso no barramento, contra Postgres, em `tests/invariants/aviso-da-central-no-barramento.test.ts`.
+
+**NÃO coberto:** a notificação aparecendo num celular de verdade (Android/iPhone), com o par VAPID configurado.
