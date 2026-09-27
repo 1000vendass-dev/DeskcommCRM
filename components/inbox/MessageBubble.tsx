@@ -214,6 +214,9 @@ export function MessageBubble({
                   : "rounded-bl-sm bg-muted text-foreground",
               ),
           isFailed && "border border-destructive",
+          // A marca da busca é ANEL, não cor de fundo: o fundo já diz de quem é
+          // a mensagem, e trocá-lo apagaria essa leitura justo na bolha achada.
+          searchMatch && "ring-2 ring-foreground ring-offset-2 ring-offset-background",
           apagada && "opacity-70",
         )}
       >

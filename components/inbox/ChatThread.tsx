@@ -120,6 +120,12 @@ export function ChatThread({
     [q.data],
   );
 
+  /**
+   * BUSCA NO QUE JÁ ESTÁ NA TELA (#1793). Não vai ao servidor: filtra as
+   * páginas carregadas, e o rótulo diz isso para ninguém ler "zero" como "não
+   * existe na conversa". Apagada e oculta ficam de fora — o texto delas não
+   * aparece na bolha, e marcar uma bolha sem o termo visível seria mentir.
+   */
   const termo = searchTerm.trim().toLocaleLowerCase();
   const resultados = useMemo(
     () =>
@@ -136,12 +142,14 @@ export function ChatThread({
       ),
     [messages, termo],
   );
+  // Só o TERMO leva à ocorrência. Depender do conjunto de resultados faria cada
+  // mensagem nova do tempo real arrancar quem lê de volta à primeira ocorrência.
   useEffect(() => {
     if (termo)
       scrollerRef.current
         ?.querySelector('[data-search-match="true"]')
         ?.scrollIntoView({ block: "nearest" });
-  }, [termo, resultados]);
+  }, [termo]);
   /**
    * As mensagens por id, para resolver a CITADA sem ir ao servidor.
    *
@@ -318,8 +326,8 @@ export function ChatThread({
   return (
     <div {...sinalDoCanal} className="flex h-full min-w-0 flex-col">
       {termo && (
-        <div className="bg-background px-4 py-1 text-xs" role="status">
-          {resultados.size} {t("resultados nas mensagens carregadas")}
+        <div className="px-4 py-1 text-xs text-muted-foreground" role="status">
+          {t("Resultados nas mensagens carregadas")}: {resultados.size}
         </div>
       )}
       <div ref={scrollerRef} className="min-w-0 flex-1 overflow-y-auto py-2">
