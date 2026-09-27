@@ -128,7 +128,9 @@ function arquivosComAMencao(): string[] {
     // grep sai 1 quando não casa nada — que aqui é o resultado bom.
     const err = e as { status?: number; stderr?: string };
     if (err.status !== 1) {
-      throw new Error(`a varredura do caminho de evidência não rodou (grep saiu ${err.status}): ${err.stderr ?? ""}`);
+      throw new Error(
+        `a varredura do caminho de evidência não rodou (grep saiu ${err.status}): ${err.stderr ?? ""}`,
+      );
     }
   }
   return saida
@@ -224,7 +226,9 @@ function contagens(): Map<string, number> {
   for (const arq of arquivosComAMencao()) {
     let n = 0;
     try {
-      n = Number(execFileSync("grep", ["-coF", CAMINHO, arq], { cwd: RAIZ, encoding: "utf8" }).trim());
+      n = Number(
+        execFileSync("grep", ["-coF", CAMINHO, arq], { cwd: RAIZ, encoding: "utf8" }).trim(),
+      );
     } catch {
       n = -1; // o arquivo sumiu entre a varredura e a contagem: o caso abaixo acusa
     }
