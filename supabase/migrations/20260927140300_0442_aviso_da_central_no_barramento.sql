@@ -1,7 +1,7 @@
 -- 0442 — o aviso da Central anuncia no barramento que nasceu.
 --
 -- Os avisos que pedem gente (a IA passou a conversa para uma pessoa; a IA
--- ficou sem saldo no provedor; um negócio entrou numa etapa que avisa, 0436)
+-- ficou sem saldo no provedor; um negócio entrou numa etapa que avisa, 0440)
 -- só existiam na tela: com o CRM fechado, ninguém sabia. O push para o celular
 -- já existia para mensagem nova, e faltava o gancho destes. TRIGGER e não
 -- emissor em código pelo mesmo motivo da 0148: os avisos nascem em vários
