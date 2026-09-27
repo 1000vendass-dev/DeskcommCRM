@@ -31,6 +31,11 @@ Edite o `.env` e preencha (mínimo):
 
 - **Supabase** (Settings → API do seu projeto): `NEXT_PUBLIC_SUPABASE_URL`,
   `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+  > Opcional: `SUPABASE_SERVER_URL`. Só quando o seu Supabase roda **na mesma
+  > rede** do app (Kong, self-host) — preencha com o endereço interno
+  > (ex.: `http://kong:8000`) e o servidor passa a falar com o banco por ele, sem
+  > precisar que REST/Realtime/Storage estejam publicados na internet. O
+  > navegador continua na URL pública. Vazia, tudo funciona como antes.
 - **Banco direto** (Settings → Database → connection string): `SUPABASE_DB_URL`
   > É a conexão do **app**. Quem mexe no **schema** — `create extension`, o
   > `baseline.sql`, a promoção do dono, o `pg_dump` do backup — pode ser outra:

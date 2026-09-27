@@ -18,24 +18,29 @@
 
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
+import { urlDoSupabaseNoServidor } from "@/lib/supabase/url-do-servidor";
 
 let _admin: SupabaseClient | null = null;
 
 export function createAdminClient(): SupabaseClient {
   if (_admin) return _admin;
 
-  _admin = createSupabaseClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-      detectSessionInUrl: false,
-    },
-    global: {
-      headers: {
-        "X-Client-Info": "deskcomm-crm/admin",
+  _admin = createSupabaseClient(
+    urlDoSupabaseNoServidor(env.SUPABASE_SERVER_URL, env.NEXT_PUBLIC_SUPABASE_URL),
+    env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false,
+      },
+      global: {
+        headers: {
+          "X-Client-Info": "deskcomm-crm/admin",
+        },
       },
     },
-  });
+  );
 
   return _admin;
 }

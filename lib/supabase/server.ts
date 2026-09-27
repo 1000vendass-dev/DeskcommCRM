@@ -9,6 +9,7 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookieSecure } from "@/lib/supabase/cookie-secure";
 import { cookies } from "next/headers";
 import { env } from "@/lib/env";
+import { urlDoSupabaseNoServidor } from "@/lib/supabase/url-do-servidor";
 
 /**
  * Tudo o que vale para TODO cookie deste cliente, menos o `sameSite` — que é
@@ -35,24 +36,28 @@ function opcoesDeCookie(sameSite: "strict" | "lax") {
 async function clienteDeServidor(sameSite: "strict" | "lax") {
   const cookieStore = await cookies();
 
-  return createServerClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
-    cookies: {
-      getAll() {
-        return cookieStore.getAll();
+  return createServerClient(
+    urlDoSupabaseNoServidor(env.SUPABASE_SERVER_URL, env.NEXT_PUBLIC_SUPABASE_URL),
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          } catch {
+            // setAll pode ser chamado de Server Component; nesse caso, ignoramos.
+            // Refresh de sessão acontece no middleware do Next.
+          }
+        },
       },
-      setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-        try {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        } catch {
-          // setAll pode ser chamado de Server Component; nesse caso, ignoramos.
-          // Refresh de sessão acontece no middleware do Next.
-        }
-      },
+      cookieOptions: opcoesDeCookie(sameSite),
     },
-    cookieOptions: opcoesDeCookie(sameSite),
-  });
+  );
 }
 
 export async function createClient() {
