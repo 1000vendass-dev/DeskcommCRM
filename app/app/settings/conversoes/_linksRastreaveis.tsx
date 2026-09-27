@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { copyToClipboard } from "@/lib/clipboard";
+import { randomId } from "@/lib/random-id";
 import { traduzir } from "@/lib/i18n/dicionario";
 import type { Idioma } from "@/lib/i18n/idiomas";
 import {
@@ -73,7 +74,7 @@ export function LinksRastreaveis({
       return;
     }
     if (!saved) return;
-    const nonce = crypto.randomUUID();
+    const nonce = randomId();
     target.hash = new URLSearchParams({ "rastreio-verificar": nonce }).toString();
     const popup = window.open(target.href, "_blank");
     if (!popup) {
