@@ -32,7 +32,13 @@
  *  - `experiments/extensoes/` + `docs/research/extensoes/`: bancada de
  *    laboratório efêmera, deliberadamente fora do versionamento.
  *  - `evidence/**`: artefato de medição gravado por máquina.
- *  - `docs/superpowers/specs/`: plano de uma entrega já executada.
+ *
+ * `docs/superpowers/specs/` e `tests/e2e/` NÃO estão aqui porque este PR os
+ * corrigiu: as specs que prescreviam o caminho passaram a citar `evidence/`, e os
+ * specs que gravavam nele passaram a gravar nele. As duas specs que ficaram
+ * (`moeda-da-organizacao`, `capacidades-do-agente`) citam o caminho proibido só
+ * para explicar, num comentário, por que gravam no outro — e é exatamente esse
+ * comentário que a regra precisa preservar.
  *
  * A lista é EXAUSTIVA por arquivo, nunca por padrão — perdão por diretório
  * esconderia o arquivo novo dentro dele, que é o defeito que este gate existe
@@ -162,8 +168,10 @@ const QUARENTENA = new Set([
   "docs/superpowers/plans/2026-07-28-atualizar-versao-na-ui.md",
   "docs/superpowers/plans/2026-08-03-gestao-funis.md",
   "docs/superpowers/plans/2026-08-03-navegacao-agrupada.md",
-  "docs/superpowers/specs/2026-07-28-atualizar-versao-na-ui-design.md",
-  "docs/superpowers/specs/2026-08-03-gestao-funis-design.md",
+  // ⚠️ As specs em `docs/superpowers/specs/` saíram daqui NESTE PR: as duas que
+  // prescreviam o caminho foram migradas para `evidence/`, e o caso de
+  // anti-apodrecimento abaixo cobrou a remoção. A família continua existindo —
+  // o resto dos planos/specs citam o caminho como HISTÓRIA da entrega.
   // ── Bancada de laboratório efêmera, fora do versionamento por desenho ─────
   "docs/research/extensoes/04-bancada-executor.md",
   "docs/research/extensoes/05-bancada-eventos.md",
@@ -183,9 +191,18 @@ const QUARENTENA = new Set([
   // dizer por que grava onde grava. É menção que DOCUMENTA a decisão, análoga à
   // prosa legítima que o `namespace-das-imagens.test.ts` permite.
   "scripts/evidencia-webhooks.ts",
-  // ── Os dois specs que JÁ gravam em `evidence/` e nomeiam o outro caminho ──
-  // para explicar a escolha. O mesmo comentário vale nos dois; em
-  // `moeda-da-organizacao.spec.ts` ele é a explicação de quatro linhas do porquê.
+  // ── Os dois specs que JÁ gravam em `evidence/` e NOMEIAM o caminho proibido ──
+  // para explicar a escolha. Em `moeda-da-organizacao.spec.ts` o contraste é o
+  // argumento inteiro do comentário ("a segunda é gitignored de propósito…"), e
+  // em `capacidades-do-agente.spec.ts` é a razão de a evidência ser versionada.
+  // São menções que DOCUMENTAM a decisão, como a prosa que o
+  // `namespace-das-imagens.test.ts` permite — não instrução de gravar ali.
+  //
+  // ⚠️ ESTES DOIS SÃO OS QUE MAIS VALEM REVISAR: são menção EXPLOSITADORA, e uma
+  // migração automática de caminho os transformou em `evidence/`, não `evidence/`
+  // — comentário que passa a se contradizer, que é pior do que citar o caminho
+  // proibido. Foi o caso de anti-apodrecimento do gate que flagrou a máquina ter
+  // mexido neles.
   "tests/e2e/capacidades-do-agente.spec.ts",
   "tests/e2e/moeda-da-organizacao.spec.ts",
   // ── Este arquivo: o próprio nome do caminho, nas asserções e nas mensagens ──
