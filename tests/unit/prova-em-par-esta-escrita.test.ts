@@ -124,4 +124,13 @@ describe("a prova em par continua escrita (#489)", () => {
       true,
     );
   });
+
+  it("o item 12 do DoD no CLAUDE.md aponta para a emenda", () => {
+    // A lei diz ser "emenda ao item 12". Se o item 12 não souber dela, quem lê
+    // a doutrina pela porta principal nunca chega à regra do par.
+    const claude = ler("CLAUDE.md");
+    const item12 = claude.match(/^12\. \*\*Se tocou UI[^\n]*/m)?.[0];
+    expect(item12, "CLAUDE.md: o item 12 do DoD sumiu ou mudou de forma").toBeDefined();
+    expect(item12, "CLAUDE.md: o item 12 do DoD não cita a emenda da prova em par").toContain(LEI);
+  });
 });
