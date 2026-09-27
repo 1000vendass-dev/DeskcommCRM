@@ -4,7 +4,7 @@
  * Dois momentos pedem a atenção de quem opera, e cada um tem seu som:
  *
  *   - `venda`  — um negócio entrou numa etapa marcada para avisar (migration
- *                 0436; `lib/leads/aviso-de-etapa.ts`). O nome vem do caso que
+ *                 0440; `lib/leads/aviso-de-etapa.ts`). O nome vem do caso que
  *                 motivou a marca: a venda confirmada de quem vende com
  *                 pagamento na entrega. É a chave gravada em
  *                 `settings.sons_de_aviso` — renomeá-la apagaria o som de quem
