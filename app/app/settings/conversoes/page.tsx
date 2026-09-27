@@ -60,6 +60,8 @@ import { ReprocessarConversao } from "./_reprocessar";
 import { FormularioDeCapturaDeUtm } from "./_formCapturaDeUtm";
 import { FormularioDeConversoes } from "./_form";
 import { FormularioDeConversoesGoogle } from "./_formGoogle";
+import { RegrasDeConversaoGoogle, type EtapaAberta } from "./_regrasGoogle";
+import { listarRegrasGoogle } from "@/lib/conversoes/regras-google";
 
 export const metadata = { title: "Conversões" };
 export const dynamic = "force-dynamic";
@@ -104,6 +106,7 @@ export default async function ConversoesPage({
     organizacao,
     capturaGoogle,
     etapas,
+    regrasGoogle,
   ] = await Promise.all([
     lerEstadoDaConexao(admin, activeOrg.orgId),
     lerPendencias(admin, activeOrg.orgId),
@@ -118,13 +121,39 @@ export default async function ConversoesPage({
     lerEstadoDaCaptura(admin, "google_ads_landing_pages", activeOrg.orgId),
     admin
       .from("crm_stages")
-      .select("id, name, crm_pipelines(name)")
+      .select("id, name, pipeline_id, crm_pipelines(name)")
       .eq("organization_id", activeOrg.orgId)
       .eq("is_won", false)
       .eq("is_lost", false)
       .order("position"),
+    // Falha na leitura das regras não derruba a tela: o editor some e o resto fica.
+    listarRegrasGoogle(admin, activeOrg.orgId).catch(() => null),
   ]);
   const slug = (organizacao.data as { slug: string | null } | null)?.slug ?? null;
+  // Etapas abertas agrupadas por funil, na ordem do funil; a primeira de cada
+  // funil é onde o lead nasce (a sugestão "Novo lead" do recomendado).
+  const vistosOsFunis = new Set<string>();
+  const etapasAbertas: EtapaAberta[] = (
+    (etapas.data ?? []) as Array<{
+      id: string;
+      name: string;
+      pipeline_id: string;
+      crm_pipelines: { name: string } | Array<{ name: string }> | null;
+    }>
+  )
+    .map((e) => ({
+      id: e.id,
+      nome: e.name,
+      pipelineId: e.pipeline_id,
+      funil:
+        (Array.isArray(e.crm_pipelines) ? e.crm_pipelines[0] : e.crm_pipelines)?.name ?? "Funil",
+    }))
+    .sort((a, b) => a.funil.localeCompare(b.funil))
+    .map((e) => {
+      const primeira = !vistosOsFunis.has(e.pipelineId);
+      vistosOsFunis.add(e.pipelineId);
+      return { id: e.id, nome: e.nome, funil: e.funil, primeira };
+    });
   const numerosConectados = canais
     .map((c) => c.phone_number)
     .filter((n): n is string => Boolean(n));
@@ -188,16 +217,24 @@ export default async function ConversoesPage({
       <FormularioDeConversoes estado={estado} idioma={idioma} />
       <FormularioDeConversoesGoogle
         estado={estadoGoogle}
-        etapas={(etapas.data ?? []).map((e) => ({
-          id: e.id,
-          nome: `${(Array.isArray(e.crm_pipelines) ? e.crm_pipelines[0] : e.crm_pipelines)?.name ?? "Funil"} — ${e.name}`,
-        }))}
-        erroEtapas={Boolean(etapas.error)}
         idioma={idioma}
         configurado={googleAdsEstaConfigurado(estadoGoogle.api)}
         dataManagerConfigurado={googleAdsEstaConfigurado("data_manager")}
         falta={faltaParaConectarOGoogleAds(estadoGoogle.api)}
+        podeCriarAcao={googleAdsEstaConfigurado("google_ads")}
       />
+      {googleAdsEstaConfigurado(estadoGoogle.api) && !etapas.error && regrasGoogle && (
+        <RegrasDeConversaoGoogle
+          etapas={etapasAbertas}
+          regras={regrasGoogle}
+          idioma={idioma}
+          podeCriarAcao={
+            googleAdsEstaConfigurado("google_ads") &&
+            estadoGoogle.temRefreshToken &&
+            Boolean(estadoGoogle.customerId)
+          }
+        />
+      )}
 
       {slug && (
         <FormularioDeCapturaDeUtm
