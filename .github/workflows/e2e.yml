@@ -1076,6 +1076,10 @@ jobs:
       # service role e apaga tudo no fim. Roda depois da `jev-decisoes-rapidas`
       # — as duas nunca disputam a porta, porque a parte roda uma spec por vez.
       # PREVISÃO, não medida: ~1 min.
+      #
+      # `contadores-do-menu` entrou aqui em 2026-09-27 pela folga da parte (a
+      # maior, acima). Semeia o próprio canal, contato, conversa escalada e caso
+      # pelo service role e apaga tudo no fim, então não depende de vizinha.
       SPECS_PARTE_5: >-
         inbox-busca-e-filtros-dizem-a-verdade.spec.ts
         extensoes-da-instalacao.spec.ts
@@ -1101,6 +1105,7 @@ jobs:
         jev-decisoes-rapidas.spec.ts
         jev-roteador.spec.ts
         buffer-ssr-caixa-orfa.spec.ts
+        contadores-do-menu.spec.ts
 
       # ─── FORA_DO_CI — as que ficaram fora, e o motivo de cada uma ───
       #
