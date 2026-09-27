@@ -11,6 +11,9 @@
 #   2. check-migration-triple.sh BLOQUEIA migration nova sem baseline/MANIFEST,
 #      BLOQUEIA NNNN e timestamp já usados na origin/main, e DEIXA PASSAR a
 #      tripla completa com número livre. Bypass DESKCOMM_MIGRATION_EDIT=1.
+#   2-bis. e, com a biblioteca da população AUSENTE (#1273), o NNNN já usado
+#      CONTINUA bloqueado e a queda é declarada: o guard não pode afrouxar
+#      porque a regra que ele consulta não estava à mão.
 #   3. pre-push BLOQUEIA refs/heads/main e deixa passar uma feature branch.
 #   4. armar-hooks.sh grava core.hooksPath, recusa sobrescrever hooks alheios,
 #      e --desarmar limpa.
@@ -22,7 +25,8 @@
 #      num clone sem o script e fora de qualquer clone, com e sem a instalação global.
 set -uo pipefail
 
-SKILL="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.agents/skills/deskcomm-contribuir" && pwd)"
+RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SKILL="$RAIZ/.agents/skills/deskcomm-contribuir"
 SCRIPTS="$SKILL/scripts"
 falhas=0; casos=0
 ok()   { casos=$((casos+1)); printf '  ✓ %s\n' "$1"; }
@@ -60,6 +64,11 @@ git -C "$principal" init -q -b main
 cfg "$principal" user.email "mantenedor@exemplo.com"; cfg "$principal" user.name "Mantenedor"
 mkdir -p "$principal/supabase/migrations" "$principal/.agents/skills/deskcomm-contribuir/scripts/hooks"
 cp -R "$SCRIPTS"/. "$principal/.agents/skills/deskcomm-contribuir/scripts/"
+# A biblioteca da POPULAÇÃO (#1273) mora em scripts/, fora da skill — e sem ela
+# os hooks caem no caminho degradado e medem menos. O caso 2 mede o caminho
+# COM a biblioteca; o 2-bis apaga o arquivo de propósito e mede o sem.
+mkdir -p "$principal/scripts"
+cp "$RAIZ/scripts/migration-populacao.sh" "$principal/scripts/"
 printf 'select 1;\n' > "$principal/supabase/migrations/20260101120000_0200_existente.sql"
 printf -- '-- baseline\n' > "$principal/supabase/baseline.sql"
 printf '| `20260101120000` | `0200_existente` |\n' > "$principal/supabase/migrations/MANIFEST.md"
@@ -112,6 +121,34 @@ assert_contains "$saida" "timestamp 20260101120000" "acusa o timestamp (os dois 
 saida="$(DESKCOMM_MIGRATION_EDIT=1 git commit -q -m "bypass" 2>&1)"; code=$?
 assert_exit "$code" 0 "DESKCOMM_MIGRATION_EDIT=1 é o bypass explícito"
 git reset -q --hard HEAD~1 2>/dev/null
+
+# ── 2-bis. A AUSÊNCIA da biblioteca NÃO afrouxa o guard (#1273) ─────────────────
+# O caso que a issue descreve: a regra da população vive num lugar só
+# (scripts/migration-populacao.sh), e um clone antigo, ou uma cópia da skill de
+# uma versão anterior, NÃO tem esse arquivo. Se a queda da biblioteca esvaziasse
+# a população, o `grep` não acharia colisão nenhuma e o pre-commit LIBERARIA o
+# commit — um guard que encolhe o universo em silêncio é exatamente o defeito
+# que a #1273 corrige. Aqui a biblioteca é apagada DE VERDADE do clone e o NNNN
+# já usado na origin/main tem de continuar bloqueado, com o aviso da degradação.
+echo "2-bis. check-migration-triple.sh sem a biblioteca (a guarda NÃO afrouxa)"
+sem_lib="$TMP/c2-sem-lib"
+rm -rf "$sem_lib"; git clone -q "$principal" "$sem_lib"
+cfg "$sem_lib" user.email "alguem@fork.dev"; cfg "$sem_lib" user.name "Pessoa"
+cfg "$sem_lib" core.hooksPath ".agents/skills/deskcomm-contribuir/scripts/hooks"
+chmod +x "$sem_lib"/.agents/skills/deskcomm-contribuir/scripts/*.sh \
+          "$sem_lib"/.agents/skills/deskcomm-contribuir/scripts/hooks/*
+cd "$sem_lib" || exit 1; git switch -q -c fix/sem-lib
+rm -f scripts/migration-populacao.sh   # a queda real da biblioteca
+[ -r scripts/migration-populacao.sh ] && falha "2-bis" "a biblioteca não saiu do clone: o caso não mede a queda"
+printf 'select 3;\n' > supabase/migrations/20260101120000_0200_colide.sql
+printf -- '-- x\n' >> supabase/baseline.sql
+printf '| x | `0200_colide` |\n' >> supabase/migrations/MANIFEST.md
+git add -A
+saida="$(git commit -q -m "colisao sem biblioteca" 2>&1)"; code=$?
+assert_exit "$code" 1 "sem a biblioteca, o NNNN já usado NAINDA é bloqueado (o guard não afrouxa)"
+assert_contains "$saida" "NNNN=0200" "sem a biblioteca, o NNNN continua sendo acusado"
+assert_contains "$saida" "migration-populacao.sh AUSENTE" "a queda da biblioteca é DECLARADA, não silenciosa"
+assert_contains "$saida" "checar:colisao-de-migration" "o aviso aponta quem mede a população inteira"
 
 echo "3. pre-push"
 saida="$(printf 'refs/heads/fix/algo %s refs/heads/main %s\n' "$(git rev-parse HEAD)" "$(git rev-parse HEAD)" | bash .agents/skills/deskcomm-contribuir/scripts/hooks/pre-push origin x 2>&1)"; code=$?

@@ -5,17 +5,21 @@
 #   1. mudança em supabase/baseline.sql (apêndice idempotente — é o que o kit
 #      self-host aplica; migration que não chega lá não chega em quem instalou)
 #   2. linha em supabase/migrations/MANIFEST.md
-# E o NNNN e o TIMESTAMP do nome novo não podem existir em origin/main nem em
-# branch local: colisão é o defeito nº 1 da triagem (renumerada 11 vezes desde
-# agosto de 2026), e quem cria migration copiando outra copia os dois.
+# E o NNNN e o TIMESTAMP do nome novo não podem existir na POPULAÇÃO que os
+# mediu: a main do PRODUTO (o remoto que aponta para melgarafael/DeskcommCRM, com
+# qualquer nome) mais as outras refs do clone. Colisão é o defeito nº 1 da
+# triagem (renumerada 11 vezes desde agosto de 2026), e quem cria migration
+# copiando outra copia os dois. A população — e o que ela DEIXA de fora — é a
+# mesma dos outros sete lugares (#1273), em `scripts/migration-populacao.sh`.
 #
-# Diferença para o hook do mantenedor (loop/hooks): compara contra origin/main
-# (um fork raramente tem outras branches locais) e não conhece a dívida de
-# timestamp da main, que é assunto do mantenedor.
+# Diferença para o hook do mantenedor (loop/hooks): este não conhece a dívida
+# de timestamp da main, que é assunto do mantenedor.
 # Bypass explícito (correção orientada pelo mantenedor): DESKCOMM_MIGRATION_EDIT=1
 set -euo pipefail
 
 [ "${DESKCOMM_MIGRATION_EDIT:-0}" = "1" ] && exit 0
+
+top="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
 novas="$(git diff --cached --name-status | awk '$1 == "A" && $2 ~ /^supabase\/migrations\/.*\.sql$/ { print $2 }')"
 [ -z "$novas" ] && exit 0
@@ -33,10 +37,93 @@ if ! grep -qx 'supabase/migrations/MANIFEST.md' <<<"$staged"; then
   falhou=1
 fi
 
-# Refs contra as quais a unicidade é medida: origin/main (se existe) + branches locais.
-refs="$(git branch --format='%(refname:short)' 2>/dev/null || true)"
-if git rev-parse -q --verify origin/main >/dev/null 2>&1; then refs="origin/main
-$refs"; fi
+# ── A POPULAÇÃO da unicidade (issue #1273) ──────────────────────────────────────
+#
+# A pergunta deste hook é "esse número já foi usado ou reservado?", e a resposta
+# honesta é sobre a main do PRODUTO (o remoto que aponta para
+# melgarafael/DeskcommCRM, com QUALQUER nome) mais as outras refs do clone. A
+# versão anterior media `origin/main` + `git branch` — e essas duas são o
+# recorte que a issue mediu como errado: num clone de fork, a `origin/main` é a
+# main DO FORK (que pode estar atrás da do principal, e o hook saía com 0
+# dizendo que o número estava livre), e `git branch` só via branches LOCAIS.
+# A cabeça de um PR aberto de fork vive em `refs/pull/N/head` no repositório
+# pai, e no clone do mantenedor o 0269 do #965 aparecia só como cópia em
+# `refs/remotes/origin/pr/965` — nenhuma das 188 branches locais tinha esse
+# número. A cópia em `refs/remotes/*/pr/N` fica de fora de propósito: é cópia
+# de cabeça, não PR aberto, e sobrevive ao fechamento (965 cópias contra 43 PRs
+# abertos, medido em 19/09/2026) — os PRs abertos entram pela LISTA do `gh`, no
+# `pnpm checar:colisao-de-migration`.
+#
+# `pop_tem_nnnn`/`pop_ts_em_uso` casam o NNNN e o timestamp na POSIÇÃO do nome
+# canônico, e não em qualquer "_NNNN_": é a âncora do #1269, e a variante
+# gulosa pegava o número do SLUG (`…_0326_relatorio_2024_anual.sql` virava
+# 2024) e perdia a duplicata real de 0326.
+#
+# A POPULAÇÃO é a mesma dos outros sete lugares, com a regra de degradação
+# declarada: a base é a main do PRODUTO quando algum remoto é o principal; sem
+# ele, é a `origin/main` que houver — e a saída DIZ qual das duas foi. As
+# branches LOCAIS e REMOTAS entram sempre (a de antes era só a local, e é onde o
+# 0269 do PR aberto #965 estava invisível).
+BIBLIOTECA="$top/scripts/migration-populacao.sh"
+if [ -r "$BIBLIOTECA" ]; then
+  # shellcheck source=/dev/null
+  . "$BIBLIOTECA" || true
+fi
+base=""
+if declare -F pop_main_do_produto >/dev/null 2>&1; then
+  base="$(pop_main_do_produto || true)"
+  [ -n "$base" ] || base=""
+  if [ -n "$base" ] && ! git rev-parse -q --verify "${base}^{commit}" >/dev/null 2>&1; then
+    base=""
+  fi
+fi
+if [ -z "$base" ]; then
+  # Sem o principal no clone (fork sem `upstream`, ou biblioteca ausente): a
+  # base cai para a `origin/main`, e o hook sai DIZENDO que a population não é a
+  # da pergunta completa. Encolher o universo em silêncio é o defeito da #1273.
+  base="origin/main"
+  git rev-parse -q --verify "${base}^{commit}" >/dev/null 2>&1 || base=""
+  pop_base_fallback=1
+else
+  pop_base_fallback=0
+fi
+if declare -F pop_refs_de_outrem >/dev/null 2>&1; then
+  refs="$(pop_refs_de_outrem "$base" 2>/dev/null || true)"
+else
+  refs="origin/main $(git for-each-ref --format='%(refname)' refs/heads refs/remotes 2>/dev/null || true)"
+fi
+if [ -z "${refs// /}" ] && [ -z "${refs//$'\n'/}" ]; then refs="HEAD"; fi
+# A lista que entrou é a POPULAÇÃO que o grep vai casar. Ela NUNCA pode ficar
+# vazia por acidente: um `pop_migrations` que sai vazio (biblioteca ausente,
+# clone sem nenhuma migration, `git` fora do repositório) transformaria o
+# `grep` de baixo em "não há colisão" e o hook LIBERARIA o commit — um guard
+# que encolhe o universo em silêncio é exatamente o defeito que a #1273 corrige.
+# A degradação declarada é a de antes (medir a `origin/main` e as refs que houver)
+# com um aviso, nunca a população zerada.
+# `populacao=` ANTES do `if`: o hook roda com `set -u`, e uma variável nunca
+# atribuída aborta o script inteiro — o hook saía com 1 SEM mensagem nenhuma,
+# que é o pior formato de falha possível num guard.
+populacao=""
+if declare -F pop_migrations >/dev/null 2>&1; then
+  populacao="$(pop_migrations $refs 2>/dev/null || true)"
+fi
+if [ -z "${populacao// /}" ] && [ -z "${populacao//$'\n'/}" ]; then
+  # A biblioteca não está (clone antigo, cópia da skill de versão anterior) ou
+  # não achou migration nenhuma. Mede o que a versão anterior media e DIZ.
+  if ! declare -F pop_migrations >/dev/null 2>&1; then
+    fallback=""
+    for ref in $refs HEAD; do
+      [ -n "$ref" ] || continue
+      arquivos="$(git ls-tree -r --name-only "$ref" -- supabase/migrations 2>/dev/null \
+        | sed 's#^supabase/migrations/##' || true)"
+      [ -n "$arquivos" ] && fallback="${fallback}${ref} ${arquivos}"$'\n'
+    done
+    populacao="$fallback"
+    echo "pre-commit AVISO: scripts/migration-populacao.sh AUSENTE — unicidade de NNNN medida sobre $refs (a população da pergunta: main do produto ∪ PRs abertos). Quem mede a inteira: pnpm checar:colisao-de-migration (#1273)" >&2
+  elif [ -z "${base}" ]; then
+    echo "pre-commit AVISO: Nenhuma migration resolvida na população ($base e as refs do clone) — a unicidade de NNNN NÃO foi medida (#1273). Rode: pnpm checar:colisao-de-migration" >&2
+  fi
+fi
 
 while IFS= read -r caminho; do
   nome="$(basename "$caminho")"
@@ -47,23 +134,27 @@ while IFS= read -r caminho; do
     falhou=1
     continue
   fi
-  while IFS= read -r ref; do
-    [ -z "$ref" ] && continue
-    existentes="$(git ls-tree -r --name-only "$ref" -- supabase/migrations 2>/dev/null | sed 's#^supabase/migrations/##' || true)"
-    colisao_n="$(grep -E "^[0-9]{14}_${nnnn}_.+\.sql$" <<<"$existentes" | grep -vx "$nome" || true)"
-    colisao_t="$(grep -E "^${ts}_[0-9]{4}_.+\.sql$" <<<"$existentes" | grep -vx "$nome" || true)"
-    if [ -n "$colisao_n" ]; then
-      echo "pre-commit BLOQUEADO: NNNN=$nnnn de '$nome' já existe em '$ref': $colisao_n" >&2
-      echo "  Próximo livre: git ls-tree -r --name-only origin/main -- supabase/migrations | sed -E 's/.*_([0-9]{4})_.*/\\1/' | sort -n | tail -1" >&2
-      echo "  Troque o TIMESTAMP junto (date -u +%Y%m%d%H%M%S) — renumerar só o NNNN é o que fabrica colisão de timestamp." >&2
-      falhou=1
-    fi
-    if [ -n "$colisao_t" ]; then
-      echo "pre-commit BLOQUEADO: timestamp $ts de '$nome' já existe em '$ref': $colisao_t" >&2
-      echo "  O Supabase usa o timestamp como identidade da migration; dois iguais quebram db push/reset." >&2
-      falhou=1
-    fi
-  done <<<"$refs"
+  # O MESMO arquivo nesta populate ref é o PR de quem roda (o índice ainda o
+  # mostra como `A`): ele não é colisão, e acusar o autor de colidir com a
+  # própria branch é a armadilha que a #1155 registrou.
+  # A âncora é a do NOME CANÔNICO e o `grep` roda sobre a LINHA INTEIRA ("<ref>
+  # <nome>"), para o dono poder ser nomeado: "já existe em <ref>" sem o ref é
+  # "tomada" apontando para o nada, que é a armadilha da #1155.
+  donos_n="$(grep -E "^[A-Za-z0-9_./-]+ [0-9]{14}_${nnnn}_.+\.sql$" <<<"$populacao" | grep -vE " ${nome}\$" || true)"
+  donos_t="$(grep -E "^[A-Za-z0-9_./-]+ ${ts}_[0-9]{4}_.+\.sql$" <<<"$populacao" | grep -vE " ${nome}\$" || true)"
+  if [ -n "$donos_n" ]; then
+    onde="$(awk '{printf "%s(%s) ", $1, $2}' <<<"$donos_n" | sed 's/ $//')"
+    echo "pre-commit BLOQUEADO: NNNN=$nnnn de '$nome' já existe em: $onde" >&2
+    pop_dica_proximo_livre "$nnnn" "$base" "$populacao" >&2
+    echo "  Troque o TIMESTAMP junto (date -u +%Y%m%d%H%M%S) — renumerar só o NNNN é o que fabrica colisão de timestamp." >&2
+    falhou=1
+  fi
+  if [ -n "$donos_t" ]; then
+    onde="$(awk '{printf "%s(%s) ", $1, $2}' <<<"$donos_t" | sed 's/ $//')"
+    echo "pre-commit BLOQUEADO: timestamp $ts de '$nome' já existe em: $onde" >&2
+    echo "  O Supabase usa o timestamp como identidade da migration; dois iguais quebram db push/reset." >&2
+    falhou=1
+  fi
 done <<<"$novas"
 
 if [ "$falhou" = 1 ]; then
