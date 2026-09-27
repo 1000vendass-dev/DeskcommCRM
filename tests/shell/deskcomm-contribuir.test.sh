@@ -16,6 +16,9 @@
 #      porque a regra que ele consulta não estava à mão.
 #   2-quater. o merge da main do PRODUTO passa mesmo com o NNNN dela noutra
 #      branch do principal; um NNNN novo da branch continua bloqueado.
+#   2-quinquies. o NNNN e o timestamp já COMMITADOS na própria branch contam:
+#      a segunda 0201 e o carimbo repetido são bloqueados, e a dica não aponta
+#      para o número que a branch já usa.
 #   3. pre-push BLOQUEIA refs/heads/main e deixa passar uma feature branch.
 #   4. armar-hooks.sh grava core.hooksPath, recusa sobrescrever hooks alheios,
 #      e --desarmar limpa.
@@ -227,6 +230,43 @@ saida="$(git commit -q -m "0412 meu" 2>&1)"; code=$?
 assert_exit "$code" 1 "um 0412 NOVO desta branch continua bloqueado"
 assert_contains "$saida" "upstream/main" "e o dono nomeado é a main do produto"
 git reset -q --hard HEAD 2>/dev/null
+
+# ── 2-quinquies. O que a PRÓPRIA branch já commitou está na população ────────
+# `pop_refs_de_outrem` tira da conta a ref cujo SHA é o do HEAD (a #1155: não
+# acusar o autor de colidir consigo), e o hook não devolvia o HEAD — então a
+# 0201 que a branch JÁ commitou sumia da população: a segunda 0201 (e o mesmo
+# carimbo) passava calada, e a dica mandava renumerar para a 0201 da branch.
+echo "2-quinquies. a migration já commitada na própria branch conta"
+propria="$TMP/c2-propria"; clonar "$propria" "alguem@fork.dev"
+cd "$propria" || exit 1; git switch -q -c fix/duas
+tripla() { # $1 = nome em supabase/migrations/
+  printf 'select 1;\n' > "supabase/migrations/$1"
+  printf -- '-- apêndice %s\n' "$1" >> supabase/baseline.sql
+  printf '| `%s` |\n' "$1" >> supabase/migrations/MANIFEST.md
+  git add -A
+}
+tripla 20260910000000_0201_primeira.sql
+saida="$(git commit -q -m "0201 primeira" 2>&1)"; code=$?
+assert_exit "$code" 0 "a primeira 0201 da branch passa (número livre)"
+tripla 20260910010000_0201_segunda.sql
+saida="$(git commit -q -m "0201 segunda" 2>&1)"; code=$?
+assert_exit "$code" 1 "0201_primeira commitada + 0201_segunda encenada: BLOQUEIA"
+assert_contains "$saida" "já existe em: HEAD(20260910000000_0201_primeira.sql)" "e o dono nomeado é a própria branch"
+git reset -q --hard HEAD 2>/dev/null
+tripla 20260910000000_0202_mesmo_carimbo.sql
+saida="$(git commit -q -m "carimbo repetido" 2>&1)"; code=$?
+assert_exit "$code" 1 "carimbo da migration já commitada, repetido: BLOQUEIA"
+assert_contains "$saida" "timestamp 20260910000000 de '20260910000000_0202_mesmo_carimbo.sql' já existe em: HEAD" "e acusa o timestamp contra a própria branch"
+git reset -q --hard HEAD 2>/dev/null
+tripla 20260910020000_0200_da_main.sql
+saida="$(git commit -q -m "0200 da main de novo" 2>&1)"; code=$?
+assert_exit "$code" 1 "0200 da main encenada de novo segue bloqueada (controle positivo)"
+assert_contains "$saida" "próximo livre 0202" "a dica não manda para a 0201 que a branch já usa"
+git reset -q --hard HEAD 2>/dev/null
+tripla 20260910030000_0202_livre.sql
+saida="$(git commit -q -m "0202 livre" 2>&1)"; code=$?
+assert_exit "$code" 0 "e um número de fato livre passa (o HEAD não acusa o próprio arquivo)"
+cd "$merge" || exit 1
 
 echo "3. pre-push"
 saida="$(printf 'refs/heads/fix/algo %s refs/heads/main %s\n' "$(git rev-parse HEAD)" "$(git rev-parse HEAD)" | bash .agents/skills/deskcomm-contribuir/scripts/hooks/pre-push origin x 2>&1)"; code=$?

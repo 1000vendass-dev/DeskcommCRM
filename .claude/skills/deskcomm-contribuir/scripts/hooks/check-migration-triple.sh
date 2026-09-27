@@ -115,7 +115,6 @@ if declare -F pop_refs_de_outrem >/dev/null 2>&1; then
 else
   refs="origin/main $(git for-each-ref --format='%(refname)' refs/heads refs/remotes 2>/dev/null || true)"
 fi
-if [ -z "${refs// /}" ] && [ -z "${refs//$'\n'/}" ]; then refs="HEAD"; fi
 # A lista que entrou é a POPULAÇÃO que o grep vai casar. Ela NUNCA pode ficar
 # vazia por acidente: um `pop_migrations` que sai vazio (biblioteca ausente,
 # clone sem nenhuma migration, `git` fora do repositório) transformaria o
@@ -128,7 +127,12 @@ if [ -z "${refs// /}" ] && [ -z "${refs//$'\n'/}" ]; then refs="HEAD"; fi
 # que é o pior formato de falha possível num guard.
 populacao=""
 if declare -F pop_migrations >/dev/null 2>&1; then
-  populacao="$(pop_migrations $refs 2>/dev/null || true)"
+  # O HEAD entra SEMPRE: `pop_refs_de_outrem` tira a ref cujo SHA é o do HEAD (a
+  # #1155), e sem devolvê-lo aqui a migration que a PRÓPRIA branch já commitou
+  # sumia da conta — a segunda 0411 e o carimbo repetido passavam calados, e a
+  # dica de próximo livre apontava para o número da branch. O próprio arquivo
+  # encenado não é acusado: o `grep -vE " <nome>$"` abaixo o tira.
+  populacao="$(pop_migrations $refs HEAD 2>/dev/null || true)"
 fi
 if [ -z "${populacao// /}" ] && [ -z "${populacao//$'\n'/}" ]; then
   # A biblioteca não está (clone antigo, cópia da skill de versão anterior) ou
