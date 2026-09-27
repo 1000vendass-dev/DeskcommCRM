@@ -1521,7 +1521,10 @@ O que **não** muda quando ela passa, porque não era ela que segurava:
 - **Nada entra sem gate verde na PRÉVIA do merge** (ou sem o argumento de 3-bis dizendo por que a
   prévia não pode divergir da branch). A autoridade recebida amplia o que você pode fazer, não o
   que você pode afirmar.
-- **Nada de UI entra sem prova pela tela.** DoD 12.
+- **Nada de UI entra sem prova pela tela.** DoD 12. E quando o caminho passa por um agente de IA, a
+  tela sozinha não fecha: o caso de aceite mede o **par** (tela pelo agente + ferramenta chamada
+  direto, com o mesmo texto cru), e discordância entre os dois significa que se mediu o modelo, não
+  a ferramenta — o defeito continua onde estava (lei em `docs/doctrine/prova-em-par.md`, #489).
 - **Nenhum PR é fechado em silêncio.** Fechar é a única ação verdadeiramente irreversível para o
   contribuidor — o código dele sobrevive num fork, mas a disposição de contribuir de novo, não.
   Todo fechamento sai com o motivo escrito e o crédito pelo que ele acertou. Quando há o que
