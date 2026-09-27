@@ -1,6 +1,6 @@
--- 0438 — o bucket dos sons dos avisos da Central.
+-- 0441 — o bucket dos sons dos avisos da Central.
 --
--- A organização escolhe o som do negócio que entrou numa etapa que avisa (0436)
+-- A organização escolhe o som do negócio que entrou numa etapa que avisa (0440)
 -- e o do pedido de pessoa (`lib/notifications/sons-da-org.ts`). O arquivo vive
 -- aqui, PRIVADO: só o service_role lê e grava, pela rota
 -- `app/api/v1/settings/sons`, e a tela recebe URL assinada. O caminho fica em

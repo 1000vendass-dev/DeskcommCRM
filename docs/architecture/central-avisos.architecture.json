@@ -83,7 +83,7 @@
       "lane": "humano",
       "col": 0,
       "type": "ui",
-      "label": "Funis › Etapas: «Avisar a equipe na Central» (crm_stages.avisar_na_central, 0436)"
+      "label": "Funis › Etapas: «Avisar a equipe na Central» (crm_stages.avisar_na_central, 0440)"
     },
     {
       "id": "aviso_de_etapa",
@@ -104,7 +104,7 @@
       "lane": "app",
       "col": 5,
       "type": "service",
-      "label": "/api/v1/settings/sons + bucket privado org-sounds (0438); regra única somDoAviso"
+      "label": "/api/v1/settings/sons + bucket privado org-sounds (0441); regra única somDoAviso"
     },
     {
       "id": "barramento",

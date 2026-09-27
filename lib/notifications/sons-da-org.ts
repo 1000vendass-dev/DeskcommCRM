@@ -4,7 +4,7 @@
  * Dois momentos pedem a atenção de quem opera, e cada um tem seu som:
  *
  *   - `venda`  — um negócio entrou numa etapa marcada para avisar (migration
- *                 0436; `lib/leads/aviso-de-etapa.ts`). O nome vem do caso que
+ *                 0440; `lib/leads/aviso-de-etapa.ts`). O nome vem do caso que
  *                 motivou a marca: a venda confirmada de quem vende com
  *                 pagamento na entrega. É a chave gravada em
  *                 `settings.sons_de_aviso` — renomeá-la apagaria o som de quem
@@ -13,7 +13,7 @@
  *                 (`handoff`) ou ficou sem saldo no provedor e as respostas
  *                 estão esperando a recarga (`espera-de-saldo.ts`).
  *
- * O arquivo vive no bucket PRIVADO `org-sounds` (migration 0438), em
+ * O arquivo vive no bucket PRIVADO `org-sounds` (migration 0441), em
  * `<organization_id>/<tipo>-<uuid>.<ext>`; o caminho fica em
  * `organizations.settings.sons_de_aviso`. A tela recebe URL assinada.
  * Sem arquivo, toca o bipe do produto — o aviso nunca fica mudo por falta de
