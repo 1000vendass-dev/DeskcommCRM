@@ -358,6 +358,15 @@ check "e o painel de recuperação do install.sh também o apaga" \
   grep -q 'rm -f \${MARCA_INSTALACAO_NOME' "$REPO_ROOT/hostgator-setup-kit/install.sh"
 check "e o marcador está no .gitignore (estado da VPS, não do repositório)" \
   grep -qx '.deskcomm-instalado' "$REPO_ROOT/.gitignore"
+# O update.sh também grava, com o app saudável. Depois deste conserto, uma
+# instalação ARM NOVA é recusada — então toda instalação ARM que existe veio
+# de antes e NÃO tem marcador; o único sinal dela seria o contêiner, e um
+# `down` sem `-v` (ou um `prune`) a faria ser recusada como nova, o mesmo
+# defeito do #1775. Gravar no update fecha isso a partir da atualização
+# seguinte. A prova é a ORDEM: a gravação mora dentro do bloco do app saudável.
+check "o update.sh grava o marcador só depois de o app voltar saudável" \
+  awk '/^if \[ -n "\$ok" \]; then$/{d=1; next} d && /^(else|elif|fi)/{exit} d && /marcar_instalacao_feita/{achou=1; exit} END{exit !achou}' \
+    "$REPO_ROOT/hostgator-setup-kit/update.sh"
 
 # ─────────────────────────────────────────────────────────────────────────────
 echo

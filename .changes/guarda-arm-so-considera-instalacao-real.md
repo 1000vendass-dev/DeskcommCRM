@@ -15,7 +15,11 @@ A instalação passa a ser reconhecida pelo que ela deixou de verdade: os
 contêineres do DeskcommCRM (ou do seu Supabase) no Docker, parados ou
 rodando, ou o arquivo `.deskcomm-instalado` que o próprio instalador grava
 quando termina. Quem já tem o CRM numa VPS ARM continua atualizando
-normalmente, com o aviso e o build local de sempre.
+normalmente, com o aviso e o build local de sempre. Para quem instalou antes
+desta versão e ainda não tem o arquivo, o `update.sh` desta versão em diante
+o grava sempre que termina com o app no ar. Se nessa VPS ARM você derrubou os contêineres
+(`docker compose down` sem `-v`) antes de atualizar, suba-os de novo com
+`docker compose ... up -d` e rode a atualização.
 
 Se você usa o comando de "recomeçar" (`docker compose down -v && rm -f .env`),
 ele passou a apagar esse arquivo junto — ele faz parte do estado da instalação.
