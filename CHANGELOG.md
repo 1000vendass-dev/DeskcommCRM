@@ -38,6 +38,8 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
 
   Crédito: @webtecnica (#817).
 
+  Contribuição de @webtecnica (#1787, issue #817).
+
 ### Alterado
 
 - **Os 12 HANDOFF da raiz foram para docs/handoffs/ e um gate impede a volta** Os arquivos `HANDOFF*.md` de épico saíram da raiz do repositório para
@@ -64,7 +66,7 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   Nada muda para quem opera a VPS: nenhuma tela, nenhum dado e nenhuma variável de
   ambiente foi tocada.
 
-  Contribuição de @webtecnica (#489).
+  Contribuição de @webtecnica (#1781, issue #489).
 
 ### Corrigido
 
@@ -78,7 +80,7 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   quem já roda o sistema: é contabilidade, não mudança de comportamento do que
   é removido.
 
-  Contribuição de @webtecnica (#1765).
+  Contribuição de @webtecnica (#1777, issue #1765).
 
 - **A prova de tela passa a ser versionada junto com o repositório** A documentação de QA mandava gravar a evidência visual (screenshots e traces de
   Playwright) numa pasta que o `.gitignore` ignorava. A prova ficava só no
@@ -92,7 +94,7 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   Nada muda para quem opera a VPS: nenhuma tela, nenhum dado e nenhuma variável de
   ambiente foi tocada.
 
-  Contribuição de @webtecnica (#533).
+  Contribuição de @webtecnica (#1770, issue #533).
 
 - **Quem já tinha o DeskcommCRM rodando em ARM (VPS aarch64) volta a conseguir atualizar** Quem já tinha o DeskcommCRM instalado numa VPS ARM (Oracle Ampere, aarch64)
   volta a conseguir rodar `update.sh`. Desde a v1.35.0 a atualização era recusada
@@ -140,7 +142,7 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   Se você usa o comando de "recomeçar" (`docker compose down -v && rm -f .env`),
   ele passou a apagar esse arquivo junto — ele faz parte do estado da instalação.
 
-  Contribuição de @webtecnica (#1778).
+  Contribuição de @webtecnica (#1783, issue #1778).
 
 - **A poda do arquivo de webhooks passa a ordenar o lote e a dizer quando falha** A limpeza automática do arquivo de webhooks passou a apagar em lotes
   **ordenados** (pelo identificador, do mais antigo ao mais novo — a mesma ordem
@@ -160,6 +162,8 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   passa a ser vista — na trilha e no Sentry — em vez de acumular arquivo em
   silêncio.
 
+  Contribuição de @webtecnica (#1784, issue #1769).
+
 - **A poda do histórico de captação passa a ordenar o lote e a dizer quando falha** A retenção do histórico de leads captados passou a apagar em lotes **ordenados**
   (`id` ascendente, a mesma coluna e a mesma direção da poda de rascunhos), e a
   falha do banco deixou de ser engolida: ela sobe, responde 500, grava a linha
@@ -170,11 +174,13 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   efeito é que a poda deixa de poder escolher um subconjunto arbitrário a cada
   lote, e uma instalação em que o banco recusa o DELETE passa a ser vista.
 
+  Contribuição de @webtecnica (#1768, issue #1721).
+
 - **Voltar e avançar numa spec e2e também esperam a revelação da página** A suíte de e2e passa a esperar o streaming SSR terminar de revelar a página também depois de voltar (`goBack`) e avançar (`goForward`), como carregar e recarregar já esperavam desde o #1706; uma spec que volta a uma tela deixa de poder achar a cópia escondida da revelação e reprovar sozinha.
 
   Nada a fazer para quem já roda o sistema: a mudança é na suíte de testes, e o aplicativo se comporta exatamente como antes.
 
-  Contribuição de @webtecnica (#884).
+  Contribuição de @webtecnica (#1782, issue #884).
 
 ## [1.54.0] — 2026-09-27
 
