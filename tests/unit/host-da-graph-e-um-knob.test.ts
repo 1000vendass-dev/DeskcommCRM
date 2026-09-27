@@ -230,6 +230,58 @@ describe("o portão do override é fechado, e a recusa é ABERTA", () => {
   });
 });
 
+describe("a regra 4: em produção o http de FORA cai, o de dentro passa", () => {
+  /**
+   * Põe o processo em produção e mede o que a variável entrega de fato, com o
+   * aviso capturado. O `NODE_ENV` é stub, não atribuição: o `afterEach` do
+   * arquivo já devolve o valor da suíte com `unstubAllEnvs`.
+   */
+  function emProducao(valor: string): { host: string; avisos: unknown[][] } {
+    vi.stubEnv("NODE_ENV", "production");
+    const aviso = vi.spyOn(console, "warn").mockImplementation(() => {});
+    process.env.META_GRAPH_BASE_URL = valor;
+    return { host: graphHost(), avisos: aviso.mock.calls };
+  }
+
+  it("http para host EXTERNO cai no host real — é o token que não sai em claro", () => {
+    const { host, avisos } = emProducao("http://receptor.exemplo.test:8080");
+    expect(host).toBe(HOST_PADRAO_DA_GRAPH);
+    // Aberta na informação, como as outras recusas: o operador precisa ver que o
+    // override não teve efeito, e por quê.
+    expect(avisos.length).toBe(1);
+    expect(String(avisos[0]![0])).toContain("META_GRAPH_BASE_URL");
+    vi.restoreAllMocks();
+  });
+
+  it.each([
+    ["loopback", "http://127.0.0.1:8080"],
+    ["loopback em nome", "http://localhost:8080"],
+    ["faixa privada", "http://192.168.0.9:8080"],
+    ["nome de serviço sem ponto", "http://waha:3000"],
+    ["IPv6 de loopback", "http://[::1]:8080"],
+  ])("http para %s continua aceito — é o receptor local da prova em tela", (_nome, valor) => {
+    const { host, avisos } = emProducao(valor);
+    expect(host).toBe(valor);
+    expect(avisos.length).toBe(0);
+    vi.restoreAllMocks();
+  });
+
+  it("https para host externo segue aceito — a regra é sobre o esquema, não o destino", () => {
+    expect(hostAceito("https://receptor.exemplo.test")).toBe("https://receptor.exemplo.test");
+  });
+
+  it("o eixo de anúncio tem a MESMA regra, e o receptor local dele também passa", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const aviso = vi.spyOn(console, "warn").mockImplementation(() => {});
+    process.env.META_ADS_GRAPH_BASE_URL = "http://receptor.exemplo.test:8080";
+    expect(hostDaGraphDeAnuncio()).toBe(HOST_PADRAO_DA_GRAPH_DE_ANUNCIO);
+    expect(aviso.mock.calls.length).toBe(1);
+    process.env.META_ADS_GRAPH_BASE_URL = base;
+    expect(hostDaGraphDeAnuncio()).toBe(base);
+    vi.restoreAllMocks();
+  });
+});
+
 describe("o eixo de anúncio tem o SEU knob, e ele não herda o do canal", () => {
   it("vazio nos dois = host real da Meta nos dois", () => {
     delete process.env.META_GRAPH_BASE_URL;
