@@ -366,7 +366,9 @@ gera o arquivo).
 **QA visual com recursos reais (doutrina).** O produto é self-host: a experiência de quem instala
 numa VPS **é** o produto. Toda feature nova, ou fix de comportamento visível, deve ser provada
 pela tela como um usuário leigo faria, em ambiente fresco estilo VPS, com evidência visual.
-`curl` não conta como prova de UX. Mapa de jornadas:
+`curl` não conta como prova de UX. Quando o caminho passa por um agente de IA, o caso de aceite
+mede o **par** (tela pelo agente + ferramenta chamada direto, com o mesmo texto cru) e só conta
+quando os dois concordam: [`docs/doctrine/prova-em-par.md`](docs/doctrine/prova-em-par.md). Mapa de jornadas:
 [`docs/testing/user-journey-map.md`](docs/testing/user-journey-map.md).
 
 Cada linha abaixo traz o comando que a mede — **rode o comando em vez de citar número**. Este

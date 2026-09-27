@@ -15,6 +15,11 @@
 - `[P2]` exploração/edge.
 - Resultado: `PASS` / `FAIL(bug#)` / `WARN` (funciona mas UX ruim).
 - Evidência: screenshot/trace em `.superpowers/evidence/vps-qa/`.
+- **Caso que atravessa agente de IA mede o PAR** (lei em
+  [`../doctrine/prova-em-par.md`](../doctrine/prova-em-par.md), #489): além do `PASS` da tela, o
+  caso registra a medição da **ferramenta chamada direto, com o mesmo texto de entrada**, e só
+  conta como `PASS` quando as duas concordam. Discordou, o que se mediu foi o modelo — o defeito
+  continua onde estava.
 
 ---
 
