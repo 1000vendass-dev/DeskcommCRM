@@ -185,18 +185,36 @@ test.describe("busca dentro da conversa", () => {
     // ── abrir a busca pela lupa
     const lupa = page.getByRole("button", { name: "Buscar nesta conversa" });
     await expect(lupa).toHaveAttribute("aria-expanded", "false");
+    // A lupa acrescenta ~38px à barra. A barra PODE quebrar (ver o comentário
+    // dela no ConversationHeader); a pergunta é se é a LUPA que a faz quebrar.
+    // Por isso mede as fileiras com a lupa e, contrafactual, com ela fora do
+    // fluxo (`display: none`, restaurado logo em seguida).
     const barra = await lupa.evaluate((b) => {
-      const filhos = [...(b.parentElement?.children ?? [])].map((c) => c.getBoundingClientRect());
-      return {
-        viewport: window.innerWidth,
-        botoes: filhos.length,
-        fileiras: new Set(filhos.map((r) => Math.round(r.top + r.height / 2))).size,
-        lupaNaPrimeiraFileira:
-          Math.round(b.getBoundingClientRect().top) === Math.round(Math.min(...filhos.map((r) => r.top))),
+      const fileiras = () => {
+        // Só filho com caixa: um filho sem tamanho (portal, span vazio) tem
+        // top 0 e inventaria uma fileira.
+        const caixas = [...(b.parentElement?.children ?? [])]
+          .map((c) => c.getBoundingClientRect())
+          .filter((r) => r.width > 0 && r.height > 0)
+          .sort((x, y) => x.top - y.top);
+        let n = 0;
+        let fundo = -Infinity;
+        for (const r of caixas) {
+          if (r.top >= fundo) n += 1;
+          fundo = Math.max(r.top >= fundo ? r.bottom : fundo, r.bottom);
+        }
+        return n;
       };
+      const comLupa = fileiras();
+      const display = b.style.display;
+      b.style.display = "none";
+      const semLupa = fileiras();
+      b.style.display = display;
+      return { viewport: window.innerWidth, comLupa, semLupa };
     });
-    console.info(`busca-na-conversa · barra de ações: ${JSON.stringify(barra)}`);
-    expect(barra.lupaNaPrimeiraFileira, "a lupa é a primeira da barra").toBe(true);
+    console.info(`busca-na-conversa · fileiras da barra de ações: ${JSON.stringify(barra)}`);
+    // soft: o resto da jornada roda e é medido mesmo se a lupa quebrar a barra.
+    expect.soft(barra.comLupa, "a lupa fez a barra de ações ganhar uma fileira em 1280px").toBe(barra.semLupa);
 
     await lupa.click();
     const campo = page.getByRole("searchbox", { name: "Buscar nas mensagens carregadas" });
