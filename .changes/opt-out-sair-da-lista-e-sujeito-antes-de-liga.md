@@ -20,3 +20,5 @@ Sem sujeito, a ordem continua bloqueando como antes, e "a partir de amanhã não
 me mande mais" também, porque ali vem uma preposição, não um sujeito.
 
 Nenhuma das 396 frases do corpus mudou de veredito.
+
+Contribuição de @webtecnica (#1825)
