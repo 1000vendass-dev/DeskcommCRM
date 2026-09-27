@@ -154,6 +154,29 @@ diga que a prova de tela ficou com o mantenedor — é o combinado público, nã
 Spec nova entra em `SPECS_PARTE_N` do `.github/workflows/e2e.yml` (ou em `FORA_DO_CI` com o
 motivo escrito); o teste `tests/unit/e2e-cobertura-completa.test.ts` reprova spec órfã.
 
+### Se o caminho passa por um agente de IA, meça o par
+
+Um caso de aceite que atravessa o agente **não se prova com o verde dele sozinho**. Todo caso de
+aceite que atravessa o agente **vem em par** com a medição direta da ferramenta, com o **mesmo texto
+cru**: pela tela, pelo agente; e pela ferramenta, chamada direto, fora do agente. Não é "além de" — é
+"junto de". **O par é a unidade**, e um lado sozinho não diz o que foi medido.
+
+As duas medições entram no PR, e o caso só conta como prova quando **as duas concordam**.
+
+```
+"quero 2 iphone 15"
+   pelo agente     -> "é o 128 ou o 256?"        VERDE  (e o verde era real)
+   pela ferramenta -> []                          VERMELHO
+```
+
+Quando os dois discordam, **o que você mediu foi o modelo**, não a ferramenta: o verde real media a
+capacidade do modelo de compensar a ferramenta, e o defeito continua onde estava. Foi assim que o
+defeito #476 passou por uma bateria que o esperava reprovar. A regra inteira, com o caso que a
+produziu: [`docs/doctrine/prova-em-par.md`](../../../docs/doctrine/prova-em-par.md).
+
+O par **não substitui** a prova pela tela — a tela segue sendo a única que pega prompt que não
+chama a tool e agente que escala em vez de atender.
+
 ## Passo 7 — o fragmento de release (não o CHANGELOG)
 
 Mudou algo que quem opera uma VPS percebe? Escreva `.changes/<kebab>.md`:
