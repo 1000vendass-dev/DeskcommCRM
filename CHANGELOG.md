@@ -8,6 +8,56 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
 
 ## [Não lançado]
 
+## [1.56.1] — 2026-09-27
+
+### Corrigido
+
+- **A anotação interna do compromisso aparece no painel de detalhe da Agenda** O assistente coletava a qualificação inteira do lead, marcava a reunião e gravava
+  o resumo na anotação interna do compromisso. A anotação era salva — e não
+  aparecia em tela nenhuma: quem ia atender chegava à reunião sem a ficha. Pelo
+  caminho da transferência o mesmo resumo chegava à Central; era só o caminho da
+  reunião marcada que o perdia.
+
+  Agora o painel de detalhe do compromisso mostra a anotação, com o rótulo
+  "Anotação", logo depois da observação. É leitura: nada muda no que sobe para o
+  calendário do cliente, que continua usando o campo próprio de observação, e a
+  anotação segue interna ao CRM.
+
+  Contribuição de @hiro-nikaitou (#1803, issue #511).
+
+- **O aviso de caso não sai mais para um número que virou de uma conexão da própria conta** Uma conexão de WhatsApp arquivada deixou de contar como número da própria conta,
+  para que o número dela pudesse voltar a receber os avisos. Mas arquivar não apaga
+  a conexão: se ela for reativada depois, o número volta a ser atendido por um robô
+  da própria conta — e o aviso passava a sair para ele, respondendo a si mesmo.
+
+  Agora o envio do aviso confere o destino na hora de sair: se o número voltou a ser
+  o de uma conexão ativa da sua conta, o aviso NÃO é enviado, o motivo fica
+  registrado no histórico de avisos da tela e um alerta é aberto na Central. O
+  atendimento continua na fila, esperando alguém — só não vai para o robô da casa.
+
+  O botão "Enviar aviso de teste" recusa o mesmo número pelo mesmo motivo, em vez
+  de mandar a mensagem e aparecer como sucesso.
+
+  Contribuição de @hiro-nikaitou (#1804).
+
+- **Em espanhol, a tela de rastreio e conversões do Google Ads passa a tratar por "tú", e o painel de perdas escreve cada moeda na convenção dela** A tela de rastreio do site e de conversões do Google Ads em espanhol deixou de alternar entre "usted" e "tú" e passou a usar "calificado"/"calificación" em vez das formas peninsulares "cualificado"/"cualificación", como o resto do produto. O painel de perdas das métricas passou a escrever o valor perdido na convenção da própria moeda, com o mesmo formatador da previsão, em vez de sempre no formato brasileiro; em BRL nada muda. Não exige ação de quem opera a instalação. Contribuição de @JowaniOrantes (#1807).
+
+- **Em espanhol, os gatilhos e ações de Webhooks, o papel de assistente com autonomia e a gravidade "informativo" dos avisos da IA deixam de aparecer em português** Nove rótulos que a tela montava a partir de tabelas continuavam em português para quem escolheu espanhol: os gatilhos de agenda (horário marcado, confirmado, remarcado, cancelado), aniversário de contato e prazo de data do funil, a ação "Iniciar fluxo de mensagem" nas regras de Webhooks, o papel "Assistente com autonomia de operação" no convite de equipe e a gravidade "informativo" na Central de avisos da IA. Agora aparecem em espanhol. Para quem usa em português nada muda, e não exige ação de quem opera a instalação. Contribuição de @JowaniOrantes (#1808).
+
+- **"Não me contate mais", "não entre mais em contato" e "pode me remover da lista" passam a descadastrar o contato** Três jeitos comuns de pedir para sair não eram reconhecidos, e quem escrevia
+  assim continuava recebendo mensagens: "não me contate mais" (e "não me escreva
+  mais", "não me chame mais"), "não entre mais em contato" (e "parem de entrar em
+  contato comigo") e "pode me remover da lista". Agora eles bloqueiam o contato,
+  como "não me mande mais" e "me tira da lista" já faziam.
+
+  A regra continua exigindo que o pedido seja sobre as mensagens: "o dente não
+  incomoda mais", "a dor não me perturba mais", "não entre em contato com meu
+  marido, fale comigo" e "tira da lista de presentes" seguem sem bloquear. De
+  brinde, "me tira da lista de espera", que é paciente pedindo para ser chamado,
+  deixou de bloquear.
+
+  Contribuição de @deskcommopp4s-cmd (#1607, trazida no #1805).
+
 ## [1.56.0] — 2026-09-27
 
 ### Adicionado
@@ -8790,7 +8840,8 @@ Primeira versão marcada do DeskcommCRM. O projeto vinha sendo desenvolvido publ
 
 - **Node 22 é obrigatório para desenvolvimento.** A suíte de invariantes instancia o cliente do Supabase, que exige o `WebSocket` global — nativo apenas a partir do Node 22. Isso não afeta quem apenas hospeda: a VPS roda a imagem pronta.
 
-[Não lançado]: https://github.com/melgarafael/DeskcommCRM/compare/v1.56.0...HEAD
+[Não lançado]: https://github.com/melgarafael/DeskcommCRM/compare/v1.56.1...HEAD
+[1.56.1]: https://github.com/melgarafael/DeskcommCRM/compare/v1.56.0...v1.56.1
 [1.56.0]: https://github.com/melgarafael/DeskcommCRM/compare/v1.55.0...v1.56.0
 [1.55.0]: https://github.com/melgarafael/DeskcommCRM/compare/v1.54.0...v1.55.0
 [1.54.0]: https://github.com/melgarafael/DeskcommCRM/compare/v1.53.0...v1.54.0
