@@ -37,6 +37,152 @@ import type { Idioma } from "./idiomas";
 type Traducoes = Record<string, Partial<Record<Exclude<Idioma, "pt-BR">, string>>>;
 
 export const DICIONARIO: Traducoes = {
+  // Conversões: histórico e diagnóstico.
+  "Seções de conversões": { es: "Secciones de conversiones" },
+  "Não consegui ler o histórico agora. Atualize a página em instantes.": { es: "No pude leer el historial ahora. Actualiza la página en unos instantes." },
+  "Não consegui ler o diagnóstico agora. Atualize a página em instantes.": { es: "No pude leer el diagnóstico ahora. Actualiza la página en unos instantes." },
+  "Instalação sem credenciais do Google Ads": { es: "Instalación sin credenciales de Google Ads" },
+  "Quem instalou o sistema precisa configurar GOOGLE_ADS_OAUTH_CLIENT_ID e GOOGLE_ADS_OAUTH_CLIENT_SECRET. Até lá, nada é enviado ao Google.": { es: "Quien instaló el sistema debe configurar GOOGLE_ADS_OAUTH_CLIENT_ID y GOOGLE_ADS_OAUTH_CLIENT_SECRET. Hasta entonces, no se envía nada a Google." },
+  "Conta Google não conectada": { es: "Cuenta de Google no conectada" },
+  "Clique em Conectar com Google e informe o Customer ID da conta de anúncios.": { es: "Haz clic en Conectar con Google e indica el Customer ID de la cuenta de anuncios." },
+  "Envio pausado": { es: "Envío en pausa" },
+  "A conta está conectada, mas o envio está desligado na aba Configuração.": { es: "La cuenta está conectada, pero el envío está desactivado en la pestaña Configuración." },
+  "A conta está conectada e o envio está ligado.": { es: "La cuenta está conectada y el envío está activado." },
+  "Conversões chegando ao Google": { es: "Conversiones llegando a Google" },
+  "Nenhuma conversão aceita ainda": { es: "Ninguna conversión aceptada todavía" },
+  "Pode ser falta de negócios vindos de anúncio do Google, ou a captura do clique ainda não configurada no site.": { es: "Puede deberse a que no hay negocios que vengan de anuncios de Google o a que la captura del clic aún no está configurada en el sitio." },
+  "Sem falhas recentes": { es: "Sin fallos recientes" },
+  "Abra o histórico filtrando por Falhas: o detalhe de cada linha é a resposta do Google.": { es: "Abre el historial filtrando por Fallos: el detalle de cada línea es la respuesta de Google." },
+  "Nenhum envio foi recusado nos últimos 7 dias.": { es: "Ningún envío fue rechazado en los últimos 7 días." },
+  "Nada aguardando o Google": { es: "Nada en espera de Google" },
+  "A confirmação é consultada sozinha. Passadas 24 horas, vira pendência na aba Configuração.": { es: "La confirmación se consulta sola. Pasadas 24 horas, se convierte en pendiente en la pestaña Configuración." },
+  "Todos os envios já têm resposta.": { es: "Todos los envíos ya tienen respuesta." },
+  "A venda está configurada. Etapas ligadas dão mais sinal ao Google antes da venda.": { es: "La venta está configurada. Las etapas activadas le dan más señal a Google antes de la venta." },
+  "A venda (negócio ganho) não tem ação de conversão: é ela que ensina o Google a buscar quem compra.": { es: "La venta (negocio ganado) no tiene acción de conversión: es la que le enseña a Google a buscar a quien compra." },
+  "Dê um nome à conversão antes de criar a ação no Google.": {
+    es: "Dale un nombre a la conversión antes de crear la acción en Google.",
+  },
+  "Ação criada no Google:": { es: "Acción creada en Google:" },
+  "Salve as regras.": { es: "Guarda las reglas." },
+  "Não consegui criar a ação no Google agora.": { es: "No pude crear la acción en Google ahora." },
+  "Cria a ação de conversão na sua conta do Google Ads": {
+    es: "Crea la acción de conversión en tu cuenta de Google Ads",
+  },
+  "Criar direto no Google exige o developer token do Google Ads nesta instalação e a conta reconectada. Enquanto isso, cole o ID da ação.":
+    {
+      es: "Crear directamente en Google requiere el developer token de Google Ads en esta instalación y la cuenta reconectada. Mientras tanto, pega el ID de la acción.",
+    },
+  "Criar no Google": { es: "Crear en Google" },
+  "Saúde da integração com o Google Ads": { es: "Estado de la integración con Google Ads" },
+  Problema: { es: "Problema" },
+  "Venda (negócio ganho)": { es: "Venta (negocio ganado)" },
+  "Ação de conversão da venda (ID)": { es: "Acción de conversión de la venta (ID)" },
+  "Recebe a compra quando o negócio é marcado como ganho. Deixe vazio se você só quer enviar etapas do funil.":
+    {
+      es: "Recibe la compra cuando el negocio se marca como ganado. Déjalo vacío si solo quieres enviar etapas del embudo.",
+    },
+  "Categoria da conversão": { es: "Categoría de la conversión" },
+  "Valor do negócio": { es: "Valor del negocio" },
+  "Com o valor, o Google pode otimizar por receita e não só por volume. Venda sem valor vai sem valor — nunca como zero.":
+    {
+      es: "Con el valor, Google puede optimizar por ingresos y no solo por volumen. Una venta sin valor se envía sin valor, nunca como cero.",
+    },
+  "Enviar o telefone do contato criptografado": { es: "Enviar el teléfono del contacto cifrado" },
+  "O telefone vai em SHA-256, nunca em claro, e ajuda o Google a ligar a conversão a quem clicou no anúncio. É dado pessoal: ligue só se a sua política de privacidade cobre esse uso.":
+    {
+      es: "El teléfono va en SHA-256, nunca en claro, y ayuda a Google a vincular la conversión con quien hizo clic en el anuncio. Es un dato personal: actívalo solo si tu política de privacidad cubre ese uso.",
+    },
+  "Enviar a venda; o valor vai quando estiver preenchido": {
+    es: "Enviar la venta; el valor va cuando esté completado",
+  },
+  "Só enviar venda com valor preenchido": { es: "Solo enviar ventas con valor completado" },
+  "Enviar a venda sempre sem valor": { es: "Enviar la venta siempre sin valor" },
+  "Últimas 24h": { es: "Últimas 24 h" },
+  "7 dias": { es: "7 días" },
+  "30 dias": { es: "30 días" },
+  "Todo o período": { es: "Todo el período" },
+  "Não enviados": { es: "No enviados" },
+  "Não enviado": { es: "No enviado" },
+  "Todos os eventos": { es: "Todos los eventos" },
+  Plataforma: { es: "Plataforma" },
+  "Buscar por negócio": { es: "Buscar por negocio" },
+  "Nome do negócio": { es: "Nombre del negocio" },
+  Filtrar: { es: "Filtrar" },
+  envio: { es: "envío" },
+  envios: { es: "envíos" },
+  "Nenhum envio com estes filtros.": { es: "Ningún envío con estos filtros." },
+  "ID do evento": { es: "ID del evento" },
+  Protocolo: { es: "Protocolo" },
+  "sem valor": { es: "sin valor" },
+  "Aconteceu em": { es: "Ocurrió el" },
+  "Etapas recomendadas ligadas. Informe ou crie a ação de conversão de cada uma e salve.": {
+    es: "Etapas recomendadas activadas. Indica o crea la acción de conversión de cada una y guarda.",
+  },
+  "Regras salvas.": { es: "Reglas guardadas." },
+  "Crie um funil com etapas para escolher o que cada etapa informa ao Google Ads.": {
+    es: "Crea un embudo con etapas para elegir qué informa cada etapa a Google Ads.",
+  },
+  "O que cada etapa do funil informa ao Google Ads": {
+    es: "Qué informa cada etapa del embudo a Google Ads",
+  },
+  "Quanto mais cedo você avisa, mais dados a campanha tem para aprender — mas só a venda ensina o Google a buscar quem compra. Cada etapa ligada envia a sua ação de conversão uma vez por negócio, quando ele entra ali.":
+    {
+      es: "Cuanto antes avisas, más datos tiene la campaña para aprender, pero solo la venta le enseña a Google a buscar a quien compra. Cada etapa activada envía su acción de conversión una vez por negocio, cuando este entra en ella.",
+    },
+  "etapas enviando": { es: "etapas enviando" },
+  "Usar o recomendado": { es: "Usar lo recomendado" },
+  "não envia conversão": { es: "no envía conversión" },
+  "Enviar conversão nesta etapa": { es: "Enviar conversión en esta etapa" },
+  "Nome da conversão": { es: "Nombre de la conversión" },
+  "ex.: Lead qualificado": { es: "ej.: Lead calificado" },
+  "Ação de conversão (ID)": { es: "Acción de conversión (ID)" },
+  "É como o Google agrupa a conversão nos relatórios e nos lances.": {
+    es: "Es cómo Google agrupa la conversión en los informes y en las pujas.",
+  },
+  "Canal de entrada": { es: "Canal de entrada" },
+  'Incluir na coluna "Conversões" (os lances otimizam por ela)': {
+    es: 'Incluir en la columna "Conversiones" (las pujas optimizan por ella)',
+  },
+  "As conversões só saem quando o negócio muda de etapa — pela equipe, pela IA ou por automação — e só para quem veio de anúncio do Google. Movimentos anteriores a ligar a regra não são enviados.":
+    {
+      es: "Las conversiones solo salen cuando el negocio cambia de etapa, por el equipo, por la IA o por una automatización, y solo para quien llegó desde un anuncio de Google. Los movimientos anteriores a activar la regla no se envían.",
+    },
+  "Salvar regras": { es: "Guardar reglas" },
+  "Toda etapa ligada precisa de um nome e do ID da ação de conversão.": {
+    es: "Toda etapa activada necesita un nombre y el ID de la acción de conversión.",
+  },
+  "Só um administrador da organização pode mudar estas regras.": {
+    es: "Solo un administrador de la organización puede cambiar estas reglas.",
+  },
+  "Uma das etapas não existe mais ou foi fechada. Atualize a página.": {
+    es: "Una de las etapas ya no existe o fue cerrada. Actualiza la página.",
+  },
+  "Contato (conversa, ligação, e-mail)": { es: "Contacto (conversación, llamada, correo)" },
+  "Envio de formulário de lead": { es: "Envío de formulario de lead" },
+  "Lead importado": { es: "Lead importado" },
+  "Lead convertido": { es: "Lead convertido" },
+  "Pedido de orçamento": { es: "Solicitud de presupuesto" },
+  "Assinatura paga": { es: "Suscripción paga" },
+  "Início de checkout": { es: "Inicio de pago" },
+  "Adicionou ao carrinho": { es: "Agregó al carrito" },
+  "Lead por ligação": { es: "Lead por llamada" },
+  "Visita à loja": { es: "Visita a la tienda" },
+  "Venda em loja física": { es: "Venta en tienda física" },
+  "Visualização de página": { es: "Vista de página" },
+  Download: { es: "Descarga" },
+  "Pedido de rota": { es: "Solicitud de ruta" },
+  "Clique de saída": { es: "Clic de salida" },
+  Engajamento: { es: "Interacción" },
+  "Todos os canais": { es: "Todos los canales" },
+  "Só WhatsApp": { es: "Solo WhatsApp" },
+  "Só fora do WhatsApp": { es: "Solo fuera de WhatsApp" },
+  "Histórico de envios": { es: "Historial de envíos" },
+  Diagnóstico: { es: "Diagnóstico" },
+  'A venda fechou sem valor preenchido. A Meta exige valor e moeda em uma compra — preencha o valor do negócio e use o botão de reprocessamento. No Google, você também pode escolher enviar a venda sem valor em "Valor do negócio".':
+    {
+      es: 'La venta se cerró sin importe. Meta exige importe y moneda en una compra: completa el valor del negocio y usa el botón para reprocesar. En Google también puedes elegir enviar la venta sin valor en "Valor del negocio".',
+    },
+
   // ─── CAMPOS OBRIGATÓRIOS (issue #1536) ───
   "Campos obrigatórios": { es: "Campos obligatorios" },
   // Editor de `obrigatorio_em` no funil (CR do mantenedor no PR #1688).
