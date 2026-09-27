@@ -208,6 +208,11 @@ check "a guarda em vez de recusar AVISA que a instalação já existe" \
   grep -q 'JÁ EXISTE' "$OUT1"
 check "a arquitetura encontrada é dita ao dono (aarch64)" \
   grep -q 'aarch64' "$OUT1"
+# O update.sh relê o _common.sh depois do checkout (update.sh, passo 3), e a
+# guarda roda de novo no topo dele: sem a trava por processo, o mesmo aviso
+# saía duas vezes na mesma atualização.
+check "o aviso sai UMA vez só, mesmo com a releitura do _common.sh depois do checkout" \
+  test "$(grep -c 'JÁ EXISTE' "$OUT1")" -eq 1
 # O gatilho do #1143 é o CÓDIGO DE SAÍDA de quem falhou, e o seu conserto é o
 # `dc -f $COMPOSE_BUILD build`. Provar pelo log do docker (e não por uma
 # mensagem) é o que separa "construiu" de "disse que ia construir".

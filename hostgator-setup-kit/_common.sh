@@ -80,14 +80,20 @@ verificar_arquitetura_do_kit() {
   case "$(veredito_da_arquitetura "$arch" "$existe")" in
     amd64) return 0 ;;
     recuperar)
+      # O update.sh relê este arquivo depois do checkout da versão nova, e a
+      # guarda roda de novo no topo: sem esta trava o dono lia o mesmo aviso
+      # duas vezes na mesma atualização. A variável não é exportada, então a
+      # trava vale para ESTE processo e nenhum script filho herda o silêncio.
+      [ -n "${_DESKCOMM_AVISO_ARQ_DADO:-}" ] && return 0
+      _DESKCOMM_AVISO_ARQ_DADO=1
       # `printf` e não c_ylw: este ponto roda no TOPO do arquivo, e as cores só
       # são definidas algumas linhas abaixo (é a mesma razão do `printf` da
       # recusa logo abaixo). O aviso vai para o STDERR, como a recusa: o
       # agent.sh manda a saída do update.sh para arquivo e o dono lê o fim dela.
       printf '%s\n' \
         "⚠ $(t "Este servidor usa arquitetura '{1}', e as imagens publicadas do DeskcommCRM são só linux/amd64." "$arch")" \
-        "  $(t "  Como esta instalação JÁ EXISTE, não vou te travar aqui: as imagens da versão alvo serão construídas nesta própria VPS e a atualização segue sozinha daqui em diante.")" \
-        "  $(t "  Leva de 15 a 25 minutos. Uma instalação NOVA nesta arquitetura precisaria de imagens multi-arquitetura, que o DeskcommCRM ainda não publica.")" >&2
+        "  $(t "Como esta instalação JÁ EXISTE, sigo em frente: as imagens da versão alvo serão construídas nesta própria VPS.")" \
+        "  $(t "Leva de 15 a 25 minutos. Uma instalação NOVA nesta arquitetura precisaria de imagens multi-arquitetura, que o DeskcommCRM ainda não publica.")" >&2
       return 0 ;;
   esac
 

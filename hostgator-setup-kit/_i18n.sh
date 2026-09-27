@@ -36,8 +36,8 @@ declare -A _ES=(
   ["Este servidor usa arquitetura '{1}', mas as imagens publicadas do DeskcommCRM hoje são linux/amd64."]="Este servidor usa arquitectura '{1}', pero las imágenes publicadas de DeskcommCRM hoy son linux/amd64."
   ["  Use uma VPS x86_64/amd64. Repetir o download não resolve; ARM64 só será suportado quando houver imagens multi-arquitetura."]="  Usa una VPS x86_64/amd64. Repetir la descarga no soluciona nada; ARM64 solo se admitirá cuando existan imágenes multiarquitectura."
   ["Este servidor usa arquitetura '{1}', e as imagens publicadas do DeskcommCRM são só linux/amd64."]="Este servidor usa arquitectura '{1}', y las imágenes publicadas de DeskcommCRM son solo linux/amd64."
-  ["  Como esta instalação JÁ EXISTE, não vou te travar aqui: as imagens da versão alvo serão construídas nesta própria VPS e a atualização segue sozinha daqui em diante."]="  Como esta instalación YA EXISTE, no voy a bloquearte aquí: las imágenes de la versión destino se construirán en esta misma VPS y la actualización sigue sola desde aquí."
-  ["  Leva de 15 a 25 minutos. Uma instalação NOVA nesta arquitetura precisaria de imagens multi-arquitetura, que o DeskcommCRM ainda não publica."]="  Tarda de 15 a 25 minutos. Una instalación NUEVA en esta arquitectura necesitaría imágenes multiarquitectura, que DeskcommCRM todavía no publica."
+  ["Como esta instalação JÁ EXISTE, sigo em frente: as imagens da versão alvo serão construídas nesta própria VPS."]="Como esta instalación YA EXISTE, sigo adelante: las imágenes de la versión destino se construirán en esta misma VPS."
+  ["Leva de 15 a 25 minutos. Uma instalação NOVA nesta arquitetura precisaria de imagens multi-arquitetura, que o DeskcommCRM ainda não publica."]="Tarda de 15 a 25 minutos. Una instalación NUEVA en esta arquitectura necesitaría imágenes multiarquitectura, que DeskcommCRM todavía no publica."
   ["  (rede '{1}' criada — é por ela que o Traefik alcança o CRM)"]="  (red '{1}' creada: por ella Traefik llega al CRM)"
   ["A rede Docker '{1}' (a do Nginx Proxy Manager) não existe.
 Rode 'docker network ls', identifique a rede do seu NPM (Settings > a que o
