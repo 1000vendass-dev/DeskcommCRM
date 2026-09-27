@@ -564,62 +564,7 @@ const COMO_CONSERTAR_CHAVE_DINAMICA =
  * Casa por arquivo + valor, não por linha: rebase alheio que sobe três linhas
  * não tem de pintar vermelho quem não mexeu em tradução.
  */
-const DIVIDA_CONGELADA: { arquivo: string; chave: string; motivo: string }[] = [
-  {
-    arquivo: "app/app/ai/inbox/_components/AgentInboxList.tsx",
-    chave: "informativo",
-    motivo:
-      "valor de SEVERITY_LABEL (lib/ai/agent-inbox-copy.ts): a chave ainda não tem linha no dicionário",
-  },
-  {
-    arquivo: "app/app/webhooks/_components/RuleEditor.tsx",
-    chave: "Iniciar fluxo de mensagem",
-    motivo:
-      "valor de ACTION_LABELS (app/app/webhooks/_components/labels.ts): a chave ainda não tem linha no dicionário",
-  },
-  {
-    arquivo: "app/app/webhooks/_components/RuleEditor.tsx",
-    chave: "No aniversário de um contato",
-    motivo:
-      "valor de TRIGGER_LABELS (app/app/webhooks/_components/labels.ts): a chave ainda não tem linha no dicionário",
-  },
-  {
-    arquivo: "app/app/webhooks/_components/RuleEditor.tsx",
-    chave: "Quando faltarem N dias para uma data do funil",
-    motivo:
-      "valor de TRIGGER_LABELS (app/app/webhooks/_components/labels.ts): a chave ainda não tem linha no dicionário",
-  },
-  {
-    arquivo: "app/app/webhooks/_components/RuleEditor.tsx",
-    chave: "Quando um horário for cancelado",
-    motivo:
-      "valor de TRIGGER_LABELS (app/app/webhooks/_components/labels.ts): a chave ainda não tem linha no dicionário",
-  },
-  {
-    arquivo: "app/app/webhooks/_components/RuleEditor.tsx",
-    chave: "Quando um horário for marcado",
-    motivo:
-      "valor de TRIGGER_LABELS (app/app/webhooks/_components/labels.ts): a chave ainda não tem linha no dicionário",
-  },
-  {
-    arquivo: "app/app/webhooks/_components/RuleEditor.tsx",
-    chave: "Quando um horário for remarcado",
-    motivo:
-      "valor de TRIGGER_LABELS (app/app/webhooks/_components/labels.ts): a chave ainda não tem linha no dicionário",
-  },
-  {
-    arquivo: "app/app/webhooks/_components/RuleEditor.tsx",
-    chave: "Quando um horário pendente for confirmado",
-    motivo:
-      "valor de TRIGGER_LABELS (app/app/webhooks/_components/labels.ts): a chave ainda não tem linha no dicionário",
-  },
-  {
-    arquivo: "app/onboarding/invite-team/_form.tsx",
-    chave: "Assistente com autonomia de operação",
-    motivo:
-      "valor de ROTULO_DO_PAPEL (lib/auth/types.ts): a chave ainda não tem linha no dicionário",
-  },
-];
+const DIVIDA_CONGELADA: { arquivo: string; chave: string; motivo: string }[] = [];
 
 function ehDividaCongelada(arquivo: string, chave: string): boolean {
   return DIVIDA_CONGELADA.some((e) => e.arquivo === arquivo && e.chave === chave);
