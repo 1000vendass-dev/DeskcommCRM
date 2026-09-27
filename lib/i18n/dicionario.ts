@@ -5133,6 +5133,9 @@ export const DICIONARIO: Traducoes = {
     es: ": la respuesta del cliente no llega y la pantalla no muestra ningún aviso. El secreto aparece",
   },
   "uma única vez": { es: "una sola vez" },
+  "Na inscrição do webhook no provedor, preencha o filtro de contas (accountIds) com a Conta deste número: assim só chegam aqui os eventos dele.": {
+    es: "En la suscripción del webhook en el proveedor, completa el filtro de cuentas (accountIds) con la Cuenta de este número: así solo llegan aquí sus eventos.",
+  },
   " — se sair desta tela sem copiá-lo, reconecte para gerar outro.": {
     es: " — si sales de esta pantalla sin copiarlo, reconecta para generar otro.",
   },

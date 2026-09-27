@@ -82,11 +82,25 @@ describe("o WhatsApp do provedor intermediado só aceita evento da SUA conta", (
     expect(perguntas).toEqual([]);
   });
 
-  it("sessão ainda sem conta configurada não tem com o que comparar — passa", async () => {
+  it("mensagem e revisão de modelo SEM conta são recusadas — o provedor sempre a manda nelas", async () => {
+    for (const event of ["message.received", "message.sent", "whatsapp.template.status_updated"]) {
+      const { admin } = banco(DESTA_SESSAO);
+      expect(await inboundPayloadBelongsToSession(admin, entrada({ event })), event).toBe(false);
+    }
+  });
+
+  it("evento de número SEM conta passa a guarda — quem o confere é o número, em `zernioInbound`", async () => {
+    const { admin } = banco(DESTA_SESSAO);
+    expect(
+      await inboundPayloadBelongsToSession(admin, entrada({ event: "whatsapp.number.suspended", number: {} })),
+    ).toBe(true);
+  });
+
+  it("sessão sem conta RECUSA — falha fechada (a constraint do banco hoje impede este estado)", async () => {
     const { admin } = banco(null);
     expect(
       await inboundPayloadBelongsToSession(admin, entrada({ account: { id: OUTRA_DO_ESPACO } })),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("falha ao ler a sessão LANÇA — nunca vira aceite silencioso", async () => {
