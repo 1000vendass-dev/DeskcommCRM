@@ -40321,3 +40321,30 @@ alter table public.crm_stages
 alter table public.crm_stages
   add constraint crm_stages_win_probability_range
   check (win_probability is null or win_probability between 0 and 100);
+
+-- ---- a etapa que avisa a equipe na Central (migration 0440) ----
+--
+-- Marca por etapa, desligada por padrão: negócio que ENTRA numa etapa marcada
+-- abre um aviso na Central (kind `other`, ref `lead`, botão «Abrir negócio»).
+-- Quem lê é `lib/leads/aviso-de-etapa.handler.ts`, no evento
+-- `lead.stage_changed`. Aditiva e idempotente: coluna com default, nenhuma
+-- linha existente a corrigir antes.
+alter table public.crm_stages
+  add column if not exists avisar_na_central boolean not null default false;
+
+comment on column public.crm_stages.avisar_na_central is
+  'Negócio que entra nesta etapa abre um aviso na Central de avisos (0440).';
+
+notify pgrst, 'reload schema';
+
+-- ---- o bucket dos sons dos avisos da Central (migration 0441) ----
+-- Privado; só o service_role lê e grava, pela rota `app/api/v1/settings/sons`.
+-- Teto e tipos são os de `lib/notifications/sons-da-org.ts` (1 MB, MP3/OGG/WAV),
+-- conferidos por `tests/invariants/sons-dos-avisos.test.ts`. Sem policy em
+-- `storage.objects`. Idempotente.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('org-sounds', 'org-sounds', false, 1048576, array['audio/mpeg', 'audio/ogg', 'audio/wav'])
+on conflict (id) do update
+  set public             = excluded.public,
+      file_size_limit    = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;
