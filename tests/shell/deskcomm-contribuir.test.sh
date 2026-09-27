@@ -145,10 +145,51 @@ printf -- '-- x\n' >> supabase/baseline.sql
 printf '| x | `0200_colide` |\n' >> supabase/migrations/MANIFEST.md
 git add -A
 saida="$(git commit -q -m "colisao sem biblioteca" 2>&1)"; code=$?
-assert_exit "$code" 1 "sem a biblioteca, o NNNN já usado NAINDA é bloqueado (o guard não afrouxa)"
+assert_exit "$code" 1 "sem a biblioteca, o NNNN já usado AINDA é bloqueado (o guard não afrouxa)"
 assert_contains "$saida" "NNNN=0200" "sem a biblioteca, o NNNN continua sendo acusado"
 assert_contains "$saida" "migration-populacao.sh AUSENTE" "a queda da biblioteca é DECLARADA, não silenciosa"
 assert_contains "$saida" "checar:colisao-de-migration" "o aviso aponta quem mede a população inteira"
+assert_not_contains "$saida" "command not found" "sem a biblioteca, o bloqueio não tropeça em função ausente"
+# O NNNN em colisão que NÃO é o 1º arquivo da ref: o caminho sem biblioteca
+# prefixava só a 1ª linha de cada ref, e o `grep "<ref> <nome>"` perdia o resto.
+git reset -q --hard HEAD 2>/dev/null
+git switch -q -c colega
+printf 'select 5;\n' > supabase/migrations/20260301120000_0300_do_colega.sql
+printf 'select 6;\n' > supabase/migrations/20260301130000_0301_do_colega.sql
+git add -A; DESKCOMM_MIGRATION_EDIT=1 git commit -q -m "colega"
+git switch -q fix/sem-lib
+rm -f scripts/migration-populacao.sh
+printf 'select 7;\n' > supabase/migrations/20260909120000_0301_colide.sql
+printf -- '-- y\n' >> supabase/baseline.sql
+printf '| y | `0301_colide` |\n' >> supabase/migrations/MANIFEST.md
+git add -A
+saida="$(git commit -q -m "colisao com arquivo que nao e o primeiro da ref" 2>&1)"; code=$?
+assert_exit "$code" 1 "sem a biblioteca, colisão com o 3º arquivo de outra branch AINDA é bloqueada"
+assert_contains "$saida" "NNNN=0301" "e o NNNN acusado é o do 3º arquivo"
+git reset -q --hard HEAD 2>/dev/null
+
+# ── 2-ter. Clone que só tem o FORK (item 1 da #1273) ─────────────────────────
+# A `origin` aponta para um fork no GitHub (o insteadOf a resolve para o
+# principal local, sem rede) e nenhum remoto é melgarafael/DeskcommCRM: a base
+# vira a origin/main DO FORK, que pode estar atrás do principal. O hook não
+# bloqueia por isso, mas DIZ; e o pré-voo não dá ✓ de "livre" sobre essa régua.
+echo "2-ter. clone só com o fork: NÃO MEDIDO declarado"
+fork="$TMP/c2-fork"; clonar "$fork" "alguem@fork.dev"
+cfg "$fork" remote.origin.url "https://github.com/alguem/DeskcommCRM.git"
+cfg "$fork" "url.$principal.insteadOf" "https://github.com/alguem/DeskcommCRM.git"
+cd "$fork" || exit 1; git switch -q -c fix/no-fork
+printf 'select 8;\n' > supabase/migrations/20260909130000_0201_no_fork.sql
+printf -- '-- z\n' >> supabase/baseline.sql
+printf '| z | `0201_no_fork` |\n' >> supabase/migrations/MANIFEST.md
+git add -A
+saida="$(git commit -q -m "migration num fork" 2>&1)"; code=$?
+assert_exit "$code" 0 "número livre no fork não bloqueia (não há colisão medida)"
+assert_contains "$saida" "NÃO MEDIDOS contra a main do PRODUTO" "o hook declara que não mediu a main do produto"
+assert_contains "$saida" "git remote add upstream" "e diz como corrigir"
+saida="$(bash .agents/skills/deskcomm-contribuir/scripts/pre-voo.sh 2>&1)"
+assert_not_contains "$saida" "✓ NNNN" "o pré-voo não dá ✓ de NNNN livre sobre a main do fork"
+assert_not_contains "$saida" "✓ próximo NNNN" "nem ✓ de próximo NNNN"
+assert_contains "$saida" "NÃO MEDIDO contra a main do PRODUTO" "o pré-voo declara a régua"
 
 echo "3. pre-push"
 saida="$(printf 'refs/heads/fix/algo %s refs/heads/main %s\n' "$(git rev-parse HEAD)" "$(git rev-parse HEAD)" | bash .agents/skills/deskcomm-contribuir/scripts/hooks/pre-push origin x 2>&1)"; code=$?

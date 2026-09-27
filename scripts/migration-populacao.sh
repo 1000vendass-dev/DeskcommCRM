@@ -29,7 +29,7 @@
 # ## Ausência da biblioteca: degrada, não quebra
 #
 # Quem chama (hooks de pre-commit, pré-voo) faz `source` com `|| true` e, sem
-# esta arquivo, mantém a população antiga e DIZ que é a antiga. Um hook que
+# este arquivo, mantém a população antiga e DIZ que é a antiga. Um hook que
 # encolhe o universo sem dizer é o defeito que esta issue corrige; então a
 # ausência nunca é silenciosa, e nunca vira bloqueio novo: sem a biblioteca o
 # comportamento é byte-a-byte o de antes, mais uma linha declarando.
@@ -83,7 +83,7 @@ pop_main_do_produto() {
     # Os DOIS padrões: o slug exato, e o slug com algum caminho antes dele (uma
     # URL com host/prefixo que o `sed` não tirou). Só o de `*/` NÃO casa o slug
     # exato — `*/x` exige a barra — e isso devolvia vazio num clone cujo remoto
-    # do produto estava certaininho.
+    # do produto estava certinho.
     case "$slug" in
       melgarafael/deskcommcrm | */melgarafael/deskcommcrm)
         printf '%s/main\n' "$r"; return 0 ;;
@@ -93,7 +93,7 @@ pop_main_do_produto() {
 }
 
 # pop_repo_do_produto — "dono/repo" do principal, para o `gh` (`--repo`).
-# Mismas duas formas de slug do `pop_main_do_produto`, pelo mesmo motivo.
+# As mesmas duas formas de slug do `pop_main_do_produto`, pelo mesmo motivo.
 pop_repo_do_produto() {
   local r url slug
   for r in $(git remote 2>/dev/null); do
@@ -126,17 +126,19 @@ pop_tem_remoto_de_github() {
 #
 #   * a BASE entra sempre que resolver: é a main do produto.
 #   * `refs/heads` e `refs/remotes` entram JUNTAS. Só as locais (o
-#     `git branch` de antes) é o recorte que escondia o 0269 do PR aberto #965
-#     no clone do mantenedor: ele é a cópia em `refs/remotes/origin/pr/965` e
-#     não aparece em nenhuma das branches locais.
-#   * as cópias de PR em `refs/remotes/*/pr/N` ficam DE FORA: elas são cópias
+#     `git branch` de antes) deixava de fora a branch que só existe no remoto
+#     (a de outra máquina, a do fork de um colega).
+#   * as cópias de PR em `refs/remotes/[<remoto>/]pr/N` ficam DE FORA (as duas
+#     formas: a triagem busca em `refs/remotes/pr/N`, 1336 no clone do
+#     mantenedor em 27/09/2026). Por isso o 0269 do #965, que vivia só na
+#     cópia `refs/remotes/origin/pr/965`, NÃO entra aqui: elas são cópias
 #     de cabeças, não PRs abertos, e sobrevivem ao fechamento do PR (medido no
 #     clone do mantenedor em 19/09/2026: 965 cabeças contra 43 PRs abertos).
 #     Medi-las traria de volta, pela porta dos fundos, o número de um PR morto
 #     — o que é exatamente o defeito que o #1269 fechou no script de CI.
-#   * `refs/remotes/*/HEAD` é ponteiro de convenience, nunca um dono.
+#   * `refs/remotes/*/HEAD` é ponteiro de conveniência, nunca um dono.
 #   * a ref que resolve para o MESMO commit da base (já medida) ou do HEAD (o
-#     PR de quem roda) sai da conta, senão o varredura acusa o autor de colidir
+#     PR de quem roda) sai da conta, senão a varredura acusa o autor de colidir
 #     com a própria branch (armadilha da #1155).
 # ─────────────────────────────────────────────────────────────────────────────
 pop_refs_de_outrem() {
@@ -147,7 +149,7 @@ pop_refs_de_outrem() {
   git for-each-ref --format='%(objectname) %(refname)' refs/heads refs/remotes 2>/dev/null \
     | awk -v b="$bc" -v h="$hc" '
         $1 != b && $1 != h && $2 !~ /\/HEAD$/ \
-          && $2 !~ /^refs\/remotes\/[^\/]+\/pr\/[0-9]+$/ { print $2 }'
+          && $2 !~ /^refs\/remotes\/(.+\/)?pr\/[0-9]+$/ { print $2 }'
   [ -n "$base" ] || return 0
   git rev-parse -q --verify "${base}^{commit}" >/dev/null 2>&1 && printf '%s\n' "$base"
   return 0

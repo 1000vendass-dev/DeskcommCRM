@@ -17,7 +17,7 @@ cd "$raiz"
 # A POPULAÇÃO da unicidade de NNNN é a mesma dos hooks (#1273) e vive num lugar
 # só, `scripts/migration-populacao.sh`. Sem a biblioteca (clone antigo, ou a
 # cópia da skill de uma versão anterior), o pré-voo segue medindo o que media —
-# e a linha de migration DIZ que não achou a population nova.
+# e a linha de migration DIZ que não achou a população nova.
 BIBLIOTECA="$raiz/scripts/migration-populacao.sh"
 [ -r "$BIBLIOTECA" ] && { . "$BIBLIOTECA" || true; }
 
@@ -106,7 +106,15 @@ else
       pop_base=""
     fi
   fi
+  # pop_sem_produto=1: há remoto de GitHub (um fork) e nenhum é o principal. Aí
+  # nenhum "livre" sai com ✓: o fork pode estar atrás do principal, e o ✓ sobre
+  # ele é o "livre" falso da #1273. (Fixture sem remoto de GitHub só tem o que
+  # tem; biblioteca ausente já sai declarada acima.)
+  pop_sem_produto=0
   if [ -z "$pop_base" ]; then
+    if declare -F pop_tem_remoto_de_github >/dev/null 2>&1 && pop_tem_remoto_de_github; then
+      pop_sem_produto=1
+    fi
     pop_base="origin/main"
     git rev-parse -q --verify "${pop_base}^{commit}" >/dev/null 2>&1 || pop_base=""
   fi
@@ -128,12 +136,14 @@ else
       [ -n "$ref" ] || continue
       arquivos="$(git ls-tree -r --name-only "$ref" -- supabase/migrations 2>/dev/null \
         | sed 's#^supabase/migrations/##' || true)"
-      [ -n "$arquivos" ] && pop_migs="${pop_migs}${ref} ${arquivos}"$'\n'
+      [ -n "$arquivos" ] && pop_migs="${pop_migs}$(awk -v r="$ref" '{ print r, $0 }' <<<"$arquivos")"$'\n'
     done
   fi
-  if [ -z "$pop_base" ] || [ -z "$pop_refs" ]; then
-    olhe "NÃO MEDIDO: a main do PRODUTO (remoto que aponta para melgarafael/DeskcommCRM) não está neste clone — a unicidade abaixo sai sobre a cópia local"
+  if [ "$pop_sem_produto" = 1 ]; then
+    olhe "NÃO MEDIDO contra a main do PRODUTO: nenhum remoto aponta para melgarafael/DeskcommCRM — a unicidade abaixo sai sobre '${pop_base:-nenhuma base}' e a cópia local. Corrija com: git remote add upstream https://github.com/melgarafael/DeskcommCRM.git && git fetch upstream"
   fi
+  # "livre" sobre a base errada não é ✓: é ⚠ com o nome da régua.
+  livre() { if [ "$pop_sem_produto" = 1 ]; then olhe "$* (NÃO MEDIDO contra a main do produto)"; else ok "$*"; fi; }
   for m in $migs; do
     nome="$(basename "$m")"
     nnnn="$(sed -nE 's/^[0-9]{14}_([0-9]{4})_.+\.sql$/\1/p' <<<"$nome")"
@@ -145,12 +155,12 @@ else
     cn="$(grep -E "^[A-Za-z0-9_./-]+ [0-9]{14}_${nnnn}_.+\.sql$" <<<"$pop_migs" | grep -vE " ${nome}\$" || true)"
     ct="$(grep -E "^[A-Za-z0-9_./-]+ ${ts}_[0-9]{4}_.+\.sql$" <<<"$pop_migs" | grep -vE " ${nome}\$" || true)"
     dono="$(awk '{printf "%s(%s) ", $1, $2}' <<<"$cn" | sed 's/ $//')"
-    # "livre" sem dizer sobre QUAL population é a afirmação sem régua que a
+    # "livre" sem dizer sobre QUAL população é a afirmação sem régua que a
     # #1155 registrou — e o número que se renumera errado sai daqui.
     pop_desc="$pop_base ∪ outras refs do clone"
-    [ -z "$cn" ] && ok "NNNN $nnnn livre em $pop_desc" \
+    [ -z "$cn" ] && livre "NNNN $nnnn livre em $pop_desc" \
       || trava "NNNN $nnnn já existe em $pop_desc: $dono — renumere E troque o timestamp (date -u +%Y%m%d%H%M%S)"
-    [ -z "$ct" ] && ok "timestamp $ts livre em $pop_desc" \
+    [ -z "$ct" ] && livre "timestamp $ts livre em $pop_desc" \
       || trava "timestamp $ts já existe em $pop_desc: $(awk '{printf "%s(%s) ", $1, $2}' <<<"$ct" | sed 's/ $//')"
     if grep -qiE 'create table' "$m" && ! grep -qiE 'enable row level security' "$m"; then
       olhe "'$nome' cria tabela sem 'enable row level security' — tabela tenant-aware exige RLS + policy tenant_isolation_<tabela>_all + entrada em tests/invariants/rls-isolation.test.ts"
@@ -162,10 +172,10 @@ else
   # O resto da população — os PRs ABERTOS, inclusive de fork — NÃO é medido aqui:
   # o pré-voo não vai à rede. Declarar é o contrato; com o `gh` logado, o mesmo
   # `gh pr list` do #1269 fecha a conta (issue #1273).
-  pop_teto="$(pop_nnnn_de <<<"$pop_migs" | sort -n | tail -1)"
+  pop_teto="$(cut -d' ' -f2- <<<"$pop_migs" | sed -nE 's/^[0-9]{14}_([0-9]{4})_.*$/\1/p' | sort -n | tail -1)"
   if [ -n "$pop_teto" ]; then
     pop_prox="$(printf '%04d' $((10#$pop_teto + 1)))"
-    ok "próximo NNNN medido em $pop_desc: ${pop_prox} (teto ${pop_teto})"
+    livre "próximo NNNN medido em $pop_desc: ${pop_prox} (teto ${pop_teto})"
   else
     nao "nenhum NNNN entrou na população medida (base '${pop_base:-nenhuma}'; PRs abertos fora daqui — use pnpm checar:colisao-de-migration)"
   fi

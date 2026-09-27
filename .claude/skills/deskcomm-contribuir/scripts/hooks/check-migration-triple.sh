@@ -62,8 +62,9 @@ fi
 # A POPULAÇÃO é a mesma dos outros sete lugares, com a regra de degradação
 # declarada: a base é a main do PRODUTO quando algum remoto é o principal; sem
 # ele, é a `origin/main` que houver — e a saída DIZ qual das duas foi. As
-# branches LOCAIS e REMOTAS entram sempre (a de antes era só a local, e é onde o
-# 0269 do PR aberto #965 estava invisível).
+# branches LOCAIS e REMOTAS entram sempre (a de antes era só a local). O 0269 do
+# #965 continua FORA desta conta: ele morava só na cópia `pr/965`, que fica
+# excluída de propósito; quem o pega é o `pnpm checar:colisao-de-migration`.
 BIBLIOTECA="$top/scripts/migration-populacao.sh"
 if [ -r "$BIBLIOTECA" ]; then
   # shellcheck source=/dev/null
@@ -79,13 +80,15 @@ if declare -F pop_main_do_produto >/dev/null 2>&1; then
 fi
 if [ -z "$base" ]; then
   # Sem o principal no clone (fork sem `upstream`, ou biblioteca ausente): a
-  # base cai para a `origin/main`, e o hook sai DIZENDO que a population não é a
+  # base cai para a `origin/main`, e o hook sai DIZENDO que a população não é a
   # da pergunta completa. Encolher o universo em silêncio é o defeito da #1273.
+  # Só avisa quando HÁ remoto de GitHub (um fork): fixture sem remoto nenhum só
+  # tem o que tem. Sem a biblioteca, o aviso de ausência mais abaixo já diz.
+  if declare -F pop_tem_remoto_de_github >/dev/null 2>&1 && pop_tem_remoto_de_github; then
+    echo "pre-commit AVISO: NNNN/timestamp NÃO MEDIDOS contra a main do PRODUTO: nenhum remoto aponta para melgarafael/DeskcommCRM (a base é a origin/main do seu fork, que pode estar atrás). Corrija com: git remote add upstream https://github.com/melgarafael/DeskcommCRM.git && git fetch upstream (#1273)" >&2
+  fi
   base="origin/main"
   git rev-parse -q --verify "${base}^{commit}" >/dev/null 2>&1 || base=""
-  pop_base_fallback=1
-else
-  pop_base_fallback=0
 fi
 if declare -F pop_refs_de_outrem >/dev/null 2>&1; then
   refs="$(pop_refs_de_outrem "$base" 2>/dev/null || true)"
@@ -116,10 +119,13 @@ if [ -z "${populacao// /}" ] && [ -z "${populacao//$'\n'/}" ]; then
       [ -n "$ref" ] || continue
       arquivos="$(git ls-tree -r --name-only "$ref" -- supabase/migrations 2>/dev/null \
         | sed 's#^supabase/migrations/##' || true)"
-      [ -n "$arquivos" ] && fallback="${fallback}${ref} ${arquivos}"$'\n'
+      # Prefixa CADA linha com a ref: o grep de baixo casa "<ref> <nome>", e
+      # prefixar só a 1ª deixava passar colisão com qualquer arquivo que não
+      # fosse o primeiro da ref.
+      [ -n "$arquivos" ] && fallback="${fallback}$(awk -v r="$ref" '{ print r, $0 }' <<<"$arquivos")"$'\n'
     done
     populacao="$fallback"
-    echo "pre-commit AVISO: scripts/migration-populacao.sh AUSENTE — unicidade de NNNN medida sobre $refs (a população da pergunta: main do produto ∪ PRs abertos). Quem mede a inteira: pnpm checar:colisao-de-migration (#1273)" >&2
+    echo "pre-commit AVISO: scripts/migration-populacao.sh AUSENTE — unicidade de NNNN medida sobre ${refs//$'\n'/ } (a população da pergunta: main do produto ∪ PRs abertos). Quem mede a inteira: pnpm checar:colisao-de-migration (#1273)" >&2
   elif [ -z "${base}" ]; then
     echo "pre-commit AVISO: Nenhuma migration resolvida na população ($base e as refs do clone) — a unicidade de NNNN NÃO foi medida (#1273). Rode: pnpm checar:colisao-de-migration" >&2
   fi
@@ -134,7 +140,7 @@ while IFS= read -r caminho; do
     falhou=1
     continue
   fi
-  # O MESMO arquivo nesta populate ref é o PR de quem roda (o índice ainda o
+  # O MESMO arquivo nesta população é o PR de quem roda (o índice ainda o
   # mostra como `A`): ele não é colisão, e acusar o autor de colidir com a
   # própria branch é a armadilha que a #1155 registrou.
   # A âncora é a do NOME CANÔNICO e o `grep` roda sobre a LINHA INTEIRA ("<ref>
@@ -145,7 +151,11 @@ while IFS= read -r caminho; do
   if [ -n "$donos_n" ]; then
     onde="$(awk '{printf "%s(%s) ", $1, $2}' <<<"$donos_n" | sed 's/ $//')"
     echo "pre-commit BLOQUEADO: NNNN=$nnnn de '$nome' já existe em: $onde" >&2
-    pop_dica_proximo_livre "$nnnn" "$base" "$populacao" >&2
+    if declare -F pop_dica_proximo_livre >/dev/null 2>&1; then
+      pop_dica_proximo_livre "$nnnn" "$base" "$populacao" >&2
+    else
+      echo "  Para o próximo número livre (main do produto ∪ PRs abertos): pnpm checar:colisao-de-migration" >&2
+    fi
     echo "  Troque o TIMESTAMP junto (date -u +%Y%m%d%H%M%S) — renumerar só o NNNN é o que fabrica colisão de timestamp." >&2
     falhou=1
   fi

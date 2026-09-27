@@ -51,7 +51,7 @@ const REPO_PRODUTO = "melgarafael/DeskcommCRM";
 /**
  * Onde a biblioteca mora e quem a consome — cada consumidor é um dos oito
  * lugares da #1273, e a lista é escrita aqui para o gate que exige que TODO
- * consumidor exists. Um lugar novo que a consuma e não for listado é
+ * consumidor exista. Um lugar novo que a consuma e não for listado é
  * encontrado pelo teste de "todo consumidor declara a população", abaixo.
  */
 const CONSUMIDORES = [
@@ -326,13 +326,13 @@ describe("a main medida é a do PRODUTO, com qualquer nome de remoto", () => {
   });
 });
 
-describe("a população inclui as branches REMOTAS, e é isso que pega o PR de fork", () => {
-  it("NNNN que só existe numa cópia de PR em refs/remotes entra na conta", () => {
+describe("a população inclui as branches REMOTAS, e deixa de fora as cópias de PR", () => {
+  it("NNNN que só existe numa branch REMOTA entra na conta", () => {
     const principal = repoComMigration("0324");
     const clone = clonar(principal);
-    // Uma branch REMOTA que existe sem cópia local nenhuma — a situação do
-    // 0269 do PR aberto #965 no clone do mantenedor: ele vivia em
-    // `refs/remotes/origin/pr/965` e em NENHUMA das 188 branches locais.
+    // Uma branch REMOTA que existe sem cópia local nenhuma. (O 0269 do PR
+    // aberto #965 vivia só na CÓPIA `refs/remotes/origin/pr/965`, e essa
+    // continua fora — quem o pega é o `checar`, pela lista de abertos.)
     // Precisa de um commit próprio, senão a ref resolve para o HEAD e sai da
     // conta por ser a branch de quem está rodando.
     git(clone, "checkout", "-q", "-b", "colega");
@@ -343,8 +343,7 @@ describe("a população inclui as branches REMOTAS, e é isso que pega o PR de f
     // A cópia de cabeça de PR que a triagem deixa: `refs/remotes/origin/pr/965`.
     git(clone, "update-ref", "refs/remotes/origin/pr/965", "refs/heads/colega");
 
-    // O recorte ANTIGO (`git branch`) vê zero refs remotas — a premissa do caso,
-    // e é exatamente por isso que o 0269 do #965 sumia.
+    // O recorte ANTIGO (`git branch`) vê zero refs remotas — a premissa do caso.
     const antigo = execFileSync("git", ["-C", clone, "branch", "--format=%(refname:short)"], {
       encoding: "utf8",
     })
@@ -377,9 +376,12 @@ describe("a população inclui as branches REMOTAS, e é isso que pega o PR de f
     commitar(clone, "pr que ja fechou");
     git(clone, "checkout", "-q", "main");
     git(clone, "update-ref", "refs/remotes/origin/pr/900", "refs/heads/velho");
+    // A forma SEM remoto é a que a própria triagem grava (`refs/remotes/pr/N`):
+    // 1336 delas no clone do mantenedor em 27/09/2026.
+    git(clone, "update-ref", "refs/remotes/pr/901", "refs/heads/velho");
     const r = bashComBiblioteca(
       clone,
-      'pop_refs_de_outrem "" | grep -c "pr/900" || true',
+      'pop_refs_de_outrem "" | grep -cE "pr/90[01]" || true',
     ).stdout.trim();
     expect(r).toBe("0");
   });
@@ -394,7 +396,7 @@ describe("a população inclui as branches REMOTAS, e é isso que pega o PR de f
     expect(r, "a própria branch entrou na população").not.toContain("refs/heads/outra");
   });
 
-  it("NNNN de uma branch REMOTA entra no teto que a population devolve", () => {
+  it("NNNN de uma branch REMOTA entra no teto que a população devolve", () => {
     const principal = repoComMigration("0324");
     const clone = clonar(principal);
     // branch remota com migration 0400 — o teto do disco é 0324.

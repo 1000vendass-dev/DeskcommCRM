@@ -70,13 +70,13 @@ houve_conflito=0
 # ── A POPULAÇÃO da unicidade (issue #1273) ──────────────────────────────────────
 #
 # A régua que este hook ensina é "o próximo NNNN livre", e ela media `git branch`
-# — as branches LOCAIS. No clone do mantenedor, que é onde este hook roda, o
-# 0269 do PR aberto #965 (de fork) não aparecia em nenhuma das 188 branches
-# locais: ele vivia na cópia `refs/remotes/origin/pr/965`, e o hook deixava o
-# número passar. A população agora é a main do PRODUTO (o remoto que aponta
-# para melgarafael/DeskcommCRM, com qualquer nome) mais `refs/heads` E
+# — as branches LOCAIS. A população agora é a main do PRODUTO (o remoto que
+# aponta para melgarafael/DeskcommCRM, com qualquer nome) mais `refs/heads` E
 # `refs/remotes` — e o que ela NÃO cobre (os PRs abertos pela lista do `gh`) sai
-# declarado na própria mensagem. `scripts/migration-populacao.sh` é a mesma
+# declarado na própria mensagem. Caso medido que CONTINUA fora: o 0269 do PR
+# aberto #965 (de fork) vivia só na cópia `refs/remotes/origin/pr/965`, e as
+# cópias `pr/N` ficam excluídas de propósito (sobrevivem ao fechamento do PR);
+# quem o pega é o `pnpm checar:colisao-de-migration`, pela lista de abertos. `scripts/migration-populacao.sh` é a mesma
 # regra que o `pnpm checar:colisao-de-migration` (o #1269) usa.
 BIBLIOTECA="$top/scripts/migration-populacao.sh"
 if [ -r "$BIBLIOTECA" ]; then
@@ -120,10 +120,13 @@ if [ -z "${populacao// /}" ] && [ -z "${populacao//$'\n'/}" ]; then
       [ -n "$ref" ] || continue
       arquivos="$(git ls-tree -r --name-only "$ref" -- supabase/migrations 2>/dev/null \
         | sed 's#^supabase/migrations/##' || true)"
-      [ -n "$arquivos" ] && fallback="${fallback}${ref} ${arquivos}"$'\n'
+      # Prefixa CADA linha com a ref: o grep de baixo casa "<ref> <nome>", e
+      # prefixar só a 1ª deixava passar colisão com qualquer arquivo que não
+      # fosse o primeiro da ref.
+      [ -n "$arquivos" ] && fallback="${fallback}$(awk -v r="$ref" '{ print r, $0 }' <<<"$arquivos")"$'\n'
     done
     populacao="$fallback"
-    echo "pre-commit AVISO: scripts/migration-populacao.sh AUSENTE — NNNN medido sobre $refs. Quem mede a população inteira (main do produto ∪ PRs abertos): pnpm checar:colisao-de-migration (#1273)" >&2
+    echo "pre-commit AVISO: scripts/migration-populacao.sh AUSENTE — NNNN medido sobre ${refs//$'\n'/ }. Quem mede a população inteira (main do produto ∪ PRs abertos): pnpm checar:colisao-de-migration (#1273)" >&2
   elif [ -z "$base" ]; then
     echo "pre-commit AVISO: nenhuma migration resolvida na população ($base e as refs do clone) — a unicidade de NNNN NÃO foi medida (#1273). Rode: pnpm checar:colisao-de-migration" >&2
   fi
@@ -142,7 +145,11 @@ while IFS= read -r path; do
     | grep -vE " ${fname}\$" || true)
   if [ -n "$conflict" ]; then
     echo "pre-commit BLOQUEADO: sequência NNNN=$nnnn de '$fname' já existe em: $(awk '{printf "%s(%s) ", $1, $2}' <<<"$conflict" | sed 's/ $//')" >&2
-    pop_dica_proximo_livre "$nnnn" "$base" "$populacao" >&2
+    if declare -F pop_dica_proximo_livre >/dev/null 2>&1; then
+      pop_dica_proximo_livre "$nnnn" "$base" "$populacao" >&2
+    else
+      echo "Para o próximo número livre (main do produto ∪ PRs abertos): pnpm checar:colisao-de-migration" >&2
+    fi
     echo "E troque o TIMESTAMP JUNTO: renumerar só o NNNN fabricou 12 das colisões de timestamp deste repo." >&2
     echo "Correção orientada pelo dono: DESKCOMM_GOV_MIGRATION_EDIT=1." >&2
     houve_conflito=1
