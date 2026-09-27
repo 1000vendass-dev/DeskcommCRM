@@ -294,6 +294,50 @@ check "arm64 em instalação existente → recuperar" \
 check "outra arquitetura em instalação NOVA → nova" \
   grep -q '^riscv64 0 → nova$' "$OUT4"
 
+# ─────────────────────────────────────────────────────────────────────────────
+echo
+echo '── 5. QUEM JÁ ESTÁ PRESO: o kit do disco é o da guarda velha, e o passo'
+echo '      único que o fragmento de release ensina tem de funcionar'
+# O update.sh dá `source` no _common.sh que está NO DISCO antes do checkout da
+# versão nova. Numa VPS ARM que já tem a guarda do #1042 (v1.35.0 em diante),
+# esse kit velho morre no topo e nunca baixa este conserto — nem pelo terminal
+# nem pelo botão "Atualizar", que roda o mesmo update.sh. A saída é trocar o
+# código à mão uma vez e rodar o update.sh da versão nova. Este caso prova as
+# duas metades: que a pessoa está presa (a premissa do texto), e que o comando
+# publicado no fragmento `.changes/guarda-arm-nao-mata-a-recuperacao.md` a solta.
+#
+# O kit "velho" é o do próprio PR com a detecção de instalação desligada, que
+# é exatamente o comportamento da guarda do #1042: recusa ARM sem olhar nada.
+R5="$WORK/caso5"; mkdir -p "$R5"; montar_instalacao "$R5" 0
+(
+  cd "$R5/deskcommcrm" || exit 1
+  git checkout --quiet v0.9.0
+  sed -i.bak 's/instalacao_do_kit_ja_existe && existe=1/: guarda velha/' hostgator-setup-kit/_common.sh
+  rm -f hostgator-setup-kit/_common.sh.bak
+  git commit --quiet -am "kit com a guarda velha"
+  git tag v0.8.0
+) >/dev/null 2>&1
+OUT5A="$WORK/saida5a.txt"; OUT5B="$WORK/saida5b.txt"
+: > "$DOCKER_LOG"; RC5A=0
+( cd "$R5" && env FAKE_ARCH=aarch64 ARM_SEM_IMAGEM=1 \
+    bash deskcommcrm/hostgator-setup-kit/update.sh --to v0.9.0 --force \
+) > "$OUT5A" 2>&1 < /dev/null || RC5A=$?
+check "com o kit velho no disco, nem --to/--force passam da guarda (rc=$RC5A, e != 0)" \
+  test "$RC5A" -ne 0
+check "e o que ele lê é a recusa do #1042" \
+  grep -q 'Use uma VPS x86_64/amd64' "$OUT5A"
+# O passo único, como o fragmento o escreve (sem o `git fetch`, que aqui não
+# tem remoto: a tag já está no repositório descartável).
+: > "$DOCKER_LOG"; RC5B=0
+( cd "$R5/deskcommcrm" && git checkout --quiet v0.9.0 && \
+  env FAKE_ARCH=aarch64 ARM_SEM_IMAGEM=1 \
+    bash hostgator-setup-kit/update.sh --to v0.9.0 --force \
+) > "$OUT5B" 2>&1 < /dev/null || RC5B=$?
+check "depois do checkout à mão, o update.sh da versão nova sai com 0 (rc=$RC5B)" \
+  test "$RC5B" -eq 0
+check "e ele chega à recuperação por build local" \
+  grep -q -- '-f docker-compose.build.yml build' "$DOCKER_LOG"
+
 printf '\nstatus: caso1(ARM+recuperação)=%s caso2(nova ARM)=%s caso3(amd64)=%s\n' \
   "$RC1" "$RC2" "$RC3"
 if [ "$FAILS" -eq 0 ]; then
