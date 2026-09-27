@@ -3010,3 +3010,18 @@ Port do #1130 (@vgamkt), PR 3 de 4. Spec: `tests/e2e/fluxo-de-atendimento.spec.t
 - Unidade: `tests/unit/links-rastreaveis.test.ts`, `tests/unit/links-rastreaveis-action.test.ts`, `tests/unit/script-do-site.test.ts` cobrem captura, fallback, tenant, MFA e compatibilidade.
 - Banco: `tests/invariants/links-rastreaveis-isolados.test.ts` cobre ACL e FK composta; execução local pendente por ausência de Docker.
 - Prova visual em ambiente fresco e envio real ao Google/Meta ainda pendentes; unitários não substituem estes aceites.
+
+## J34 — Achar uma mensagem dentro da conversa aberta `[P1]` (2026-09-27)
+
+Busca nas mensagens já carregadas (#1795, extraída do #1793 de @gustavorodcruz96).
+Spec: `tests/e2e/busca-na-conversa.spec.ts` (job e2e, parte 3; seed próprio: um
+canal e duas conversas, a B também contém o termo para o "não vaza" não passar por
+falta do que marcar). Evidência: `evidence/busca-na-conversa/`.
+
+| # | Caso | Expectativa | Resultado |
+|---|------|-------------|-----------|
+| J34.1 | A lupa é a primeira da barra de ações | `aria-expanded="false"` e na primeira fileira da barra (1280px, medido por `getBoundingClientRect`) | a medir no CI |
+| J34.2 | Clicar abre o campo com o foco | `searchbox` "Buscar nas mensagens carregadas" focado | a medir no CI |
+| J34.3 | Termo em 2 de 4 mensagens (uma em maiúsculas) | contador "Resultados nas mensagens carregadas: 2"; as 2 bolhas com o anel no `box-shadow` COMPUTADO (`0 0 0 4px`, cor ≠ fundo), uma enviada e uma recebida; as outras 2 sem anel | a medir no CI |
+| J34.4 | Esc fecha | campo, contador e marcas somem; o foco volta à lupa | a medir no CI |
+| J34.5 | Trocar de conversa pela lista, sem recarregar | a conversa B (que tem o termo) abre sem campo, sem contador e sem marca; abrir a busca nela começa vazia | a medir no CI |
