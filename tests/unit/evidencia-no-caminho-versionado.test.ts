@@ -139,9 +139,9 @@ function arquivosComAMencao(): string[] {
  */
 const QUARENTENA = new Set([
   // ── Registro histórico: reescrever faria o documento MENTIR sobre o dia ────
-  "HANDOFF-harness-evolution.md",
-  "HANDOFF-ia-360.md",
-  "HANDOFF-operacao-visivel.md",
+  "docs/handoffs/HANDOFF-harness-evolution.md",
+  "docs/handoffs/HANDOFF-ia-360.md",
+  "docs/handoffs/HANDOFF-operacao-visivel.md",
   "docs/audits/2026-08-14-afirmacoes-de-estado.md",
   "docs/handoffs/HANDOFF-canais-oficial.md",
   "docs/handoffs/HANDOFF-inbox-multimodal.md",
