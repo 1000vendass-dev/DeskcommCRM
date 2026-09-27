@@ -114,7 +114,7 @@ montar_pasta() {  # montar_pasta <diretório> [1=com .env]
   printf 'services:\n  app:\n    image: x\n' > "$d/docker-compose.prod.yml"
   [ "$sem_env" = 1 ] && return 0
   cat > "$d/.env" <<ENV
-APP_IMAGE=ghcr.io/melgarafael/deskcommcrm:0.9.0
+APP_IMAGE=x
 SUPABASE_DB_URL=postgresql://x/y
 NEXT_PUBLIC_APP_URL=https://crm.exemplo.com.br
 INTERNAL_SECRET=segredo
@@ -299,7 +299,7 @@ echo '── 5. A FÓRMULA DO NOME: a cópia do guard bate com nome_do_projeto_c
   done
 ) > "$WORK/nomes.txt" 2>&1
 while read -r pasta esperado derivados; do
-  check "«$pasta»: o guard deriva «$esperado» como nome_do_projeto_compose" \
+  check "«${pasta}»: o guard deriva «${esperado}» como nome_do_projeto_compose" \
     test "$derivados" = "$esperado,"
 done < "$WORK/nomes.txt"
 
@@ -335,7 +335,7 @@ check "e registra quando (ISO-8601 em UTC, para o log do dono)" \
   grep -qE '^instalado_em=[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$' \
     "$R6/deskcommcrm/.deskcomm-instalado"
 check "e nasce com o mesmo rigor do .env (600), que é onde ele mora" \
-  test "$(stat -c '%a' "$R6/deskcommcrm/.deskcomm-instalado" 2>/dev/null)" = 600
+  test "$(stat -c '%a' "$R6/deskcommcrm/.deskcomm-instalado" 2>/dev/null || stat -f '%Lp' "$R6/deskcommcrm/.deskcomm-instalado" 2>/dev/null)" = 600
 # E a guarda o reconhece pelo arquivo, sem perguntar nada ao Docker.
 : > "$DOCKER_LOG"
 (
