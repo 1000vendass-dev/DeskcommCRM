@@ -22,21 +22,6 @@ set -euo pipefail
 top="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
 novas="$(git diff --cached --name-status | awk '$1 == "A" && $2 ~ /^supabase\/migrations\/.*\.sql$/ { print $2 }')"
-[ -z "$novas" ] && exit 0
-
-staged="$(git diff --cached --name-only)"
-falhou=0
-
-if ! grep -qx 'supabase/baseline.sql' <<<"$staged"; then
-  echo "pre-commit BLOQUEADO: migration nova sem apêndice em supabase/baseline.sql no MESMO commit." >&2
-  echo "  O kit self-host aplica SÓ o baseline: sem o apêndice, a mudança não chega em quem instalou numa VPS." >&2
-  falhou=1
-fi
-if ! grep -qx 'supabase/migrations/MANIFEST.md' <<<"$staged"; then
-  echo "pre-commit BLOQUEADO: migration nova sem linha em supabase/migrations/MANIFEST.md no MESMO commit." >&2
-  falhou=1
-fi
-
 # ── A POPULAÇÃO da unicidade (issue #1273) ──────────────────────────────────────
 #
 # A pergunta deste hook é "esse número já foi usado ou reservado?", e a resposta
@@ -70,6 +55,7 @@ if [ -r "$BIBLIOTECA" ]; then
   # shellcheck source=/dev/null
   . "$BIBLIOTECA" || true
 fi
+aviso_fork=0
 base=""
 if declare -F pop_main_do_produto >/dev/null 2>&1; then
   base="$(pop_main_do_produto || true)"
@@ -85,11 +71,45 @@ if [ -z "$base" ]; then
   # Só avisa quando HÁ remoto de GitHub (um fork): fixture sem remoto nenhum só
   # tem o que tem. Sem a biblioteca, o aviso de ausência mais abaixo já diz.
   if declare -F pop_tem_remoto_de_github >/dev/null 2>&1 && pop_tem_remoto_de_github; then
-    echo "pre-commit AVISO: NNNN/timestamp NÃO MEDIDOS contra a main do PRODUTO: nenhum remoto aponta para melgarafael/DeskcommCRM (a base é a origin/main do seu fork, que pode estar atrás). Corrija com: git remote add upstream https://github.com/melgarafael/DeskcommCRM.git && git fetch upstream (#1273)" >&2
+    aviso_fork=1
   fi
   base="origin/main"
   git rev-parse -q --verify "${base}^{commit}" >/dev/null 2>&1 || base=""
 fi
+
+# O que já está na main do PRODUTO não é novidade deste commit. Um `git merge
+# upstream/main` encena as migrations da main como `A` relativo à branch, e a
+# população alargada (refs/remotes/*) tem branches do principal com OUTRO
+# arquivo de mesmo NNNN (17 NNNN da main em 31 branches do upstream, medido em
+# 27/09/2026): sem este filtro o merge da main era BLOQUEADO mandando renumerar
+# arquivo que todo mundo já tem — a orientação impossível que o loop/hooks
+# registrou (18/09/2026). É o mesmo filtro dele, sobre a base do PRODUTO.
+if [ -n "$base" ]; then
+  novas="$(while IFS= read -r p; do
+    [ -z "$p" ] && continue
+    git cat-file -e "$base:$p" 2>/dev/null || printf '%s\n' "$p"
+  done <<<"$novas")"
+fi
+
+[ -z "$novas" ] && exit 0
+
+if [ "$aviso_fork" = 1 ]; then
+  echo "pre-commit AVISO: NNNN/timestamp NÃO MEDIDOS contra a main do PRODUTO: nenhum remoto aponta para melgarafael/DeskcommCRM (a base é a origin/main do seu fork, que pode estar atrás). Corrija com: git remote add upstream https://github.com/melgarafael/DeskcommCRM.git && git fetch upstream (#1273)" >&2
+fi
+
+staged="$(git diff --cached --name-only)"
+falhou=0
+
+if ! grep -qx 'supabase/baseline.sql' <<<"$staged"; then
+  echo "pre-commit BLOQUEADO: migration nova sem apêndice em supabase/baseline.sql no MESMO commit." >&2
+  echo "  O kit self-host aplica SÓ o baseline: sem o apêndice, a mudança não chega em quem instalou numa VPS." >&2
+  falhou=1
+fi
+if ! grep -qx 'supabase/migrations/MANIFEST.md' <<<"$staged"; then
+  echo "pre-commit BLOQUEADO: migration nova sem linha em supabase/migrations/MANIFEST.md no MESMO commit." >&2
+  falhou=1
+fi
+
 if declare -F pop_refs_de_outrem >/dev/null 2>&1; then
   refs="$(pop_refs_de_outrem "$base" 2>/dev/null || true)"
 else

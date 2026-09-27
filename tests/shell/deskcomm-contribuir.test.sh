@@ -14,6 +14,8 @@
 #   2-bis. e, com a biblioteca da população AUSENTE (#1273), o NNNN já usado
 #      CONTINUA bloqueado e a queda é declarada: o guard não pode afrouxar
 #      porque a regra que ele consulta não estava à mão.
+#   2-quater. o merge da main do PRODUTO passa mesmo com o NNNN dela noutra
+#      branch do principal; um NNNN novo da branch continua bloqueado.
 #   3. pre-push BLOQUEIA refs/heads/main e deixa passar uma feature branch.
 #   4. armar-hooks.sh grava core.hooksPath, recusa sobrescrever hooks alheios,
 #      e --desarmar limpa.
@@ -190,6 +192,41 @@ saida="$(bash .agents/skills/deskcomm-contribuir/scripts/pre-voo.sh 2>&1)"
 assert_not_contains "$saida" "✓ NNNN" "o pré-voo não dá ✓ de NNNN livre sobre a main do fork"
 assert_not_contains "$saida" "✓ próximo NNNN" "nem ✓ de próximo NNNN"
 assert_contains "$saida" "NÃO MEDIDO contra a main do PRODUTO" "o pré-voo declara a régua"
+
+# ── 2-quater. Trazer a main do PRODUTO não é "migration nova" ─────────────────
+# Com a população alargada para refs/remotes/*, uma branch do principal com OUTRO
+# arquivo de mesmo NNNN (o 0412 de `resgate/1651-…` contra o 0412 da main, medido
+# em 27/09/2026) fazia o merge da upstream/main ser BLOQUEADO, mandando renumerar
+# migration que já está na main. O que a main do produto já tem sai da conta.
+echo "2-quater. merge da main do produto não é bloqueado por branch velha do principal"
+produto="$TMP/produto"; rm -rf "$produto"; git clone -q "$principal" "$produto"
+cfg "$produto" user.email "mantenedor@exemplo.com"; cfg "$produto" user.name "Mantenedor"
+git -C "$produto" switch -q -c velha
+printf 'select 9;\n' > "$produto/supabase/migrations/20260102000000_0412_versao_antiga.sql"
+git -C "$produto" add -A; git -C "$produto" commit -q -m "velha"
+git -C "$produto" switch -q main
+printf 'select 10;\n' > "$produto/supabase/migrations/20260103000000_0412_versao_da_main.sql"
+printf -- '-- apêndice 0412\n' >> "$produto/supabase/baseline.sql"
+printf '| `20260103000000` | `0412_versao_da_main` |\n' >> "$produto/supabase/migrations/MANIFEST.md"
+git -C "$produto" add -A; git -C "$produto" commit -q -m "0412 na main"
+merge="$TMP/c2-merge"; clonar "$merge" "alguem@fork.dev"
+cfg "$merge" remote.upstream.url "https://github.com/melgarafael/DeskcommCRM.git"
+cfg "$merge" remote.upstream.fetch "+refs/heads/*:refs/remotes/upstream/*"
+cfg "$merge" "url.$produto.insteadOf" "https://github.com/melgarafael/DeskcommCRM.git"
+cd "$merge" || exit 1; git fetch -q upstream; git switch -q -c fix/traz-a-main
+git rev-parse -q --verify refs/remotes/upstream/velha >/dev/null || falha "2-quater" "a branch velha do principal não chegou: o caso não mede a colisão"
+git merge -q --no-ff --no-commit upstream/main >/dev/null 2>&1
+saida="$(git commit -q -m "traz a main do produto" 2>&1)"; code=$?
+assert_exit "$code" 0 "o merge da main do produto passa, mesmo com 0412 noutra branch do principal"
+assert_not_contains "$saida" "BLOQUEADO" "e não manda renumerar migration que já está na main"
+# A guarda real segue inteira: um 0412 NOVO desta branch ainda colide.
+printf 'select 11;\n' > supabase/migrations/20260909140000_0412_minha.sql
+printf -- '-- w\n' >> supabase/baseline.sql; printf '| w | `0412_minha` |\n' >> supabase/migrations/MANIFEST.md
+git add -A
+saida="$(git commit -q -m "0412 meu" 2>&1)"; code=$?
+assert_exit "$code" 1 "um 0412 NOVO desta branch continua bloqueado"
+assert_contains "$saida" "upstream/main" "e o dono nomeado é a main do produto"
+git reset -q --hard HEAD 2>/dev/null
 
 echo "3. pre-push"
 saida="$(printf 'refs/heads/fix/algo %s refs/heads/main %s\n' "$(git rev-parse HEAD)" "$(git rev-parse HEAD)" | bash .agents/skills/deskcomm-contribuir/scripts/hooks/pre-push origin x 2>&1)"; code=$?
