@@ -23,6 +23,8 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   calendário do cliente, que continua usando o campo próprio de observação, e a
   anotação segue interna ao CRM.
 
+  Contribuição de @hiro-nikaitou (#1803, issue #511).
+
 - **O aviso de caso não sai mais para um número que virou de uma conexão da própria conta** Uma conexão de WhatsApp arquivada deixou de contar como número da própria conta,
   para que o número dela pudesse voltar a receber os avisos. Mas arquivar não apaga
   a conexão: se ela for reativada depois, o número volta a ser atendido por um robô
@@ -54,7 +56,7 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   brinde, "me tira da lista de espera", que é paciente pedindo para ser chamado,
   deixou de bloquear.
 
-  Contribuição de @deskcommopp4s-cmd (#1607).
+  Contribuição de @deskcommopp4s-cmd (#1607, trazida no #1805).
 
 ## [1.56.0] — 2026-09-27
 
