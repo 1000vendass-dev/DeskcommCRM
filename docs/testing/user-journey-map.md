@@ -401,8 +401,9 @@ dos dois motores), `tests/unit/aviso-ao-lead.test.ts` (o texto) e
 `tests/unit/aviso-so-quando-a-ia-falou.test.ts` (as duas guardas do lado do CRM:
 sem fala prévia da IA na conversa o aviso não sai — numa instalação real, o
 sentimento disparou a passagem numa organização sem agente publicado e o cliente
-recebeu "já acionei o time" do nada —, e no máximo um aviso por conversa a cada
-24 h, contado no banco).
+recebeu "já acionei o time" do nada; a exceção é a passagem pedida por agente
+externo via MCP, cujas falas são gravadas como `system` —, e no máximo um aviso
+por conversa a cada 24 h, contado no banco, sem contar aviso `failed`).
 
 ---
 

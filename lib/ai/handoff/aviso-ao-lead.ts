@@ -51,6 +51,7 @@ import { carregarRosterDeAtendimento, podeAssumirAgora } from "@/lib/escalacao/a
 import type {
   DesfechoDoAvisoAoCliente,
   MotivoDoAviso as MotivoDoAvisoDaPassagem,
+  OrigemDaPassagem,
 } from "@/lib/escalacao/passagem";
 import type { QuemPodeAssumir } from "@/lib/escalacao/disponibilidade";
 import { logger } from "@/lib/logger";
@@ -69,7 +70,15 @@ export interface AvisoDoCrmInput {
   contactId: string;
   /** `conversations.last_handoff_reason` que está sendo gravado agora. */
   reason: string;
+  /**
+   * Por onde a passagem entrou. Só `mcp_externo` muda algo aqui: ver a exceção
+   * da guarda 1 em `avisarLeadDoCrm`.
+   */
+  origem?: OrigemDaPassagem;
 }
+
+/** Status de `messages` que significam "chegou ao cliente". */
+const STATUS_ENTREGUE = new Set(["sent", "delivered", "read"]);
 
 /**
  * O desfecho do aviso. É o MESMO tipo do outro emissor, por definição — ver
@@ -135,9 +144,18 @@ export async function avisarLeadDoCrm(
     // Leitura que falha não avisa (fail-closed, como o gate de elegibilidade do
     // orquestrador): mandar a frase para quem nunca falou com IA é o defeito que
     // estas guardas existem para impedir.
+    //
+    // EXCEÇÃO da guarda 1 — `origem: "mcp_externo"`. Um agente externo
+    // conectado por MCP com chave emitida pela tela (sem o escopo
+    // `actor:ai_agent`, decisão de 19/09) tem as falas gravadas como
+    // `sent_via='system'` (`origemDaMensagem` em `_handler.ts`), então a guarda
+    // não as enxerga. Mas foi ele quem declarou a passagem — houve atendimento
+    // automático — e o contrato de `crm_request_human_handoff` manda o agente
+    // NÃO avisar, porque o aviso é deste lado. Sem a exceção, o cliente ficaria
+    // sem aviso nenhum.
     const { data: falas, error: erroDasFalas } = await admin
       .from("messages")
-      .select("metadata, created_at")
+      .select("metadata, created_at, status")
       .eq("organization_id", input.organizationId)
       .eq("conversation_id", input.conversationId)
       .eq("direction", "outbound")
@@ -151,14 +169,38 @@ export async function avisarLeadDoCrm(
       });
       return { avisado: false, porque: "falas_da_ia_nao_lidas" };
     }
-    const linhas = (falas ?? []) as { metadata: Record<string, unknown> | null; created_at: string }[];
+    const linhas = (falas ?? []) as {
+      metadata: Record<string, unknown> | null;
+      created_at: string;
+      status: string | null;
+    }[];
     const iaJaFalou = linhas.some((m) => m.metadata?.aviso_de_escalacao !== true);
-    if (!iaJaFalou) return { avisado: false, porque: "ia_nunca_falou_nesta_conversa" };
+    if (!iaJaFalou && input.origem !== "mcp_externo") {
+      return { avisado: false, porque: "ia_nunca_falou_nesta_conversa" };
+    }
+    // Aviso `failed` não conta: ele nunca chegou (a linha nasce com o metadata
+    // ANTES do envio e vira `failed` em pre_go_live, canal arquivado, sem
+    // telefone ou recusa do transporte). Contá-lo seguraria por 24 h o aviso que
+    // o cliente ainda não recebeu. `queued`/`sending` contam: o
+    // `session-reconciler` reenvia o que está preso, e era isso que repetia.
     const corte = Date.now() - JANELA_DO_AVISO_MS;
-    const avisoRecente = linhas.some(
-      (m) => m.metadata?.aviso_de_escalacao === true && new Date(m.created_at).getTime() > corte,
+    const avisosRecentes = linhas.filter(
+      (m) =>
+        m.metadata?.aviso_de_escalacao === true &&
+        m.status !== "failed" &&
+        new Date(m.created_at).getTime() > corte,
     );
-    if (avisoRecente) return { avisado: false, porque: "aviso_ja_enviado_na_janela" };
+    // O desfecho de quem é barrado diz a verdade sobre o aviso que JÁ existe —
+    // senão a Central escreve "o cliente NÃO foi avisado (motivo desconhecido)"
+    // para quem foi avisado há minutos.
+    if (avisosRecentes.some((m) => STATUS_ENTREGUE.has(m.status ?? ""))) return { avisado: true };
+    if (avisosRecentes.length > 0) {
+      return {
+        avisado: false,
+        porque: "aviso_ja_enviado_na_janela",
+        motivoCodigo: "na_fila_canal_fora",
+      };
+    }
 
     // O aviso sai no idioma da ORGANIZAÇÃO (ver `textoDoAviso`). A leitura que
     // falha não pode derrubar o aviso: sem idioma, sai em português, como antes.

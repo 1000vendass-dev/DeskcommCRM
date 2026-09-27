@@ -41,7 +41,7 @@ import { avisarLeadDoCrm } from "@/lib/ai/handoff/aviso-ao-lead";
 const ORG = "11111111-1111-4111-8111-111111111111";
 const CONVERSA = "33333333-3333-4333-8333-333333333333";
 
-type Fala = { metadata: Record<string, unknown> | null; created_at: string };
+type Fala = { metadata: Record<string, unknown> | null; created_at: string; status: string };
 
 /** Os filtros que a leitura das falas aplicou, na ordem: `[coluna, valor]`. */
 let filtros: [string, unknown][] = [];
@@ -91,10 +91,11 @@ const ENTRADA = {
 
 const agora = () => new Date().toISOString();
 const horasAtras = (h: number) => new Date(Date.now() - h * 60 * 60 * 1000).toISOString();
-const falaDaIa = (created_at: string): Fala => ({ metadata: null, created_at });
-const aviso = (created_at: string): Fala => ({
+const falaDaIa = (created_at: string): Fala => ({ metadata: null, created_at, status: "sent" });
+const aviso = (created_at: string, status = "sent"): Fala => ({
   metadata: { aviso_de_escalacao: true, handoff_reason: "low_sentiment" },
   created_at,
+  status,
 });
 
 beforeEach(() => {
@@ -122,13 +123,48 @@ describe("guarda 1 — a IA precisa ter falado nesta conversa", () => {
     expect(r).toEqual({ avisado: true });
     expect(enviar).toHaveBeenCalledTimes(1);
   });
+
+  it("agente externo via MCP (falas gravadas como 'system'): a frase sai, uma vez", async () => {
+    // Chave emitida pela tela não tem `actor:ai_agent`: as falas do agente
+    // externo são `sent_via='system'` e a leitura não as vê. O contrato do
+    // `crm_request_human_handoff` manda o agente NÃO avisar — o aviso é daqui.
+    const r = await avisarLeadDoCrm(banco([]), { ...ENTRADA, origem: "mcp_externo" });
+    expect(r).toEqual({ avisado: true });
+    expect(enviar).toHaveBeenCalledTimes(1);
+  });
+
+  it("a exceção é SÓ do MCP externo: sentimento sem fala da IA continua calado", async () => {
+    const r = await avisarLeadDoCrm(banco([]), { ...ENTRADA, origem: "sentimento" });
+    expect(r).toEqual({ avisado: false, porque: "ia_nunca_falou_nesta_conversa" });
+    expect(enviar).not.toHaveBeenCalled();
+  });
 });
 
 describe("guarda 2 — um aviso por conversa a cada 24 h", () => {
-  it("fala real da IA com aviso recente: não repete", async () => {
-    const r = await avisarLeadDoCrm(banco([aviso(agora()), falaDaIa(agora())]), ENTRADA);
-    expect(r).toEqual({ avisado: false, porque: "aviso_ja_enviado_na_janela" });
+  it("aviso recente ENTREGUE: não repete, e o desfecho diz que o cliente foi avisado", async () => {
+    // Sem isto a Central escreveria "O cliente NÃO foi avisado (motivo
+    // desconhecido)" para quem recebeu o aviso há uma hora.
+    const r = await avisarLeadDoCrm(banco([aviso(horasAtras(1)), falaDaIa(horasAtras(2))]), ENTRADA);
+    expect(r).toEqual({ avisado: true });
     expect(enviar).not.toHaveBeenCalled();
+  });
+
+  it("aviso recente NA FILA (canal fora): não repete, e o desfecho diz que está na fila", async () => {
+    // `queued` é o que o session-reconciler reenvia — foi esse o mecanismo das
+    // quatro repetições do incidente.
+    const r = await avisarLeadDoCrm(banco([aviso(horasAtras(1), "queued"), falaDaIa(horasAtras(2))]), ENTRADA);
+    expect(r).toEqual({
+      avisado: false,
+      porque: "aviso_ja_enviado_na_janela",
+      motivoCodigo: "na_fila_canal_fora",
+    });
+    expect(enviar).not.toHaveBeenCalled();
+  });
+
+  it("aviso recente que FALHOU não conta: o cliente nunca o recebeu, a frase sai", async () => {
+    const r = await avisarLeadDoCrm(banco([aviso(horasAtras(1), "failed"), falaDaIa(horasAtras(2))]), ENTRADA);
+    expect(r).toEqual({ avisado: true });
+    expect(enviar).toHaveBeenCalledTimes(1);
   });
 
   it("aviso VELHO (25 h) não bloqueia o novo — a passagem honesta de amanhã avisa", async () => {
