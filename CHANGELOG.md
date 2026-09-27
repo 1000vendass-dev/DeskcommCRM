@@ -8,6 +8,74 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
 
 ## [Não lançado]
 
+## [1.56.0] — 2026-09-27
+
+### Adicionado
+
+- **Busca dentro da conversa, nas mensagens já carregadas** Na Inbox, o botão de lupa no cabeçalho da conversa abre um campo que procura um
+  termo nas mensagens que já estão na tela, sem diferenciar maiúsculas. As bolhas
+  que batem ganham um contorno, a primeira vai para o campo de visão e um contador
+  diz quantas foram achadas. A busca não consulta o servidor: mensagens mais
+  antigas só entram depois de "Carregar mais antigas", e o rótulo diz isso para
+  que "0" não seja lido como "não existe na conversa". Mensagens apagadas ou
+  ocultas ficam de fora. Esc ou o botão de fechar encerram a busca, e trocar de
+  conversa também.
+  Contribuição de @gustavorodcruz96 (extraída do #1793).
+
+- **Histórico e diagnóstico das conversões de anúncios** Em Configurações › Conversões, consulte envios por período, situação, plataforma, evento e negócio, com identificação da entrega e protocolo. O diagnóstico mostra ausência de configuração, falhas recentes e envios antigos; uma consulta indisponível aparece como erro, sem sugerir que está tudo funcionando.
+
+- **Conversões do Google Ads por etapa do funil, venda sem valor e telefone criptografado** Em Configurações › Conversões, cada etapa aberta do funil pode enviar a sua própria ação de conversão ao Google Ads quando um negócio entra nela, com nome, categoria e filtro de canal de entrada (todos, só WhatsApp ou só fora dele). O botão "Usar o recomendado" liga as etapas sugeridas, e "Criar no Google" cria a ação de importação de cliques direto na conta quando a instalação tem developer token do Google Ads. A qualificação de etapa única que já existia vira a primeira regra, com o mesmo nome de evento — nada já enviado é reenviado. A venda do negócio ganho pode sair sem valor (nunca como zero), conforme a opção "Valor do negócio"; o padrão continua exigindo valor. Opcionalmente, o telefone do contato vai junto em SHA-256 (E.164), nunca em claro.
+
+- **Links rastreáveis por campanha e instalação do script no site** Configurações › Conversões › Links rastreáveis permite criar, editar e desativar links de WhatsApp por campanha, copiar o script do site e verificar seu carregamento no navegador. A mensagem recebe um código que liga o clique ao contato quando o visitante a envia. A tela mostra cliques, contatos e negócios dos registros ainda retidos, sem apresentar isso como total histórico ou pessoas únicas. Se a gravação do clique falhar, o atendimento continua disponível, sem código de atribuição falso.
+
+### Alterado
+
+- **A checagem de permissão das rotas espera uma ida à rede a menos** Toda rota protegida por papel consultava primeiro o papel da pessoa no banco e,
+  só depois da resposta, perguntava ao serviço de login se a sessão devia a
+  verificação em duas etapas. As duas leituras agora saem juntas, e a espera
+  passa a ser a da mais lenta, não a soma das duas.
+
+  As respostas não mudam: quem não tem papel suficiente continua recebendo a
+  recusa por falta de papel, sem que a verificação em duas etapas seja olhada; e
+  uma falha ao ler a verificação continua impedindo o acesso quando ela seria
+  exigida. Nada fica guardado entre uma requisição e outra.
+
+  Contribuição de @gustavorodcruz96 (#1793).
+
+### Corrigido
+
+- **O número de uma conexão removida volta a poder receber os avisos** Ao remover uma conexão de WhatsApp, o número dela continuava sendo recusado como
+  destino do aviso de caso, com a mensagem "Esse é um dos números conectados da sua
+  conta". A verificação contava a conexão ARQUIVADA como se ela ainda estivesse
+  ativa — e, como a conexão que já teve um agente publicado não pode ser apagada, o
+  número ficava bloqueado para sempre. Agora a verificação considera apenas as
+  conexões ativas. O número de uma conexão em uso continua recusado, que é o que
+  evita um aviso respondendo ao outro sem parar.
+
+- **Host da Graph em `http` externo deixa de ser aceito em produção** `META_GRAPH_BASE_URL` e `META_ADS_GRAPH_BASE_URL` aceitavam `http://` em qualquer
+  ambiente. Em produção o token da Meta viaja no cabeçalho de toda chamada, e um
+  endereço externo em `http` o mandaria em texto claro por todo o caminho.
+
+  Agora, em produção, `http://` só passa para destino que não sai da máquina:
+  loopback (`127.0.0.0/8`, `::1`), faixas privadas (RFC 1918), ULA e link-local do
+  IPv6, `localhost` e nome de serviço sem ponto. Fora daí o valor cai no host real,
+  com o mesmo aviso de antes. Fora de produção nada mudou, e o receptor local da
+  prova em tela continua aceito — é para isso que ele existe.
+
+- **A verificação em duas etapas não é dispensada quando a leitura dos fatores falha** Quando o serviço de login não responde no momento de conferir se a conta tem a verificação em duas etapas, a ação agora é recusada em vez de seguir como se a conta não tivesse o fator. Basta tentar de novo quando o serviço voltar.
+
+- **Levar o negócio para outro funil passa a respeitar os campos exigidos pela etapa de destino** O funil pode declarar que entrar numa etapa exige um campo preenchido, e essa
+  régua já valia no arrasto, no lote, no botão de ganhar/perder e nas ferramentas
+  do assistente. A tela "Levar para outro funil" era o caminho que faltava: o
+  negócio era criado no funil de destino — inclusive numa etapa exigente — com o
+  campo em branco, e a exigência só aparecia na próxima escrita, quando o negócio
+  já estava lá.
+
+  Agora a troca de funil pergunta a mesma régua antes de escrever, e o campo que
+  o negócio novo já traz da origem passa normalmente. Quem não declara etapa
+  exigente nenhuma não vê diferença: a recusa só existe onde a exigência já
+  estava ligada.
+
 ## [1.55.0] — 2026-09-27
 
 ### Adicionado
@@ -8710,7 +8778,8 @@ Primeira versão marcada do DeskcommCRM. O projeto vinha sendo desenvolvido publ
 
 - **Node 22 é obrigatório para desenvolvimento.** A suíte de invariantes instancia o cliente do Supabase, que exige o `WebSocket` global — nativo apenas a partir do Node 22. Isso não afeta quem apenas hospeda: a VPS roda a imagem pronta.
 
-[Não lançado]: https://github.com/melgarafael/DeskcommCRM/compare/v1.55.0...HEAD
+[Não lançado]: https://github.com/melgarafael/DeskcommCRM/compare/v1.56.0...HEAD
+[1.56.0]: https://github.com/melgarafael/DeskcommCRM/compare/v1.55.0...v1.56.0
 [1.55.0]: https://github.com/melgarafael/DeskcommCRM/compare/v1.54.0...v1.55.0
 [1.54.0]: https://github.com/melgarafael/DeskcommCRM/compare/v1.53.0...v1.54.0
 [1.53.0]: https://github.com/melgarafael/DeskcommCRM/compare/v1.52.0...v1.53.0
