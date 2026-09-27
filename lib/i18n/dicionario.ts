@@ -4605,6 +4605,13 @@ export const DICIONARIO: Traducoes = {
   },
   "Quando alguém comparecer ao compromisso": { es: "Cuando alguien asista a la cita" },
   "Quando alguém faltar ao compromisso": { es: "Cuando alguien falte a la cita" },
+  "Quando um horário for marcado": { es: "Cuando se agende una cita" },
+  "Quando um horário pendente for confirmado": { es: "Cuando se confirme una cita pendiente" },
+  "Quando um horário for remarcado": { es: "Cuando se reagende una cita" },
+  "Quando um horário for cancelado": { es: "Cuando se cancele una cita" },
+  "No aniversário de um contato": { es: "En el cumpleaños de un contacto" },
+  "Quando faltarem N dias para uma data do funil": { es: "Cuando falten N días para una fecha del embudo" },
+  "Iniciar fluxo de mensagem": { es: "Iniciar flujo de mensaje" },
   Sucesso: { es: "Éxito" },
   "Aguardando envio": { es: "Esperando envío" },
   "Essa ação não funcionou.": { es: "Esta acción no funcionó." },
@@ -6913,6 +6920,7 @@ export const DICIONARIO: Traducoes = {
 
   // ─── Onboarding: invite-team — ROTULO_DO_PAPEL (lib/auth/types.ts) ───
   "Somente leitura": { es: "Solo lectura" },
+  "Assistente com autonomia de operação": { es: "Asistente con autonomía de operación" },
   "Gerente": { es: "Gerente" },
   "Administrador": { es: "Administrador" },
 
@@ -8400,6 +8408,7 @@ export const DICIONARIO: Traducoes = {
   "demandas abertas sem próximo passo": { es: "casos abiertos sin siguiente paso" },
   "Ninguém marcou o que acontece a seguir. Cada uma é alguém esperando sem que nada esteja combinado.": { es: "Nadie definió qué sigue. Cada caso es alguien esperando sin que haya nada acordado." },
   "aberta há": { es: "abierto hace" },
+  "informativo": { es: "informativo" },
   "crítico": { es: "crítico" },
   "em risco": { es: "en riesgo" },
   "em voo": { es: "en seguimiento" },
