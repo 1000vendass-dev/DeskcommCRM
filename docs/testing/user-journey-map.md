@@ -3022,7 +3022,7 @@ o CI só publica artefato em falha). Medido no run 36309605444, parte 3, head
 
 | # | Caso | Expectativa | Resultado |
 |---|------|-------------|-----------|
-| J34.1 | A lupa é a primeira da barra de ações | `aria-expanded="false"` e na primeira fileira da barra (1280px, medido por `getBoundingClientRect`) | PASS — a lupa não acrescenta fileira: 2 com ela e 2 sem ela (contrafactual `display:none`); a barra já quebrava em 2 nesse estado (Arquivar desce) |
+| J34.1 | A lupa não faz a barra de ações quebrar | `aria-expanded="false"`; fileiras da barra com a lupa = sem ela (1280px, `getBoundingClientRect`, filhos sem caixa fora da conta) | PASS — a lupa não acrescenta fileira: 2 com ela e 2 sem ela (contrafactual `display:none`); a barra já quebrava em 2 nesse estado (Arquivar desce) |
 | J34.2 | Clicar abre o campo com o foco | `searchbox` "Buscar nas mensagens carregadas" focado | PASS |
 | J34.3 | Termo em 2 de 4 mensagens (uma em maiúsculas) | contador "Resultados nas mensagens carregadas: 2"; as 2 bolhas com o anel no `box-shadow` COMPUTADO (`0 0 0 4px`, cor ≠ fundo), uma enviada e uma recebida; as outras 2 sem anel | PASS — anel `rgb(28, 26, 22) 0 0 0 4px` sobre recebida `rgb(245, 243, 238)` e enviada `rgb(80, 109, 72)`; sem anel nas outras |
 | J34.4 | Esc fecha | campo, contador e marcas somem; o foco volta à lupa | PASS |
