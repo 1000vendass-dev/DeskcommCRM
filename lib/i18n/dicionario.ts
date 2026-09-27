@@ -12744,6 +12744,18 @@ export const DICIONARIO: Traducoes = {
   "Quando ficar N dias sem mensagem": { es: "Cuando pasen N días sin mensaje" },
   "Quando um lead ficar N dias na mesma etapa": { es: "Cuando un lead lleve N días en la misma etapa" },
   "Criar tarefa interna (sem mensagem ao cliente)": { es: "Crear tarea interna (sin mensaje al cliente)" },
+  "A tarefa não foi criada: o evento que disparou a regra não trouxe um lead nem um contato para pendurar nela.": {
+    es: "La tarea no se creó: el evento que disparó la regla no trajo un lead ni un contacto donde colgarla.",
+  },
+  "A tarefa não foi criada: a pessoa escolhida como responsável não ficou resolvida para esta tarefa. Escolha outro responsável na automação.": {
+    es: "La tarea no se creó: la persona elegida como responsable no quedó resuelta para esta tarea. Elija otro responsable en la automatización.",
+  },
+  "A tarefa não foi criada: o título ficou vazio depois de preencher os campos do texto. Escreva um título que não dependa só de dado que faltou.": {
+    es: "La tarea no se creó: el título quedó vacío después de completar los campos del texto. Escriba un título que no dependa solo de un dato que faltó.",
+  },
+  "A tarefa não foi criada: o banco recusou a gravação. Tente de novo em alguns minutos; se persistir, abra a tarefa na agenda para ver o detalhe.": {
+    es: "La tarea no se creó: la base de datos rechazó el registro. Inténtelo de nuevo en unos minutos; si persiste, abra la tarea en la agenda para ver el detalle.",
+  },
 
   // ─── PREVISÃO PONDERADA DO FUNIL (issue #1535) ───
   "Previsão": { es: "Previsión" },

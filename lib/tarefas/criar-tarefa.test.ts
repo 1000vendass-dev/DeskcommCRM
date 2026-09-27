@@ -22,10 +22,19 @@ describe("interpolarTitulo", () => {
     ).toBe("Ligar para Ana Souza sobre Renovação do contrato");
   });
 
-  it("prefere display_name (o rótulo da tela) e cai para name", () => {
+  it("prefere name (o nome de cadastro) e cai para display_name (o pushName)", () => {
+    // A ordem não é minha: é a de `nomeDoContato`, a mesma que o resto do
+    // produto usa, e inverter aqui seria inverter em todo lugar.
     expect(
       interpolarTitulo("Ligar para {{contact.name}}", {
-        contact: { id: "c1", name: "Ana", display_name: "Ana (Jurídico)" },
+        contact: { id: "c1", name: "Ana Souza", display_name: "Ana (Jurídico)" },
+      }),
+    ).toBe("Ligar para Ana Souza");
+    // Sem nome de cadastro, sobra o `display_name` — nunca o identificador
+    // técnico, que `nomeDoContato` descarta.
+    expect(
+      interpolarTitulo("Ligar para {{contact.name}}", {
+        contact: { id: "c1", name: "", display_name: "Ana (Jurídico)" },
       }),
     ).toBe("Ligar para Ana (Jurídico)");
     expect(

@@ -70,9 +70,12 @@ type ContatoDoPedido = {
 /**
  * Os placeholders que o título entende, na forma em que o operador os escreve.
  *
- * `{{contact.name}}` prefere `display_name` (o rótulo que a tela mostra) e cai
- * para `name` — mesma cadeia do resto do produto, para o título não mostrar o
- * identificador técnico de WhatsApp no meio do nome.
+ * `{{contact.name}}` segue a MESMA cadeia do resto do produto
+ * (`nomeDoContato`): `name` primeiro, e `display_name` só quando o nome de
+ * cadastro está vazio ou é identificador técnico — para o título não mostrar
+ * o identificador técnico de WhatsApp no meio do nome. Inverter essa ordem
+ * aqui seria inverter em todo o produto (a ressalva está escrita em
+ * `lib/contacts/rotulo-do-contato.ts`, que é de onde esta função puxa o nome).
  *
  * Placeholder sem dado NÃO é apagado: `{{lead.title}}` vazio viraria título em
  * branco (o CHECK `crm_tasks_titulo_nao_vazio` recusaria a linha sem dizer
