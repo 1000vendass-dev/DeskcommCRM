@@ -236,7 +236,7 @@ export function LinksRastreaveis({
           <Label htmlFor="link-use">{t("Onde será usado")}</Label>
           <select
             id="link-use"
-            className="w-full rounded border p-2"
+            className="w-full rounded-md border bg-background p-2"
             value={form.use_case}
             onChange={(e) =>
               setForm({ ...form, use_case: e.target.value as LinkInput["use_case"] })
