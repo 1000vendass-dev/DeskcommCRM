@@ -21,11 +21,15 @@
  *    organização; o canal oficial é da instalação. Um knob único seria um
  *    botão que muda o destino de duas contas diferentes ao mesmo tempo.
  *
- * O portão de validação é o MESMO do canal, pelas mesmas três medidas: base
- * absoluta `http`/`https`, barra final aparada, e recusa que fecha na ação (host
- * real) e abre no log. Ver `lib/channels/meta/graph-base.ts` para a justificativa
- * de cada regra — aqui ela é replicada, não importada, pela fronteira.
+ * O portão de validação é o MESMO do canal, pelas mesmas quatro medidas: base
+ * absoluta `http`/`https`, barra final aparada, recusa que fecha na ação (host
+ * real) e abre no log, e `http` em produção só para destino interno — o token
+ * deste eixo viaja no mesmo cabeçalho, e a variável é de operador. Ver
+ * `lib/channels/meta/graph-base.ts` para a justificativa de cada regra — aqui ela
+ * é replicada, não importada, pela fronteira.
  */
+import { isIPv4, isIPv6 } from "node:net";
+
 import { VERSAO_PADRAO_DA_GRAPH } from "@/lib/graph-version";
 
 /** O host real da Meta para o eixo de anúncio. */
@@ -67,7 +71,72 @@ export function hostAceito(valor: string | undefined): string | null {
   }
   if (url.protocol !== "http:" && url.protocol !== "https:") return null;
   if (!url.hostname) return null;
+  // Em produção o `http` só passa para destino que não sai da máquina.
+  if (url.protocol === "http:" && !httpAceito(url.hostname)) return null;
   return `${url.protocol}//${url.host}${url.pathname.replace(/\/+$/, "")}`;
+}
+
+/**
+ * O `http` deste host pode passar? Só em produção a pergunta é restritiva, e a
+ * resposta é "sim" apenas para destino que não sai da máquina.
+ */
+function httpAceito(hostname: string): boolean {
+  return process.env.NODE_ENV !== "production" || hostInterno(hostname);
+}
+
+/** Faixas IPv4 que não saem da máquina: as três privadas e o loopback. */
+const FAIXAS_INTERNAS: ReadonlyArray<readonly [number, number]> = [
+  [0x0a000000, 0xff000000],
+  [0x7f000000, 0xff000000],
+  [0xac100000, 0xfff00000],
+  [0xc0a80000, 0xffff0000],
+];
+
+/** O IPv4 está numa das faixas internas, comparado por máscara. */
+function ipv4Interno(ip: string): boolean {
+  const alvo = ip.split(".").reduce((total, octeto) => (total << 8) + Number(octeto), 0) >>> 0;
+  return FAIXAS_INTERNAS.some(([faixa, mascara]) => ((alvo & mascara) >>> 0) === faixa);
+}
+
+/**
+ * O IPv6 é interno? São três formas: loopback e o endereço não especificado, o
+ * link-local (`fe80::/10`) e o ULA (`fc00::/7`). A quarta é o IPv4 embutido
+ * (`::ffff:`), que o `new URL` normaliza para hexadecimal — `::ffff:127.0.0.1`
+ * chega como `::ffff:7f00:1`, e é o mesmo endereço.
+ */
+function ipv6Interno(ip: string): boolean {
+  const normalizado = ip.toLowerCase();
+  if (normalizado === "::" || normalizado === "::1") return true;
+  if (/^fe[89ab]/.test(normalizado)) return true;
+  if (/^f[cd]/.test(normalizado)) return true;
+  const embutido = /^::ffff:(.+)$/.exec(normalizado)?.[1];
+  if (!embutido) return false;
+  if (isIPv4(embutido)) return ipv4Interno(embutido);
+  const grupos = /^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(embutido);
+  if (!grupos) return false;
+  const alto = parseInt(grupos[1]!, 16);
+  const baixo = parseInt(grupos[2]!, 16);
+  return ipv4Interno(`${alto >> 8}.${alto & 255}.${baixo >> 8}.${baixo & 255}`);
+}
+
+/**
+ * O host aponta para dentro da máquina?
+ *
+ * O `URL` já normalizou o literal antes de chegar aqui (`127.1` e `0x7f.0.0.1`
+ * viram `127.0.0.1`), mas ele mantém os colchetes do IPv6 — e o `isIPv6` do Node
+ * não os aceita, então eles saem antes da pergunta.
+ *
+ * Nome sem ponto nenhum é interno por construção: é assim que `app` e `waha` se
+ * enxergam na rede do Docker. Um domínio público sempre tem pelo menos um ponto,
+ * e é por isso que a checagem é "tem ponto?", não uma lista de nomes.
+ */
+function hostInterno(hostname: string): boolean {
+  const semRaiz = hostname.replace(/\.$/, "").toLowerCase();
+  const literal = semRaiz.startsWith("[") && semRaiz.endsWith("]") ? semRaiz.slice(1, -1) : semRaiz;
+  if (isIPv4(literal)) return ipv4Interno(literal);
+  if (isIPv6(literal)) return ipv6Interno(literal);
+  if (semRaiz === "localhost" || semRaiz.endsWith(".localhost")) return true;
+  return !semRaiz.includes(".");
 }
 
 function recusa(valor: string): string {
