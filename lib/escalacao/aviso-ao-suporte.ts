@@ -469,8 +469,9 @@ export async function aplicaAvisoDeCaso(
   //
   // Por isso a pergunta é repetida AQUI, no envio: é a única hora em que se sabe
   // que a conexão está ativa AGORA, e é um lugar só para todos os caminhos de
-  // volta (canal oficial, pareamento do onboarding, `finish` do WAHA) em vez de
-  // uma guarda por caminho — a próxima forma de reativar nasceria sem ela.
+  // volta (canal oficial, pareamento do onboarding, conclusão do pareamento
+  // por QR) em vez de uma guarda por caminho — a próxima forma de reativar
+  // nasceria sem ela.
   if (await deps.db.destinoEhDaPropriaOrganizacao(orgId, cfg.telefone_destino)) {
     return await condena(
       deps,
