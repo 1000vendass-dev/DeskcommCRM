@@ -2,7 +2,7 @@
 
 > Branch `feat/conversa-vira-lead`, empilhada sobre `feat/tres-papeis-do-agente` (spec 16, PR #181).
 > Worktree `/Users/rafaelmelgaco/DeskcommCRM-tres-papeis`. Spec:
-> [`docs/specs/17-spec-conversa-vira-lead.md`](docs/specs/17-spec-conversa-vira-lead.md).
+> [`docs/specs/17-spec-conversa-vira-lead.md`](../../docs/specs/17-spec-conversa-vira-lead.md).
 > Antecessor: [`HANDOFF-tres-papeis.md`](HANDOFF-tres-papeis.md) — as regras de trabalho ao final
 > daquele arquivo continuam valendo aqui.
 
