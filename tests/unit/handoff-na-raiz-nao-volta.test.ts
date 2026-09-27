@@ -10,9 +10,8 @@
  * convenção citava 3 dos 12. O custo não foi a desorganização: foi que
  * **a raiz é o diretório que o mundo lê primeiro**. Arquivo de épico encerrado
  * na raiz vira documentação de produto sem revisão, e quatro deles carregavam
- * identificador de produção: JID de conversa, UUID de organização, e-mail de
- * pessoa física, referência de projeto Supabase e IP de VPS. Repositório é
- * público, `git` não esquece, e "está no histórico" não é resposta.
+ * identificador de produção. Repositório é público, e o valor não pode viajar
+ * com o arquivo.
  *
  * ## Por que um gate e não um item de doutrina
  *
@@ -162,11 +161,11 @@ const PERMITIDOS: Record<string, string> = {
   "docs/handoffs/HANDOFF-canais-oficial.md":
     "PRÉ-EXISTENTE: `@c.us` com DDD e número de exemplo, citado como esperado de spec unitária. A heurística de rótulo NÃO o classifica como etiqueta (o número é varied), e é exatamente por isso que ele precisa de nome: fixture é exceção declarada, não deduzida.",
   "docs/handoffs/HANDOFF-crm-vivo.md":
-    "PRÉ-EXISTENTE: duas referências de projeto Supabase de cliente, em texto de épico que já morava nesta pasta. Fora do escopo deste PR.",
+    "PRÉ-EXISTENTE a este PR; tratamento com o mantenedor em canal privado (#638).",
   "docs/handoffs/HANDOFF-inbox-multimodal.md":
-    "PRÉ-EXISTENTE: LID de conversa de produção em texto de prova, e um registro de credencial de terceiro já sinalizado como risco de segurança no próprio arquivo. Morava nesta pasta antes deste PR; a parte de privacidade é do mantenedor, em canal privado.",
+    "PRÉ-EXISTENTE a este PR; tratamento com o mantenedor em canal privado (#638).",
   "docs/handoffs/HANDOFF-wave1-devvivo.md":
-    "PRÉ-EXISTENTE: UUID de organização de dev dentro de caminho de screenshot em máquina local. Fora do escopo deste PR.",
+    "PRÉ-EXISTENTE a este PR; tratamento com o mantenedor em canal privado (#638).",
 };
 
 const handoffsVersionados = versionados(`${PASTA}/HANDOFF*.md`);
@@ -251,11 +250,11 @@ describe("HANDOFF fora da raiz e sem identificador de produção (#638)", () => 
     // próximo `HANDOFF` chegar com telefone de novo.
     const AMOSTRA: { classe: Classe; rotulo: string; casando: string }[] = [
       { classe: "conversa", rotulo: "JID de conversa", casando: "5531988887777@s.whatsapp.net" },
-      { classe: "conversa", rotulo: "JID lid", casando: "70192801575156@lid" },
+      { classe: "conversa", rotulo: "JID lid", casando: "83729164502817@lid" },
       { classe: "telefone", rotulo: "celular BR", casando: "(11) 98888-7777" },
-      { classe: "org", rotulo: "UUID v4", casando: "b7e4f713-9a2c-4d1e-8f30-6a1b2c3d4e5f" },
+      { classe: "org", rotulo: "UUID v4", casando: "3f9c2a71-5b8e-4d06-9e1a-7c4b2d8f6a13" },
       { classe: "email", rotulo: "e-mail de pessoa", casando: "pessoa@dominio-real.com.br" },
-      { classe: "infra", rotulo: "projeto Supabase", casando: "`xiysdkvcvnqbzkknwdzd`" },
+      { classe: "infra", rotulo: "projeto Supabase", casando: "`qmzvtrkplwhxnbyfgdsc`" },
     ];
 
     const mutas: string[] = [];
@@ -263,8 +262,9 @@ describe("HANDOFF fora da raiz e sem identificador de produção (#638)", () => 
       const regra = REGRAS.find((r) => r.classe === classe)!;
       regra.rx.lastIndex = 0;
       const casou = regra.rx.test(casando);
-      // A amostra é feita de números reais, não de rótulo: é o caminho que o
-      // guarda tem de reprovar, então ele precisa continuar existindo.
+      // A amostra tem a FORMA de produção e valor inventado: nenhum destes
+      // números existe fora deste arquivo. Não é rótulo (passa pela heurística
+      // como dado), e é esse o caminho que o guarda tem de reprovar.
       const aceito = casou && (!EXIGEM_ROTULO.includes(classe) || !ehRotuloSintetico(casando));
       if (!aceito) mutas.push(`${rotulo} (exemplo: ${casando.replace(/[^@\s]/g, "#")})`);
     }
