@@ -68,6 +68,9 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
   }
 
   const supabase = await createClient();
+  // Estreitados aqui: dentro de `pagar()` o TypeScript não carrega o `if` de cima.
+  const orgId = authz.org.orgId;
+  const corpo = lido.data;
 
   /**
    * O efeito. Lança `Recusa` quando a função recusa: o helper de idempotência
@@ -76,10 +79,10 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
    */
   async function pagar(): Promise<ParcelaPaga> {
     const { data, error } = await supabase.rpc("fn_honorarios_parcela_pagar", {
-      p_org: authz.org.orgId,
+      p_org: orgId,
       p_parcela: parcelaId,
-      p_account_id: lido.data.account_id,
-      p_account_plan_id: lido.data.account_plan_id ?? null,
+      p_account_id: corpo.account_id,
+      p_account_plan_id: corpo.account_plan_id ?? null,
     });
     if (error) throw new Recusa(respostaDaRecusa(error, requestId));
 
@@ -105,10 +108,10 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
     // parcela: a mesma chave numa parcela diferente é conflito, não replay.
     const desfecho = await comIdempotencia({
       db: supabase,
-      organizationId: authz.org.orgId,
+      organizationId: orgId,
       endpoint: ENDPOINT,
       chave,
-      corpo: { parcela_id: parcelaId, ...lido.data },
+      corpo: { parcela_id: parcelaId, ...corpo },
       executar: async () => ({ resposta: await pagar(), status: 200 }),
     });
     if (desfecho.tipo === "conflito") {
