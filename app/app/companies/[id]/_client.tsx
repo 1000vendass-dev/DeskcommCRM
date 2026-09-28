@@ -120,7 +120,7 @@ export function CompanyDetailClient({ id }: Props) {
           ) : (
             <ul className="grid gap-2 sm:grid-cols-2 text-sm">
               {data.contacts.map((ct) => (
-                <li key={ct.id as string} className="rounded border px-3 py-2">
+                <li key={ct.id as string} className="rounded-md border px-3 py-2">
                   <Link href={`/app/contacts/${ct.id}`} className="font-mono hover:underline">
                     {(ct.phone_number as string) || "—"}
                   </Link>
