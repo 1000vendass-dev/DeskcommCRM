@@ -23,10 +23,14 @@ import { requireRole } from "@/lib/auth/require-role";
  * Mockar a busca seria medir o mock.
  */
 
-vi.mock("@/lib/ai/embed", () => ({
+vi.mock("@/lib/ai/embed", async (original) => ({
+  // A classe de erro é a REAL: a rota decide o 409 por `instanceof`.
+  ...(await original<typeof import("@/lib/ai/embed")>()),
   embedText: vi.fn(async () => ({ embedding: new Array(1536).fill(0.1) })),
 }));
-vi.mock("@/lib/audit", () => ({ audit: vi.fn(async () => undefined) }));
+vi.mock("@/lib/ai/dispatcher/rate-limit", () => ({
+  checkRateLimit: vi.fn(async (_chave: string, limit: number) => ({ allowed: true, count: 1, limit })),
+}));
 vi.mock("@/lib/auth/require-role", () => ({ requireRole: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn() }));
@@ -88,6 +92,8 @@ function resultadoDe(corpo: unknown) {
 }
 
 import { POST } from "./route";
+import { checkRateLimit } from "@/lib/ai/dispatcher/rate-limit";
+import { SemChaveDeEmbeddingError } from "@/lib/ai/embed";
 import { createClient } from "@/lib/supabase/server";
 
 beforeEach(() => {
@@ -173,6 +179,41 @@ describe("perguntar ao acervo", () => {
     vi.mocked(createClient).mockResolvedValue(supabaseFalso({ linhas: [] }) as never);
     await resultadoDe({ pergunta: "oi tudo bem?", quantidade: -5 });
     expect(vi.mocked(embedText)).toHaveBeenCalledTimes(2);
+  });
+
+  it("recusa pergunta de mais de 1000 caracteres antes de gastar embedding", async () => {
+    vi.mocked(createClient).mockResolvedValue(supabaseFalso() as never);
+    const res = await resultadoDe({ pergunta: "x".repeat(1001) });
+    expect(res.status).toBe(422);
+    const { embedText } = await import("@/lib/ai/embed");
+    expect(vi.mocked(embedText)).not.toHaveBeenCalled();
+  });
+
+  it("recusa agentId que não é uuid com 422, e não com 500 sem envelope", async () => {
+    vi.mocked(createClient).mockResolvedValue(supabaseFalso() as never);
+    const res = await resultadoDe({ pergunta: "qual o horario", agentId: "abc" });
+    expect(res.status).toBe(422);
+  });
+
+  it("devolve 429 quando o limite por minuto estoura, sem gastar embedding", async () => {
+    // Cada pergunta gasta um embedding pago na chave do self-hoster.
+    vi.mocked(checkRateLimit).mockResolvedValueOnce({ allowed: false, count: 13, limit: 12 } as never);
+    vi.mocked(createClient).mockResolvedValue(supabaseFalso() as never);
+    const res = await resultadoDe({ pergunta: "qual o horario" });
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toBe("60");
+    const { embedText } = await import("@/lib/ai/embed");
+    expect(vi.mocked(embedText)).not.toHaveBeenCalled();
+  });
+
+  it("organização sem chave de embedding recebe 409 com o que fazer, não 500", async () => {
+    const { embedText } = await import("@/lib/ai/embed");
+    vi.mocked(embedText).mockRejectedValueOnce(new SemChaveDeEmbeddingError(ORG_DA_SESSAO));
+    vi.mocked(createClient).mockResolvedValue(supabaseFalso() as never);
+    const res = await resultadoDe({ pergunta: "qual o horario" });
+    expect(res.status).toBe(409);
+    const corpo = (await res.json()) as { error: { message: string } };
+    expect(corpo.error.message).toContain("Credenciais");
   });
 
   it("recusa pergunta de 1 caractere antes de gastar embedding", async () => {

@@ -9694,7 +9694,12 @@ export const DICIONARIO: Traducoes = {
   "Pergunte ao acervo…": { es: "Pregunta al acervo…" },
   "Perguntar ao acervo": { es: "Preguntar al acervo" },
   "Buscando…": { es: "Buscando…" },
-  "Parecimento com a pergunta": { es: "Parecido con la pregunta" },
+  "Semelhança com a pergunta": { es: "Similitud con la pregunta" },
+  // Evolução (#1877): a busca da equipe tem série própria, fora dos números do agente.
+  "Consultas da equipe ao acervo": { es: "Consultas del equipo al acervo" },
+  "Quantas vezes alguém da equipe perguntou ao acervo pela caixa ao lado da conversa. Não entra nos números do agente.": { es: "Cuántas veces alguien del equipo le preguntó al acervo desde el cuadro junto a la conversación. No entra en los números del agente." },
+  "Ninguém da equipe consultou o acervo pela conversa neste período.": { es: "Nadie del equipo consultó el acervo desde la conversación en este período." },
+  "Esta organização ainda não tem chave de embedding. Cadastre uma chave OpenAI ou OpenRouter em Credenciais para consultar o acervo.": { es: "Esta organización todavía no tiene clave de embeddings. Registra una clave de OpenAI u OpenRouter en Credenciales para consultar el acervo." },
   "Materiais consultados": { es: "Materiales consultados" },
   "limiar": { es: "umbral" },
   "A mesma busca que a IA faz — com a mesma origem de cada trecho.": { es: "La misma búsqueda que hace la IA, con el origen de cada fragmento." },
@@ -9705,7 +9710,6 @@ export const DICIONARIO: Traducoes = {
   "Este acervo ainda não tem material publicado.": { es: "Este acervo todavía no tiene material publicado." },
   "A base não tem essa informação.": { es: "La base no tiene esa información." },
   "Há algo parecido no acervo, mas ainda abaixo do limiar — tente outras palavras.": { es: "Hay algo parecido en el acervo, pero todavía bajo el umbral: prueba con otras palabras." },
-  "Digite pelo menos 2 caracteres.": { es: "Escribe al menos 2 caracteres." },
   // ─── Acervo: a listagem (app/app/ai/knowledge/sources/_client.tsx) ───
   //
   // Este arquivo escapou das DUAS varreduras do merge: não é arquivo NOVO (a

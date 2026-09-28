@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/types";
 
 /**
  * "Perguntar ao acervo" — o operador faz na tela a MESMA pergunta que a IA faria.
@@ -62,10 +63,15 @@ export function AcervoSearch() {
         pergunta: pergunta.trim(),
       });
       setResultado(res.data);
-    } catch {
-      // Sem motivo detalhado na tela: o erro já vem tratado do apiClient e
-      // mostrar HTML/stack para o atendente só polui — mas NÃO ficamos em silêncio.
-      setErro(t("Não consegui consultar o acervo."));
+    } catch (e) {
+      // 409 (sem chave de embedding) e 429 (limite por minuto) trazem uma frase
+      // que diz o que fazer, já traduzida pela rota. O resto fica genérico:
+      // mostrar stack para o atendente só polui — mas NÃO ficamos em silêncio.
+      setErro(
+        e instanceof ApiError && (e.status === 409 || e.status === 429) && e.message
+          ? e.message
+          : t("Não consegui consultar o acervo."),
+      );
       setResultado(null);
     } finally {
       setCarregando(false);
@@ -131,7 +137,7 @@ export function AcervoSearch() {
                     )}
                     <span
                       className="shrink-0 text-muted-foreground"
-                      title={t("Parecimento com a pergunta")}
+                      title={t("Semelhança com a pergunta")}
                     >
                       {percentual(tr.similarity)}
                     </span>

@@ -1,11 +1,14 @@
 import { randomUUID } from "node:crypto";
 import type { NextRequest } from "next/server";
+import { z } from "zod";
 
 import { ok, fail } from "@/lib/api/wrappers";
-import { audit } from "@/lib/audit";
+import { checkRateLimit } from "@/lib/ai/dispatcher/rate-limit";
+import { SemChaveDeEmbeddingError } from "@/lib/ai/embed";
 import { requireRole } from "@/lib/auth/require-role";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import {
+  KNOWLEDGE_SEARCH_AUTHOR_KINDS,
   LIMIAR_PADRAO_BUSCA,
   buscarConhecimento,
   resolverAcervoDoAgente,
@@ -37,11 +40,23 @@ export const dynamic = "force-dynamic";
 const QUANTIDADE_PADRAO = 6;
 const QUANTIDADE_MAXIMA = 10;
 
-type Corpo = {
-  pergunta?: unknown;
-  agentId?: unknown;
-  quantidade?: unknown;
-};
+/**
+ * Cada pergunta gasta um embedding pago na chave do self-hoster. Mesmo padrão
+ * da conversa do caso (`ai/cases/[id]/chat`): teto por PESSOA e por
+ * ORGANIZAÇÃO — "12 por pessoa" com 20 pessoas seria 240 chamadas por minuto.
+ */
+const TETO_POR_USUARIO = 12;
+const TETO_POR_ORGANIZACAO = 60;
+const JANELA_SEGUNDOS = 60;
+
+const corpoDaBusca = z.object({
+  // `max` antes de gastar embedding: sem ele, um texto de megabytes vira
+  // tokens pagos numa única chamada.
+  pergunta: z.string().trim().min(2).max(1000),
+  agentId: z.string().uuid().nullish(),
+  // Tolerante de propósito: fora da faixa é aparado, não recusado (ver `numero`).
+  quantidade: z.unknown().optional(),
+});
 
 /** Converte o corpo sem confiar em tipo algum — qualquer coisa fora vira o default. */
 function numero(v: unknown, padrao: number, min: number, max: number): number {
@@ -67,69 +82,94 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (!authz.ok) return authz.response;
   const t = (texto: string) => traduzir(texto, authz.user.idioma);
 
-  let corpo: Corpo;
+  let bruto: unknown;
   try {
-    corpo = (await req.json()) as Corpo;
+    bruto = await req.json();
   } catch {
     return fail("unprocessable", t("Corpo inválido."), 422, { requestId });
   }
-
-  const pergunta = typeof corpo.pergunta === "string" ? corpo.pergunta.trim() : "";
-  if (pergunta.length < 2) {
-    return fail("unprocessable", t("Digite pelo menos 2 caracteres."), 422, { requestId });
+  const parsed = corpoDaBusca.safeParse(bruto);
+  if (!parsed.success) {
+    return fail("unprocessable", t("Corpo inválido."), 422, {
+      requestId,
+      details: parsed.error.flatten(),
+    });
   }
+  const { pergunta } = parsed.data;
 
   const organizationId = authz.org.orgId;
-  const supabase = await createClient();
-
-  const agentId = typeof corpo.agentId === "string" && corpo.agentId ? corpo.agentId : null;
-  const quantidade = numero(corpo.quantidade, QUANTIDADE_PADRAO, 1, QUANTIDADE_MAXIMA);
-
-  let knowledgeSourceIds: string[];
-  let limiar = LIMIAR_PADRAO_BUSCA;
-
-  if (agentId) {
-    // Escopo do agente: mesmo acervo e MESMO limiar que a IA usaria para responder.
-    knowledgeSourceIds = await resolverAcervoDoAgente(supabase, organizationId, agentId);
-    const { data: agente } = await supabase
-      .from("ai_agents")
-      .select("config")
-      .eq("id", agentId)
-      .eq("organization_id", organizationId)
-      .maybeSingle();
-    const cfg = agente?.config as { rag_similarity_threshold?: unknown } | null;
-    if (typeof cfg?.rag_similarity_threshold === "number") {
-      limiar = cfg.rag_similarity_threshold;
-    }
-  } else {
-    // Acervo da organização inteira — a biblioteca é da org; a escolha por
-    // assistente é do AGENTE, não do operador que está apenas perguntando.
-    const { data: fontes, error } = await supabase
-      .from("ai_knowledge_sources")
-      .select("id")
-      .eq("organization_id", organizationId)
-      .eq("is_active", true);
-    if (error) {
-      return fail("internal_error", t("Não foi possível ler o acervo."), 500, { requestId });
-    }
-    knowledgeSourceIds = (fontes ?? []).map((f) => f.id as string);
-  }
-
-  if (knowledgeSourceIds.length === 0) {
-    // Acervo vazio NÃO é "sem resultado": é acervo errado ou recém-criado.
-    // Dizer "nada encontrado" aqui seria mentir e soaria como defeito.
-    return ok(
-      {
-        trechos: [],
-        melhorSimilaridade: null,
-        motivo: t("Este acervo ainda não tem material publicado."),
-        acervo: { fontes: 0, limiar },
+  const porUsuario = await checkRateLimit(
+    `acervo-busca:${authz.user.id}`,
+    TETO_POR_USUARIO,
+    JANELA_SEGUNDOS,
+  );
+  const porOrganizacao = await checkRateLimit(
+    `acervo-busca-org:${organizationId}`,
+    TETO_POR_ORGANIZACAO,
+    JANELA_SEGUNDOS,
+  );
+  if (!porUsuario.allowed || !porOrganizacao.allowed) {
+    return fail("rate_limited", t("Muitas perguntas seguidas. Tente em um minuto."), 429, {
+      requestId,
+      headers: {
+        "Retry-After": String(JANELA_SEGUNDOS),
+        "X-RateLimit-Limit": String(porUsuario.limit),
+        "X-RateLimit-Remaining": String(Math.max(0, porUsuario.limit - porUsuario.count)),
       },
-      { requestId },
-    );
+    });
   }
+
+  const supabase = await createClient();
+  const agentId = parsed.data.agentId ?? null;
+  const quantidade = numero(parsed.data.quantidade, QUANTIDADE_PADRAO, 1, QUANTIDADE_MAXIMA);
 
   try {
+    let knowledgeSourceIds: string[];
+    let limiar = LIMIAR_PADRAO_BUSCA;
+
+    if (agentId) {
+      // Escopo do agente: mesmo acervo e MESMO limiar que a IA usaria para responder.
+      knowledgeSourceIds = await resolverAcervoDoAgente(supabase, organizationId, agentId);
+      const { data: agente } = await supabase
+        .from("ai_agents")
+        .select("config")
+        .eq("id", agentId)
+        .eq("organization_id", organizationId)
+        .maybeSingle();
+      const cfg = agente?.config as { rag_similarity_threshold?: unknown } | null;
+      // Mesma faixa que `agent-config.ts` aceita; fora dela o turno usa o padrão.
+      const lido = cfg?.rag_similarity_threshold;
+      if (typeof lido === "number" && lido >= 0 && lido <= 1) {
+        limiar = lido;
+      }
+    } else {
+      // Acervo da organização inteira — a biblioteca é da org; a escolha por
+      // assistente é do AGENTE, não do operador que está apenas perguntando.
+      const { data: fontes, error } = await supabase
+        .from("ai_knowledge_sources")
+        .select("id")
+        .eq("organization_id", organizationId)
+        .eq("is_active", true);
+      if (error) {
+        return fail("internal_error", t("Não foi possível ler o acervo."), 500, { requestId });
+      }
+      knowledgeSourceIds = (fontes ?? []).map((f) => f.id as string);
+    }
+
+    if (knowledgeSourceIds.length === 0) {
+      // Acervo vazio NÃO é "sem resultado": é acervo errado ou recém-criado.
+      // Dizer "nada encontrado" aqui seria mentir e soaria como defeito.
+      return ok(
+        {
+          trechos: [],
+          melhorSimilaridade: null,
+          motivo: t("Este acervo ainda não tem material publicado."),
+          acervo: { fontes: 0, limiar },
+        },
+        { requestId },
+      );
+    }
+
     const resultado = await buscarConhecimento(supabase, {
       organizationId,
       knowledgeSourceIds,
@@ -147,26 +187,6 @@ export async function POST(req: NextRequest): Promise<Response> {
         ? t("A base não tem essa informação.")
         : t("Há algo parecido no acervo, mas ainda abaixo do limiar — tente outras palavras.")
       : null;
-
-    void audit({
-      action: "ai.knowledge_searched",
-      actorUserId: authz.user.id,
-      organizationId,
-      resourceType: "knowledge_source",
-      // Uma busca atravessa VÁRIAS fontes — não existe "a" linha que seja o
-      // recurso desta ação, então `null` é o valor honesto (é o que o gate
-      // `audit-resource-id-e-uuid` recomenda, e o que outras 6 rotas fazem).
-      // `knowledgeSourceIds[0]` seria pior: pegaria a primeira fonte como se
-      // fosse ela a consultada. Os detalhes vivem no metadata.
-      resourceId: null,
-      requestId,
-      metadata: {
-        fontes: knowledgeSourceIds.length,
-        encontros: resultado.trechos.length,
-        melhor_similaridade: melhor,
-        escopo: agentId ? "agente" : "organizacao",
-      },
-    });
 
     // (função logo abaixo, fora do handler — ela nunca pode derrubar a busca)
     void registrarBuscaHumana(supabase, {
@@ -189,6 +209,17 @@ export async function POST(req: NextRequest): Promise<Response> {
       { requestId },
     );
   } catch (e) {
+    if (e instanceof SemChaveDeEmbeddingError) {
+      // Estado da organização, não acidente: a tela diz o que fazer.
+      return fail(
+        e.code,
+        t(
+          "Esta organização ainda não tem chave de embedding. Cadastre uma chave OpenAI ou OpenRouter em Credenciais para consultar o acervo.",
+        ),
+        409,
+        { requestId },
+      );
+    }
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[ai-knowledge-busca] falhou:", msg);
     return fail("internal_error", t("Não foi possível consultar o acervo."), 500, { requestId });
@@ -237,10 +268,9 @@ async function registrarBuscaHumana(
       threshold: p.threshold,
       knowledge_source_ids: p.fontes,
       // Guarda o ACERVO consultado, não "quem perguntou": com author_kind='human'
-      // a dupla lê "operador perguntou sobre o acervo do assistente X", que é o
-      // que o audit() chama de `escopo`.
+      // a dupla lê "operador perguntou sobre o acervo do assistente X".
       agent_id: p.agentId,
-      author_kind: "human",
+      author_kind: KNOWLEDGE_SEARCH_AUTHOR_KINDS[0],
       author_user_id: p.userId,
     });
     if (error) console.warn("[ai-knowledge-busca] telemetria não gravada:", error.message);
