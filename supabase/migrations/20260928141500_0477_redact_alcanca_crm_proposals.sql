@@ -21,6 +21,14 @@
 -- `template_slug_sugerido` NÃO entra: é o slug de um MODELO da plataforma ou
 -- da empresa, nunca dado do contato.
 --
+-- O ARQUIVO também (conserto da triagem do #1832): o PDF enviado
+-- (`propostas/<org>/<proposta>.pdf`) tem o nome impresso, e redigir só as
+-- colunas deixava o documento inteiro no Storage. Todo `pdf_path` do contato
+-- entra em `storage_redaction_queue` com o bucket `propostas` (o passo 7 só
+-- enfileira `whatsapp-media`), e `pdf_path`, `rendered_snapshot` e
+-- `secoes_editadas` — o texto do documento — saem da linha.
+-- Gate: tests/invariants/proposta-anonimizar-expurga-o-pdf.test.ts.
+--
 -- ⚠️ O corpo abaixo é o da ÚLTIMA definição de `fn_lgpd_cascade_redact_contact`
 -- (baseline.sql), copiado por inteiro — reescrever de uma versão antiga
 -- apagaria em silêncio os passos que as entregas seguintes acrescentaram
@@ -180,10 +188,30 @@ begin
   -- 6b. crm_proposals (migration 0477, #1504) — PRESERVA número, valores,
   -- itens, datas e status; redige só o que identifica a PESSOA. Ver o
   -- cabeçalho desta migration para o porquê de cada coluna.
+  -- O PDF que o cliente recebeu (bucket `propostas`, `<org>/<proposta>.pdf`)
+  -- tem o nome dele impresso: redigir as colunas e deixar o arquivo seria
+  -- anonimizar a linha e manter o documento. Vai para a mesma fila de expurgo
+  -- da mídia (passo 7), com o bucket CERTO — a mensagem que levou o PDF
+  -- aponta para o mesmo caminho, mas o passo 7 só enfileira `whatsapp-media`.
+  -- Lido ANTES do update abaixo, que zera `pdf_path`.
+  insert into storage_redaction_queue (organization_id, request_id, bucket, object_path)
+  select p_organization_id, p_request_id, 'propostas', pdf_path
+    from crm_proposals
+   where organization_id = p_organization_id
+     and contact_id = p_contact_id
+     and pdf_path is not null and length(pdf_path) > 0
+     -- só arquivo DESTA organização: o expurgo nunca alcança o PDF de outra
+     and pdf_path like p_organization_id::text || '/%'
+  on conflict (bucket, object_path) do nothing;
   update crm_proposals set
     destinatario_nome = v_anon_label,
     briefing_json = '{}'::jsonb,
     resumo_comercial = null,
+    -- o texto do documento como foi montado e como foi editado à mão: é o
+    -- conteúdo do PDF, com o mesmo nome dentro.
+    rendered_snapshot = null,
+    secoes_editadas = null,
+    pdf_path = null,
     updated_at = now()
   where organization_id = p_organization_id
     and contact_id = p_contact_id;

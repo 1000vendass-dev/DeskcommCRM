@@ -2,12 +2,14 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { requireRole } from "@/lib/auth/require-role";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { sePropostasDesligadas } from "@/lib/propostas/porta";
 
 vi.mock("@/lib/propostas/porta", () => ({ sePropostasDesligadas: vi.fn(async () => null) }));
 vi.mock("@/lib/auth/require-role", () => ({ requireRole: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
+vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ audit: vi.fn(async () => undefined) }));
 // Isola o handler do gate de suporte (autoridade própria testada em
 // lib/impersonate/support.test.ts) — nenhum teste aqui exercita acompanhamento.
@@ -148,14 +150,6 @@ function montarMundoDeProposta(opts: MundoOpts = {}) {
             };
             return cadeia;
           },
-          delete: () => ({
-            eq: () => ({
-              eq: async (_campo: string, id: string) => {
-                propostasExcluidas.push(id);
-                return { error: null };
-              },
-            }),
-          }),
         };
       }
       if (tabela === "catalog_products") {
@@ -218,6 +212,25 @@ function montarMundoDeProposta(opts: MundoOpts = {}) {
     },
   };
   vi.mocked(createClient).mockResolvedValue(supabase as never);
+  // A compensação do item que falhou apaga pelo servidor (a RLS da 0464 não
+  // deixa `agent` apagar proposta).
+  // Sem `delete` no cliente da sessão acima: se a rota voltar a apagar por
+  // ele, o teste quebra em vez de passar pelo banco falso.
+  vi.mocked(createAdminClient).mockReturnValue({
+    from: (tabela: string) => {
+      if (tabela !== "crm_proposals") throw new Error(`admin: tabela inesperada ${tabela}`);
+      return {
+        delete: () => ({
+          eq: () => ({
+            eq: async (_campo: string, id: string) => {
+              propostasExcluidas.push(id);
+              return { error: null };
+            },
+          }),
+        }),
+      };
+    },
+  } as never);
 
   return {
     leadId: LEAD_ID,

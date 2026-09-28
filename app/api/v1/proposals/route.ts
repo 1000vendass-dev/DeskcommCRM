@@ -16,6 +16,7 @@ import { resolverItensDaProposta } from "@/lib/propostas/itens";
 import { moedaDaOrganizacao } from "@/lib/catalogo/moeda-da-org";
 import { resolverPadroesDaProposta } from "@/lib/propostas/padroes-da-organizacao";
 import { propostaCreateSchema } from "@/lib/schemas/propostas";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { fusoDaOrganizacao, somarDiasNoFuso } from "@/lib/propostas/data-no-fuso";
@@ -175,7 +176,11 @@ export async function POST(req: NextRequest): Promise<Response> {
       // rascunho vazio ainda ocupa a trava de "um rascunho por negócio"
       // (§5.3), bloqueando toda tentativa nova para o mesmo lead atrás de um
       // erro que nem sequer apareceu na tela.
-      await supabase.from("crm_proposals").delete().eq("organization_id", authz.org.orgId).eq("id", proposta.id);
+      // Pelo servidor, e não pela sessão: a RLS não deixa `agent` apagar
+      // proposta (descartar é de `manager`, e enviada ninguém apaga — 0464).
+      // Seguro com service role porque o alvo é a linha que ESTA requisição
+      // acabou de criar, na organização da sessão.
+      await createAdminClient().from("crm_proposals").delete().eq("organization_id", authz.org.orgId).eq("id", proposta.id);
       return fail("internal_error", t("Falha ao gravar os itens."), 500, { requestId });
     }
   }

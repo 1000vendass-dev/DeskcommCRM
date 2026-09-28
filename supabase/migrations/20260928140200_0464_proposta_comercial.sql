@@ -122,12 +122,18 @@ revoke execute on function public.fn_verificar_org_do_item_da_proposta() from pu
 alter table public.crm_proposals enable row level security;
 alter table public.crm_proposal_items enable row level security;
 
--- Leitura: qualquer papel da organização. Escrita do RASCUNHO: `agent` monta
--- e deixa pronto (spec §16, decisão 2). O ENVIO exige `manager`/`admin`, mas
--- isso é gate DE ROTA (Tarefa 14), não de RLS — a RLS não distingue "criar
--- rascunho" de "marcar enviada" dentro de um UPDATE genérico.
+-- Leitura: qualquer papel da organização. A escrita espelha as ROTAS, por
+-- operação — o PostgREST é porta tão aberta quanto elas (o JWT da sessão fala
+-- com ele direto; ver 0150):
+--   INSERT  `agent`, e só rascunho (POST /proposals);
+--   UPDATE  `agent`, em rascunho (editar) ou enviada (decidir) — a TRANSIÇÃO
+--           é conferida pelo gatilho `trg_crm_proposals_transicao_da_sessao`,
+--           porque policy permissiva não vê o `old` e casaria o USING de uma
+--           com o CHECK de outra;
+--   DELETE  `manager`, e só rascunho — enviada é documento, ninguém apaga.
+-- Enviar, numerar e revisar são do servidor (service_role), nunca da sessão.
 -- SELECT tem o bypass de suporte da plataforma (molde de catalog_products);
--- WRITE não tem, de propósito — só gestor/agent da própria org edita.
+-- a escrita não tem, de propósito.
 drop policy if exists crm_proposals_select on public.crm_proposals;
 create policy crm_proposals_select on public.crm_proposals
   for select using (
@@ -135,12 +141,80 @@ create policy crm_proposals_select on public.crm_proposals
   );
 
 drop policy if exists crm_proposals_write on public.crm_proposals;
-create policy crm_proposals_write on public.crm_proposals
-  for all
+drop policy if exists crm_proposals_insert on public.crm_proposals;
+create policy crm_proposals_insert on public.crm_proposals
+  for insert
+  with check (organization_id in (select public.fn_user_org_ids())
+              and public.fn_role_at_least(organization_id, 'agent')
+              and status = 'rascunho');
+
+drop policy if exists crm_proposals_update on public.crm_proposals;
+create policy crm_proposals_update on public.crm_proposals
+  for update
   using (organization_id in (select public.fn_user_org_ids())
-         and public.fn_role_at_least(organization_id, 'agent'))
+         and public.fn_role_at_least(organization_id, 'agent')
+         and status in ('rascunho', 'enviada'))
   with check (organization_id in (select public.fn_user_org_ids())
               and public.fn_role_at_least(organization_id, 'agent'));
+
+drop policy if exists crm_proposals_delete on public.crm_proposals;
+create policy crm_proposals_delete on public.crm_proposals
+  for delete
+  using (organization_id in (select public.fn_user_org_ids())
+         and public.fn_role_at_least(organization_id, 'manager')
+         and status = 'rascunho');
+
+-- A sessão (PostgREST, papel `authenticated`) só faz o que uma rota faz. O
+-- servidor (`service_role`) e as funções `security definer` não passam por
+-- aqui: `current_user` delas não é o da sessão. INVOKER de propósito, como
+-- `fn_meet_stamp`.
+create or replace function public.fn_crm_proposals_transicao_da_sessao()
+returns trigger language plpgsql set search_path = public, pg_temp as $$
+declare
+  -- o que só o ENVIO escreve (numeração, arquivo, mensagem, retorno)
+  v_envio constant text[] := array['numero', 'ano', 'versao', 'substitui_id', 'sent_at',
+    'sent_by_user_id', 'pdf_path', 'message_id', 'retorno_id', 'template_snapshot', 'rendered_snapshot'];
+  -- o que decidir e descartar mudam
+  v_decisao constant text[] := array['status', 'decided_at', 'decided_by_user_id',
+    'decision_reason', 'updated_at'];
+  v_new jsonb := to_jsonb(new);
+  v_old jsonb;
+begin
+  if current_user not in ('authenticated', 'anon') then
+    return new;
+  end if;
+  if tg_op = 'INSERT' then
+    if exists (select 1 from unnest(v_envio) k where k <> 'versao' and v_new -> k <> 'null'::jsonb)
+       or coalesce(v_new ->> 'versao', '1') <> '1' then
+      raise exception 'proposta_envio_e_do_servidor' using errcode = '42501';
+    end if;
+    return new;
+  end if;
+  v_old := to_jsonb(old);
+  if old.status = 'rascunho' and new.status = 'rascunho' then
+    -- editar o rascunho: o conteúdo muda, o que é do envio não
+    if exists (select 1 from unnest(v_envio) k where v_new -> k is distinct from v_old -> k) then
+      raise exception 'proposta_envio_e_do_servidor' using errcode = '42501';
+    end if;
+  elsif (old.status = 'enviada' and new.status in ('aceita', 'recusada'))
+     or (old.status = 'rascunho' and new.status = 'cancelada'
+         and public.fn_role_at_least(new.organization_id, 'manager')) then
+    -- decidir (agent) ou descartar (manager): só a decisão muda
+    if (v_new - v_decisao) is distinct from (v_old - v_decisao) then
+      raise exception 'proposta_transicao_negada' using errcode = '42501';
+    end if;
+  else
+    raise exception 'proposta_transicao_negada' using errcode = '42501';
+  end if;
+  return new;
+end;
+$$;
+revoke execute on function public.fn_crm_proposals_transicao_da_sessao() from public, anon;
+
+drop trigger if exists trg_crm_proposals_transicao_da_sessao on public.crm_proposals;
+create trigger trg_crm_proposals_transicao_da_sessao
+  before insert or update on public.crm_proposals
+  for each row execute function public.fn_crm_proposals_transicao_da_sessao();
 
 -- organization_id direto na linha (não mais join com crm_proposals): mais
 -- simples, mais rápido, e é o que a trava de suporte (0274) precisa medir.
@@ -150,13 +224,24 @@ create policy crm_proposal_items_select on public.crm_proposal_items
     (organization_id in (select public.fn_user_org_ids())) or public.fn_is_platform_admin()
   );
 
+-- Item só se escreve em RASCUNHO (POST/PATCH/assistente, todos `agent`): o
+-- item de uma proposta enviada é o que o cliente recebeu, e a v2 é clonada
+-- pelo servidor. O `delete` do rascunho leva os itens pela FK, sem RLS.
 drop policy if exists crm_proposal_items_write on public.crm_proposal_items;
 create policy crm_proposal_items_write on public.crm_proposal_items
   for all
   using (organization_id in (select public.fn_user_org_ids())
-         and public.fn_role_at_least(organization_id, 'agent'))
+         and public.fn_role_at_least(organization_id, 'agent')
+         and exists (select 1 from public.crm_proposals p
+                      where p.id = crm_proposal_items.proposal_id
+                        and p.organization_id = crm_proposal_items.organization_id
+                        and p.status = 'rascunho'))
   with check (organization_id in (select public.fn_user_org_ids())
-              and public.fn_role_at_least(organization_id, 'agent'));
+              and public.fn_role_at_least(organization_id, 'agent')
+              and exists (select 1 from public.crm_proposals p
+                           where p.id = crm_proposal_items.proposal_id
+                             and p.organization_id = crm_proposal_items.organization_id
+                             and p.status = 'rascunho'));
 
 revoke all on public.crm_proposals from anon;
 revoke all on public.crm_proposal_items from anon;

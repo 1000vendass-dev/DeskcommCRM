@@ -196,6 +196,12 @@ export interface ProposalRow {
   decided_at: string | null;
   destinatario_nome: string | null;
   resumo_comercial: string | null;
+  /**
+   * Houve um PDF gerado e enviado. O ARQUIVO não vai no pacote — mesma regra
+   * de `has_media` das mensagens: o titular o recebeu no WhatsApp, e a
+   * anonimização o expurga do Storage (0477). O caminho interno não sai.
+   */
+  tem_pdf: boolean;
   created_at: string;
 }
 
@@ -1045,7 +1051,7 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
     const { data, error } = await admin
       .from("crm_proposals")
       .select(
-        "id, numero, ano, titulo, status, total_cents, moeda, valid_until, sent_at, decided_at, destinatario_nome, resumo_comercial, created_at",
+        "id, numero, ano, titulo, status, total_cents, moeda, valid_until, sent_at, decided_at, destinatario_nome, resumo_comercial, pdf_path, created_at",
       )
       .eq("organization_id", organizationId)
       .eq("contact_id", contactId)
@@ -1057,7 +1063,7 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
         error: error.message,
       });
     } else if (data) {
-      proposals = data;
+      proposals = data.map(({ pdf_path, ...p }) => ({ ...p, tem_pdf: Boolean(pdf_path) }));
     }
   }
 
