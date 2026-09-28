@@ -1,4 +1,4 @@
--- 20260928003000_0446_proposta_comercial.sql
+-- 20260928003000_0464_proposta_comercial.sql
 --
 -- A organização emite para um contato, com itens, valor e prazo, cujo desfecho volta para o funil. Ver
 -- docs/superpowers/specs/2026-09-16-proposta-comercial-design.md.
@@ -241,12 +241,6 @@ alter table public.agent_inbox_items
     'conhecimento_nao_indexado', 'voice_call_missed', 'case_stale', 'aviso_de_caso_nao_entregue',
     'followup_sem_agente', 'canal_mudo_sem_numero', 'proposal_expired_notice',
     'proposal_acceptance_rate_drop', 'proposal_promised_not_created',
-    -- Vocabulário do funil que existe fora desta onda: o `lead_field_proposed`
-    -- veio na 0268; `passos_esgotados` e `laco_de_retorno_caiu` são as duas
-    -- contagens do laço de retorno da organização. Listados aqui para esta
-    -- reconstrução da constraint não encolher o vocabulário que já está em
-    -- produção.
-    'lead_field_proposed', 'passos_esgotados', 'laco_de_retorno_caiu',
     'other'
   ));
 

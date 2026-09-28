@@ -1,4 +1,4 @@
--- 20260928013000_0456_ia_sugere_modelo_da_proposta.sql
+-- 20260928013000_0474_ia_sugere_modelo_da_proposta.sql
 -- 0474 — a IA sugere um modelo de proposta, uma pessoa confirma (decisão do
 -- dono, 25/09/2026). `template_slug_sugerido` é ESTADO PROVISÓRIO: nunca
 -- entra na constraint `crm_proposals_template_slug_versao_juntos_check`,

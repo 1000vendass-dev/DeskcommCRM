@@ -1,4 +1,4 @@
--- 20260928004000_0447_a_proposta_nao_aponta_para_outra_organizacao.sql
+-- 20260928004000_0465_a_proposta_nao_aponta_para_outra_organizacao.sql
 --
 -- Uma proposta não aponta para negócio, contato ou conversa de OUTRA
 -- organização. A RLS de `crm_proposals` só confere o `organization_id` da

@@ -1,4 +1,4 @@
--- 20260928011000_0454_m1_briefing_e_revisao.sql
+-- 20260928011000_0472_m1_briefing_e_revisao.sql
 -- M1 (onda de modelos, §5.2 da spec de 21/09) — rascunho confiável.
 -- Cinco colunas novas em crm_proposals, todas nullable e sem CHECK fechado
 -- (nenhuma tem vocabulário fechado na spec):
