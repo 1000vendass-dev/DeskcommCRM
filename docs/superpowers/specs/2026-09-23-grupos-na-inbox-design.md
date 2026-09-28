@@ -172,7 +172,7 @@ criado para isso:
 4. "parar" no grupo não bloqueia nada, e a IA não responde;
 5. desligar o grupo faz as mensagens novas pararem de entrar.
 
-Evidência em `.superpowers/evidence/`.
+Evidência em `evidence/`.
 
 **Fora desta versão:** histórico anterior ao ligar; lista de atendentes por grupo (a
 saída 2, que mexe em `fn_can_view_conversation`); moderação, membros e criar ou sair de

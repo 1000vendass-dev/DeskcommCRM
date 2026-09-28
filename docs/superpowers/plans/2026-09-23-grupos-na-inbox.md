@@ -1992,7 +1992,7 @@ git commit -m "docs(grupos): doutrina de grupos na inbox e nota de versão"
 Com o ambiente local no ar (`docker compose -f docker-compose.local.yml --env-file .env.local up -d --build`), o número **de teste** conectado e **um grupo de teste criado para isso**, com um segundo celular dentro. Nunca um grupo de clientes reais.
 
 **Files:**
-- Create: `.superpowers/evidence/grupos-na-inbox/2026-09-23/*.png`
+- Create: `evidence/grupos-na-inbox/2026-09-23/*.png`
 - Modify: `docs/testing/user-journey-map.md` (casos e resultado)
 
 - [ ] **Step 1: Ligar o grupo** em Conexões › Grupos, pelo navegador, logado como admin. Captura: a lista com o grupo de teste ligado e o aviso de volume.
@@ -2009,7 +2009,7 @@ Expected: `whatsapp_group|f`; só `message.group_received` para as mensagens do 
 - [ ] **Step 6: Registrar** em `docs/testing/user-journey-map.md` uma jornada "Grupos na inbox" com os 5 casos e o resultado, e commitar as evidências:
 
 ```bash
-git add .superpowers/evidence/grupos-na-inbox docs/testing/user-journey-map.md
+git add evidence/grupos-na-inbox docs/testing/user-journey-map.md
 git commit -m "test(grupos): prova na tela da jornada de grupos na inbox"
 ```
 
