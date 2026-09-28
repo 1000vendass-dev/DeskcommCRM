@@ -51,7 +51,7 @@ export interface CascadeArgs {
  * apontar para o nada: a mesma falha de não ter anonimizado, um endereço mais
  * para a direita. Quem chama decide o bucket; quem purga só enxerga o par.
  *
- * `upsert` em `onConflict: "bucket,object_path"` que REABRE a linha — o mesmo
+ * O `upsert` REABRE a linha pelo par (bucket, object_path) — o mesmo
  * motivo do avatar: um pedido anterior deixa uma linha terminal, que nada
  * purga, e um `insert` bateria na unique.
  */

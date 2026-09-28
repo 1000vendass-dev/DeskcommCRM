@@ -24,9 +24,13 @@
  */
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { GOV_CONTACT_1, GOV_CONV_AGENT_B, GOV_ORG, columnExists, lastLine, seedGov, sql } from "./gov-helpers";
+import { GOV_CONTACT_1, GOV_CONV_UNASSIGNED, GOV_ORG, columnExists, lastLine, seedGov, sql } from "./gov-helpers";
 
-const CONVERSA = GOV_CONV_AGENT_B;
+// A conversa TEM de ser do CONTATO da cascata: `fn_lgpd_cascade_redact_contact`
+// percorre `conversation_id in (select id from conversations where contact_id = …)`,
+// e `GOV_CONV_AGENT_B` é do CONTACT_2 — medido: com ela a 6d não achava linha
+// nenhuma e os três casos de redação devolviam a nota intacta.
+const CONVERSA = GOV_CONV_UNASSIGNED;
 const CONTATO = GOV_CONTACT_1;
 const ORG = GOV_ORG;
 
@@ -68,8 +72,15 @@ beforeEach(() => {
     delete from storage_redaction_queue where organization_id = '${ORG}';
     delete from storage.objects where name like '${ORG}/%';
     delete from conversation_notes where organization_id = '${ORG}';
-    -- a cascata é irreversível em `contacts`; sem este reset o segundo caso
-    -- desta suíte encurtaria em `already_anonymized` e mediria nada.
+    -- O pedido de LGPD é o dono da linha da fila: storage_redaction_queue tem
+    -- FK para lgpd_requests, e a 6d enfileira sob o p_request_id que a
+    -- cascata recebe. Sem esta linha a RPC estoura em request_id_fkey —
+    -- medido, é o erro que os dois casos de redação devolviam.
+    insert into lgpd_requests (id, organization_id, request_type, source, scope, due_at)
+      values ('${PEDIDO}', '${ORG}', 'redact', 'manual', 'contact', now() + interval '15 days')
+      on conflict (id) do nothing;
+    -- a cascata é irreversível em contacts; sem este reset o segundo caso
+    -- desta suíte encurtaria em already_anonymized e mediria nada.
     update contacts set is_anonymized = false, anonymized_at = null
       where id = '${CONTATO}' and organization_id = '${ORG}';
   `);
@@ -83,8 +94,9 @@ describe("anexo da nota interna — colunas e bucket (0483)", () => {
   });
 
   it("o bucket internal-media existe, é privado e limita 50 MB", () => {
+    // `boolean::text` devolve 'false' (não 'f') — medido no Postgres do gate.
     expect(sql(`select public::text || '|' || file_size_limit from storage.buckets where id = 'internal-media';`)).toBe(
-      "f|52428800",
+      "false|52428800",
     );
   });
 
