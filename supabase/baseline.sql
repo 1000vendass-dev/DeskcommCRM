@@ -40025,7 +40025,7 @@ notify pgrst, 'reload schema';
 -- apêndice pelo mesmo motivo). O valor já está na lista, acima.
 
 -- ---- modelos de proposta da empresa (migration 0476) ----
--- Espelho idempotente de supabase/migrations/20260928015000_0476_modelos_de_proposta_da_empresa.sql
+-- Espelho idempotente de supabase/migrations/20260928141400_0476_modelos_de_proposta_da_empresa.sql
 alter table public.proposal_templates add column if not exists nome text;
 alter table public.proposal_templates add column if not exists descricao text;
 
@@ -40051,7 +40051,7 @@ create policy proposal_templates_write on public.proposal_templates
 --   `crm_leads.title`); briefing_json e resumo_comercial são redigidos
 --   por descreverem a PESSOA; `template_slug_sugerido` NÃO entra (slug
 --   de modelo).
--- Espelho de supabase/migrations/20260928016000_0477_redact_alcanca_crm_proposals.sql.
+-- Espelho de supabase/migrations/20260928141500_0477_redact_alcanca_crm_proposals.sql.
 CREATE OR REPLACE FUNCTION "public"."fn_lgpd_cascade_redact_contact"("p_organization_id" "uuid", "p_contact_id" "uuid", "p_request_id" "uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'extensions', 'pg_temp'
