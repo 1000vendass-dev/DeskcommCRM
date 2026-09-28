@@ -5,6 +5,8 @@ const state = vi.hoisted(() => ({
   credentials: [] as Array<Record<string, unknown>>,
   organizations: [] as Array<Record<string, unknown>>,
   versions: [] as Array<Record<string, unknown>>,
+  /** Tabelas cuja leitura devolve `error` — o supabase-js não lança. */
+  falhas: new Set<string>(),
   env: {
     AI_GATEWAY_API_KEY: "",
     AI_GATEWAY_BASE_URL: "",
@@ -50,8 +52,12 @@ vi.mock("@/lib/supabase/admin", () => ({
         },
         order: () => query,
         limit: () => query,
-        then: (ok: (v: { data: unknown; error: null }) => void) => ok({ data: achadas(), error: null }),
-        maybeSingle: async () => ({ data: achadas()[0] ?? null, error: null }),
+        then: (ok: (v: { data: unknown; error: unknown }) => void) =>
+          ok(state.falhas.has(table) ? { data: null, error: { message: "falha" } } : { data: achadas(), error: null }),
+        maybeSingle: async () =>
+          state.falhas.has(table)
+            ? { data: null, error: { message: "connection reset" } }
+            : { data: achadas()[0] ?? null, error: null },
       };
       return query;
     },
@@ -59,7 +65,12 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 
 import { embedText } from "@/lib/ai/embed";
-import { modeloDeEmbedding, resolverChaveDeEmbedding } from "@/lib/ai/embeddings/chave";
+import {
+  FamiliaDaBaseIlegivelError,
+  modeloDeEmbedding,
+  resolverChaveDeEmbedding,
+  temChaveDeEmbedding,
+} from "@/lib/ai/embeddings/chave";
 import { buscarConhecimento } from "@/lib/ai/knowledge/busca";
 
 function credential(overrides: Record<string, unknown>) {
@@ -83,6 +94,7 @@ beforeEach(() => {
   state.credentials = [];
   state.organizations = [];
   state.versions = [];
+  state.falhas = new Set();
   state.env.AI_GATEWAY_API_KEY = "";
   state.env.OPENAI_API_KEY = "";
   state.env.OPENROUTER_API_KEY = "";
@@ -372,5 +384,48 @@ describe("a família da base não muda porque uma credencial apareceu ou sumiu",
     const chave = await resolverChaveDeEmbedding("org-1", "embedding_indexar");
     expect(chave).toMatchObject({ provedor: "openai", origem: "credencial_da_organizacao" });
     expect(chave!.avisos).toHaveLength(1);
+  });
+
+  /**
+   * Leitura que falha NÃO é "sem família" (terceira revisão do #1864). Nos dois
+   * casos a escada inteira devolveria a credencial OpenAI (degrau 2) — e uma
+   * passada do indexador com ela ativaria uma versão da outra família.
+   */
+  it("a leitura de `organizations` falhou: nenhuma chave sai, nem a da outra família", async () => {
+    // Escolheu o Google e a base ainda não foi indexada: só a escolha diz a família.
+    state.credentials = [google(), openai()];
+    state.organizations = [{ id: "org-1", settings: { base_de_conhecimento: { familia: "google" } } }];
+    state.falhas.add("organizations");
+
+    for (const ponto of ["embedding_indexar", "embedding_consultar"] as const) {
+      await expect(resolverChaveDeEmbedding("org-1", ponto)).rejects.toBeInstanceOf(
+        FamiliaDaBaseIlegivelError,
+      );
+    }
+    await expect(
+      embedText("oi", { organizationId: "org-1", ponto: "embedding_consultar" }),
+    ).rejects.toBeInstanceOf(FamiliaDaBaseIlegivelError);
+  });
+
+  it("a leitura de `ai_knowledge_versions` falhou: nenhuma chave sai, nem a da outra família", async () => {
+    state.credentials = [google(), openai()];
+    indexou(modeloDeEmbedding("google"));
+    state.falhas.add("ai_knowledge_versions");
+
+    await expect(resolverChaveDeEmbedding("org-1", "embedding_indexar")).rejects.toBeInstanceOf(
+      FamiliaDaBaseIlegivelError,
+    );
+    // Controle: com a leitura de pé, a mesma organização segue no Google.
+    state.falhas.clear();
+    expect(await resolverChaveDeEmbedding("org-1", "embedding_indexar")).toMatchObject({
+      provedor: "google",
+    });
+  });
+
+  it("a resposta informativa do cadastro não quebra quando a família não pôde ser lida", async () => {
+    state.credentials = [google()];
+    state.falhas.add("organizations");
+
+    expect(await temChaveDeEmbedding("org-1")).toBe(true);
   });
 });

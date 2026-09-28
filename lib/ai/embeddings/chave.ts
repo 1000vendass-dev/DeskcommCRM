@@ -57,8 +57,14 @@
  *     escreve, e essa troca refaz a base;
  *  2. **o modelo com que a base FOI indexada** (`embedding_model` da versão
  *     ativa mais recente) — o que a organização já tem gravado sem ter escolhido;
- *  3. nenhuma: não há base ainda, e a escada inteira vale. A primeira indexação
- *     fixa a família pelo item 2.
+ *  3. nenhuma: as duas leituras DERAM CERTO e não há escolha nem base — só
+ *     então a escada inteira vale. A primeira indexação fixa a família pelo item 2.
+ *
+ * Leitura que FALHA não é "nenhuma": `familiaDaBase` lança
+ * `FamiliaDaBaseIlegivelError`. Tratar o erro como "sem família" recriava o
+ * defeito pela porta dos fundos: uma passada do indexador com o banco
+ * soluçando descia a escada, ativava uma versão com o modelo da OUTRA família,
+ * e essa versão — a mais recente — passava a decidir a família dali em diante.
  *
  * Com a família fixada, cadastrar ou remover credencial não a troca. Se a chave
  * dela sumir, a resposta é `null` — a tela diz qual família ficou sem chave
@@ -114,48 +120,54 @@ export interface FamiliaDaBase {
 }
 
 /**
- * A família com que a base desta organização é preparada, ou `null` quando
- * ainda não há base nem escolha (ver o cabeçalho). Leitura com o admin client e
+ * A leitura da família falhou. Quem AGE (indexar, consultar, trocar) falha
+ * FECHADO: sem a família, qualquer degrau da escada pode ser da outra.
+ */
+export class FamiliaDaBaseIlegivelError extends Error {
+  readonly code = "familia_da_base_ilegivel";
+  constructor(
+    readonly organizationId: string,
+    motivo: string,
+  ) {
+    super(`Não consegui ler com que provedor a base de conhecimento é preparada: ${motivo}`);
+    this.name = "FamiliaDaBaseIlegivelError";
+  }
+}
+
+/**
+ * A família com que a base desta organização é preparada, ou `null` quando as
+ * leituras deram certo e ainda não há base nem escolha (ver o cabeçalho). Lança
+ * `FamiliaDaBaseIlegivelError` quando uma leitura falha. Admin client com
  * filtro de organização programático.
  */
 export async function familiaDaBase(organizationId: string): Promise<FamiliaDaBase | null> {
-  try {
-    const admin = createAdminClient();
-    const { data: org } = await admin
-      .from("organizations")
-      .select("settings")
-      .eq("id", organizationId)
-      .maybeSingle();
-    const gravada = (org as { settings?: { base_de_conhecimento?: { familia?: unknown } } } | null)
-      ?.settings?.base_de_conhecimento?.familia;
-    if (gravada === "openai" || gravada === "google")
-      return { familia: gravada, origem: "escolha" };
+  const admin = createAdminClient();
+  const { data: org, error: erroDaOrg } = await admin
+    .from("organizations")
+    .select("settings")
+    .eq("id", organizationId)
+    .maybeSingle();
+  if (erroDaOrg) throw new FamiliaDaBaseIlegivelError(organizationId, erroDaOrg.message);
+  const gravada = (org as { settings?: { base_de_conhecimento?: { familia?: unknown } } } | null)
+    ?.settings?.base_de_conhecimento?.familia;
+  if (gravada === "openai" || gravada === "google") return { familia: gravada, origem: "escolha" };
 
-    const { data: versao } = await admin
-      .from("ai_knowledge_versions")
-      .select("embedding_model")
-      .eq("organization_id", organizationId)
-      .eq("is_active", true)
-      .not("embedding_model", "is", null)
-      .order("activated_at", { ascending: false, nullsFirst: false })
-      .limit(1)
-      .maybeSingle();
-    const modelo = (versao as { embedding_model?: unknown } | null)?.embedding_model;
-    if (typeof modelo !== "string") return null;
-    return {
-      familia: modelo === MODELO_DE_EMBEDDING_DO_GOOGLE ? "google" : "openai",
-      origem: "indice",
-    };
-  } catch (err) {
-    // ponytail: falha de leitura vira "sem família" (a escada inteira vale) em
-    // vez de derrubar a indexação; uma versão indexada com a família errada
-    // nesse intervalo é refeita na próxima passada, porque o modelo não bate.
-    logger.warn("[embedding] não consegui ler a família da base", {
-      organization_id: organizationId,
-      motivo: err instanceof Error ? err.message : String(err),
-    });
-    return null;
-  }
+  const { data: versao, error: erroDaVersao } = await admin
+    .from("ai_knowledge_versions")
+    .select("embedding_model")
+    .eq("organization_id", organizationId)
+    .eq("is_active", true)
+    .not("embedding_model", "is", null)
+    .order("activated_at", { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
+  if (erroDaVersao) throw new FamiliaDaBaseIlegivelError(organizationId, erroDaVersao.message);
+  const modelo = (versao as { embedding_model?: unknown } | null)?.embedding_model;
+  if (typeof modelo !== "string") return null;
+  return {
+    familia: modelo === MODELO_DE_EMBEDDING_DO_GOOGLE ? "google" : "openai",
+    origem: "indice",
+  };
 }
 
 const NOME_DA_FAMILIA: Record<ProvedorDaBase, string> = { openai: "OpenAI", google: "Google" };
@@ -198,6 +210,9 @@ export interface ChaveDeEmbedding {
  * `familia` restringe a escada a uma família: omitida, vale a da base
  * (`familiaDaBase`); `null`, nenhuma restrição. A tela e a troca a passam para
  * perguntar "a OUTRA família teria chave?" antes de oferecer o botão.
+ *
+ * Com `familia` omitida, propaga `FamiliaDaBaseIlegivelError`: é ação, e ação
+ * sem família não escolhe chave.
  */
 export async function resolverChaveDeEmbedding(
   organizationId: string,
@@ -336,7 +351,18 @@ export async function resolverChaveDeEmbedding(
  * cadastrado a chave pela tela.
  */
 export async function temChaveDeEmbedding(organizationId: string): Promise<boolean> {
-  return (await resolverChaveDeEmbedding(organizationId)) !== null;
+  try {
+    return (await resolverChaveDeEmbedding(organizationId)) !== null;
+  } catch (err) {
+    if (!(err instanceof FamiliaDaBaseIlegivelError)) throw err;
+    // Isto é INFORMAÇÃO (a resposta de quem acabou de cadastrar material), não
+    // ação: falha aberta, "há alguma chave?". Quem indexa é o worker, que falha
+    // fechado e tenta de novo.
+    return (
+      (await resolverChaveDeEmbedding(organizationId, "embedding_indexar", { familia: null })) !==
+      null
+    );
+  }
 }
 
 /** As credenciais da organização que sabem gerar embedding. */

@@ -32,7 +32,12 @@ import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
 
-import { familiaDaBase, provedorDaBase, resolverChaveDeEmbedding } from "@/lib/ai/embeddings/chave";
+import {
+  FamiliaDaBaseIlegivelError,
+  familiaDaBase,
+  provedorDaBase,
+  resolverChaveDeEmbedding,
+} from "@/lib/ai/embeddings/chave";
 import { enfileirarTodosOsMateriais } from "@/lib/ai/knowledge/reprepara-tudo";
 import { fail, ok } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
@@ -71,7 +76,19 @@ export async function PUT(req: NextRequest): Promise<Response> {
   }
   const { provedor } = parsed.data;
 
-  const familia = await familiaDaBase(org.orgId);
+  let familia: Awaited<ReturnType<typeof familiaDaBase>>;
+  try {
+    familia = await familiaDaBase(org.orgId);
+  } catch (err) {
+    if (!(err instanceof FamiliaDaBaseIlegivelError)) throw err;
+    // Sem saber de onde a base parte, a troca não decide nada nem grava nada.
+    return fail(
+      "upstream_unavailable",
+      t("Não consegui confirmar agora com que provedor a base é preparada. Tente de novo em instantes."),
+      503,
+      { requestId },
+    );
+  }
   const semFamilia = familia
     ? null
     : await resolverChaveDeEmbedding(org.orgId, "embedding_indexar", { familia: null });

@@ -36,6 +36,7 @@
 
 import { embedText, SemChaveDeEmbeddingError } from "@/lib/ai/embed";
 import {
+  FamiliaDaBaseIlegivelError,
   modeloDeEmbedding,
   resolverChaveDeEmbedding,
   type ChaveDeEmbedding,
@@ -667,6 +668,11 @@ export async function processRagIndexer(row: EventRow): Promise<HandlerResult> {
     // o lote inteiro de eventos.
     if (err instanceof SemChaveDeEmbeddingError) {
       return { consumer_key: consumerKey, status: "retry", detail: "sem_chave_de_embedding" };
+    }
+    // Sem saber a família, indexar com qualquer chave pode ativar uma versão da
+    // OUTRA família. Nada é indexado; o evento volta quando o banco responder.
+    if (err instanceof FamiliaDaBaseIlegivelError) {
+      return { consumer_key: consumerKey, status: "retry", detail: "familia_da_base_ilegivel" };
     }
     const detalhe = err instanceof Error ? err.message : String(err);
     console.error("[rag-indexer] erro não tratado:", detalhe);

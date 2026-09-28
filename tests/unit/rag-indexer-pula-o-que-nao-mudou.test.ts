@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { processRagIndexer } from "@/workers/rag-indexer";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { embedText } from "@/lib/ai/embed";
-import { resolverChaveDeEmbedding } from "@/lib/ai/embeddings/chave";
+import { FamiliaDaBaseIlegivelError, resolverChaveDeEmbedding } from "@/lib/ai/embeddings/chave";
 import { acquireDebounce } from "@/lib/ai/rag/debounce";
 import { computeContentHash } from "@/lib/ai/rag/chunker";
 import { createKnowledgeVersion } from "@/lib/ai/rag/version";
@@ -27,6 +27,7 @@ vi.mock("@/lib/ai/embed", () => ({
 }));
 vi.mock("@/lib/ai/embeddings/chave", () => ({
   resolverChaveDeEmbedding: vi.fn(),
+  FamiliaDaBaseIlegivelError: class FamiliaDaBaseIlegivelError extends Error {},
   // O par real, copiado: o módulo real puxa env e banco no import.
   modeloDeEmbedding: (provedor: string) =>
     provedor === "google" ? "google/gemini-embedding-001" : "openai/text-embedding-3-small",
@@ -207,5 +208,20 @@ describe("rag-indexer — pulo incremental por hash do conteúdo", () => {
 
     expect(r.status).toBe("ok");
     expect(createKnowledgeVersion).toHaveBeenCalledTimes(1);
+  });
+
+  // Terceira revisão do #1864: sem a família, nenhuma chave indexa — nem a da
+  // outra. O evento volta pela fila em vez de ativar uma versão de outro modelo.
+  it("a família da base não pôde ser lida: não indexa e devolve retry", async () => {
+    vi.mocked(resolverChaveDeEmbedding).mockRejectedValue(
+      new (FamiliaDaBaseIlegivelError as unknown as new (m: string) => Error)("banco fora"),
+    );
+
+    const r = await processRagIndexer(EVENTO as never);
+
+    expect(r).toMatchObject({ status: "retry", detail: "familia_da_base_ilegivel" });
+    expect(createKnowledgeVersion).not.toHaveBeenCalled();
+    expect(embedText).not.toHaveBeenCalled();
+    expect(carimbos).toEqual([]);
   });
 });

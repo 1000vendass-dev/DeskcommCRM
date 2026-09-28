@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { familiaDaBase, resolverChaveDeEmbedding } from "@/lib/ai/embeddings/chave";
+import {
+  FamiliaDaBaseIlegivelError,
+  familiaDaBase,
+  resolverChaveDeEmbedding,
+} from "@/lib/ai/embeddings/chave";
 import { enfileirarTodosOsMateriais } from "@/lib/ai/knowledge/reprepara-tudo";
 import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
@@ -28,6 +32,7 @@ vi.mock("@/lib/ai/knowledge/reprepara-tudo", () => ({ enfileirarTodosOsMateriais
 vi.mock("@/lib/ai/embeddings/chave", () => ({
   resolverChaveDeEmbedding: vi.fn(),
   familiaDaBase: vi.fn(),
+  FamiliaDaBaseIlegivelError: class FamiliaDaBaseIlegivelError extends Error {},
   // Cópia da função pura: o módulo real puxa env e banco no import.
   provedorDaBase: (c: { provedor: string }) => (c.provedor === "google" ? "google" : "openai"),
 }));
@@ -230,5 +235,17 @@ describe("PUT /api/v1/ai/knowledge/provedor", () => {
     expect(r.status).toBe(200);
     expect(((await r.json()) as { data: { fila: unknown } }).data.fila).toBeNull();
     expect(updates).toHaveLength(1);
+  });
+
+  it("a família não pôde ser lida: 503, sem gravar, sem refazer a base", async () => {
+    vi.mocked(familiaDaBase).mockRejectedValue(new FamiliaDaBaseIlegivelError(ORG_ID, "banco fora"));
+
+    const res = await chamar({ provedor: "google" });
+
+    expect(res.status).toBe(503);
+    expect((await res.json()).error.code).toBe("upstream_unavailable");
+    expect(updates).toEqual([]);
+    expect(enfileirarTodosOsMateriais).not.toHaveBeenCalled();
+    expect(audit).not.toHaveBeenCalled();
   });
 });

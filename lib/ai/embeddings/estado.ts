@@ -10,6 +10,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
   EXPLICACAO_DA_ORIGEM,
+  FamiliaDaBaseIlegivelError,
   familiaDaBase,
   provedorDaBase,
   resolverChaveDeEmbedding,
@@ -43,11 +44,23 @@ export interface EstadoDaChave {
   }>;
 }
 
+export const AVISO_DA_FAMILIA_ILEGIVEL =
+  "Não consegui confirmar agora com que provedor a base é preparada. Recarregue em instantes.";
+
 export async function montarEstadoDaChave(
   supabase: SupabaseClient,
   organizationId: string,
 ): Promise<EstadoDaChave> {
-  const familia = (await familiaDaBase(organizationId))?.familia ?? null;
+  // A tela é INFORMAÇÃO: se a família não pôde ser lida, ela ainda mostra a
+  // chave e diz que não sabe o provedor — sem oferecer troca nenhuma.
+  let familia: ProvedorDaBase | null = null;
+  let familiaIlegivel = false;
+  try {
+    familia = (await familiaDaBase(organizationId))?.familia ?? null;
+  } catch (err) {
+    if (!(err instanceof FamiliaDaBaseIlegivelError)) throw err;
+    familiaIlegivel = true;
+  }
   const [chave, { data }] = await Promise.all([
     resolverChaveDeEmbedding(organizationId, "embedding_indexar", { familia }),
     supabase
@@ -58,7 +71,7 @@ export async function montarEstadoDaChave(
       .order("created_at", { ascending: true }),
   ]);
   const credenciais = (data ?? []) as EstadoDaChave["credenciais_embedding"];
-  const provedor = familia ?? (chave ? provedorDaBase(chave) : null);
+  const provedor = familiaIlegivel ? null : (familia ?? (chave ? provedorDaBase(chave) : null));
 
   // A troca só é oferecida quando a OUTRA família tem chave utilizável agora.
   const outra: ProvedorDaBase | null =
@@ -74,7 +87,10 @@ export async function montarEstadoDaChave(
     origem: chave?.origem ?? null,
     explicacao: chave ? EXPLICACAO_DA_ORIGEM[chave.origem] : null,
     chave_em_uso: chave?.rotulo ?? null,
-    avisos: chave?.avisos ?? [],
+    avisos: [
+      ...(chave?.avisos ?? []),
+      ...(familiaIlegivel ? [AVISO_DA_FAMILIA_ILEGIVEL] : []),
+    ],
     provedor,
     familia_sem_chave: familia !== null && chave === null ? familia : null,
     pode_trocar_para: podeTrocarPara,

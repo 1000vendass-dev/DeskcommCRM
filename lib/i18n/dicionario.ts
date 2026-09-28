@@ -8854,6 +8854,8 @@ export const DICIONARIO: Traducoes = {
   "Cadastre e valide uma chave do Google em IA › Credenciais antes de trocar.": { es: "Registra y valida una clave de Google en IA › Credenciales antes de cambiar." },
   "Cadastre e valide uma chave da OpenAI ou OpenRouter em IA › Credenciais antes de trocar.": { es: "Registra y valida una clave de OpenAI u OpenRouter en IA › Credenciales antes de cambiar." },
   "Não foi possível trocar o provedor.": { es: "No se pudo cambiar el proveedor." },
+  "Não consegui confirmar agora com que provedor a base é preparada. Tente de novo em instantes.": { es: "No pude confirmar ahora con qué proveedor se prepara la base. Inténtalo de nuevo en unos instantes." },
+  "Não consegui confirmar agora com que provedor a base é preparada. Recarregue em instantes.": { es: "No pude confirmar ahora con qué proveedor se prepara la base. Recarga en unos instantes." },
   "A base é preparada pelo Google, e a chave do Google não está mais utilizável": { es: "La base la prepara Google, y la clave de Google ya no se puede usar" },
   "A base é preparada pela OpenAI, e não há mais chave da OpenAI utilizável": { es: "La base la prepara OpenAI, y ya no hay una clave de OpenAI utilizable" },
   "O agente não consegue consultar o material até isso ser resolvido. Chaves de outro provedor não são usadas sozinhas: o material já preparado só é encontrado com o mesmo provedor. Cadastre a chave de novo ou troque o provedor, o que refaz a base.": { es: "El agente no puede consultar el material hasta que esto se resuelva. Las claves de otro proveedor no se usan por sí solas: el material ya preparado solo se encuentra con el mismo proveedor. Registra la clave de nuevo o cambia el proveedor, lo que rehace la base." },
