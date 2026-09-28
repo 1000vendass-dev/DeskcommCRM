@@ -2,6 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { marcaDaSaida } = vi.hoisted(() => ({ marcaDaSaida: vi.fn() }));
 vi.mock("@/lib/branding/saida", () => ({ marcaDaSaida }));
+// Mantém a leitura isolada se o manifest também consumir o ícone configurado.
+vi.mock("@/lib/branding/instalacao", () => ({
+  marcaDaInstalacao: vi.fn().mockResolvedValue(null),
+}));
 
 import manifest, { dynamic } from "@/app/manifest";
 
