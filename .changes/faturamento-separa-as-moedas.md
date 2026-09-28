@@ -23,4 +23,4 @@ existiam não mudam. Não exige ação de quem opera a instalação.
 
 Levantamento de @franceschini-lucas (#1531).
 
-Contribuição de @in100tiva (#NNNN).
+Contribuição de @in100tiva (#1839).
