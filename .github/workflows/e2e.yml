@@ -1082,6 +1082,10 @@ jobs:
       # — as duas nunca disputam a porta, porque a parte roda uma spec por vez.
       # PREVISÃO, não medida: ~1 min.
       #
+      # `contadores-do-menu` entrou aqui em 2026-09-27 pela folga da parte (a
+      # maior, acima). Semeia o próprio canal, contato, conversa escalada e caso
+      # pelo service role e apaga tudo no fim, então não depende de vizinha.
+      #
       # `honorarios-instalar-e-pagar` entrou em 2026-09-28 (#1578) e fica em
       # ÚLTIMO de propósito: instalar o módulo é da instalação e não se desfaz, e
       # depois dele o menu de Análise tem uma porta a mais. Nenhuma vizinha desta
@@ -1111,6 +1115,7 @@ jobs:
         jev-decisoes-rapidas.spec.ts
         jev-roteador.spec.ts
         buffer-ssr-caixa-orfa.spec.ts
+        contadores-do-menu.spec.ts
         honorarios-instalar-e-pagar.spec.ts
 
       # ─── FORA_DO_CI — as que ficaram fora, e o motivo de cada uma ───
