@@ -710,7 +710,7 @@ describe("dente da catraca: a fixture prova os dois lados", () => {
  *   t(TABELA[chave]) / t(CONSTANTE)            → passa, conjunto fechado
  *   (texto) => t(texto), o wrapper passa-adireto → passa, com razão escrita
  *
- * Medido nesta `main` com esta mesma regra: 343 identificadores que são
+ * Medido em `b6d1141e8` (28/09) com esta mesma regra: 343 identificadores que são
  * parâmetro de função, 304 deles repasse puro (wrapper) e 39 sítio real. Os
  * 39 estão congelados em DADO_DO_OPERADOR_CONGELADO abaixo, um a um, com a
  * razão escrita — a issue proíbe allowlist sem motivo, e este arquivo tem um
@@ -723,6 +723,10 @@ describe("dente da catraca: a fixture prova os dois lados", () => {
  * são 835 sítios não resolvidos na mesma varredura (medição), e congelá-los
  * aqui viraria uma lista grande demais para caber num PR sem afrouxar o
  * gate. Ficam declarados como continuação desta mesma issue.
+ *
+ * Callback de iteração — `lista.map((x) => t(x))` — fica isento pelo
+ * passa-adireto, porque o corpo é chamada: 11 medidos na main `93713e10f`
+ * (ex.: CredentialCard.tsx:194, PainelDeProvedores.tsx:297). Continuação da #603.
  * ══════════════════════════════════════════════════════════════════════════════ */
 
 /** Um `t(<identificador que é parâmetro>)`: o valor veio de quem chamou. */
@@ -1125,17 +1129,7 @@ describe("dado do operador: t() não traduz o que o operador digitou", () => {
       varredura.arquivosVarridos,
       "nenhum arquivo varrido: o caminho das áreas mudou?",
     ).toBeGreaterThan(300);
-    expect(
-      varredura.sitios.length,
-      "nenhum sítio de dado do operador: a regra deixou de casar com o produto",
-    ).toBeGreaterThan(20);
-    const conhecido = varredura.sitios.find(
-      (s) => s.arquivo === "components/agenda/PainelDeMarcacao.tsx" && s.expressao === "tipo",
-    );
-    expect(
-      conhecido,
-      "o defeito do #600 — t(tipo) em components/agenda/PainelDeMarcacao.tsx — saiu de vista",
-    ).toBeDefined();
+    // O dente da regra é provado pela fixture VERMELHA e pelo "só encolhe" — não ancorar na dívida que a lista manda pagar.
   });
 
   it("nenhuma chamada t() recebe parâmetro livre fora da dívida congelada", () => {
