@@ -4,15 +4,16 @@ secao: corrigido
 titulo: A atualização não acusa mais regra de isolamento que sempre esteve no banco
 ---
 
-Em instalações cujo idioma do sistema é um `UTF-8` — o `en_US.UTF-8` e o
-`pt_BR.UTF-8` que vêm por padrão em quase toda VPS —, a conferência de regras de
-isolamento do `hostgator-setup-kit/update.sh` acusava como ausentes regras que
-estavam no banco. O aviso era falso: as duas listas eram ordenadas conforme o
-idioma, e a comparação entre elas deixava de reconhecer as regras que estavam
-lá. A atualização parava no meio, com a tela de manutenção de pé, mandando
-procurar regra que nunca faltou.
+Em servidores cujo idioma do sistema é `en_US.UTF-8` ou `pt_BR.UTF-8`, a conferência de regras de isolamento do `update.sh` podia acusar como ausentes regras que estavam no banco, e a atualização parava no meio com a tela de manutenção de pé, mandando procurar uma regra que nunca faltou. Agora a ordenação e a comparação usam ordem de bytes, e o resultado é o mesmo em qualquer idioma. Instalação que nunca passou por esse aviso não muda em nada.
 
-Agora a ordenação e a comparação usam ordem de bytes, e o resultado é o mesmo em
-qualquer idioma. Instalação que já tinha parado nesse aviso volta a atualizar
-normalmente; instalação saudável não muda em nada. Não exige ação de quem opera
-a instalação.
+Se a sua atualização já parou nesse aviso, o `update.sh` que está no disco é o antigo, e é ele que roda a conferência na atualização que traz este conserto, tanto no terminal quanto no botão "Atualizar". Ela pode parar mais uma vez no mesmo aviso. Para sair numa passada só, rode uma vez na pasta do CRM, trocando `vX.Y.Z` pelo número desta versão:
+
+```bash
+git fetch --tags origin
+git checkout vX.Y.Z
+bash hostgator-setup-kit/update.sh --to vX.Y.Z --force
+```
+
+Depois disso as atualizações seguintes voltam a rodar sozinhas.
+
+Contribuição de @gideony (#1837).
