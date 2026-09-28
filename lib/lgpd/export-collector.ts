@@ -123,7 +123,7 @@ export interface CheckpointRow {
 }
 
 /**
- * Vínculo do titular com um grupo de WhatsApp (migration 0445).
+ * Vínculo do titular com um grupo de WhatsApp (migration 0478).
  *
  * A FK `channel_session_groups.contact_id` só aponta para o CONTATO PLACEHOLDER
  * do grupo (`contacts.kind = 'whatsapp_group'`), nunca para uma pessoa real — é
@@ -592,14 +592,14 @@ export interface ExportPayload {
    */
   campaign_suppressions: CampaignSuppressionRow[];
   /**
-   * Grupos de WhatsApp vinculados ao titular (migration 0445) — ver o
+   * Grupos de WhatsApp vinculados ao titular (migration 0478) — ver o
    * docstring de `ChannelSessionGroupRow`. Obrigatório, não opcional, pela
    * mesma razão de `case_chat_messages`: campo obrigatório faz um caminho de
    * export novo NÃO COMPILAR se esquecer.
    */
   channel_session_groups: ChannelSessionGroupRow[];
   /**
-   * Mensagens que o titular escreveu em GRUPOS de WhatsApp (migration 0445).
+   * Mensagens que o titular escreveu em GRUPOS de WhatsApp (migration 0478).
    * Moram na conversa do placeholder do grupo, não na dele, então
    * `messages_recent` não as vê. Casadas pelo autor em `metadata.group_sender`
    * — telefone (grafias com e sem o nono dígito) ou lid (`contacts.wa_lid`) —,
@@ -630,6 +630,41 @@ export interface ExportPayload {
     decided_at: string | null;
     motivo_recusa: string | null;
   }>;
+  /**
+   * Empresas e pessoas (migrations 0448/0449, metade B2B do #1621): a PESSOA
+   * para quem o contato aponta, os vínculos dela com empresas e as linhas de
+   * planilha que falaram dela. A 0449 redige as três quando o titular pede
+   * anonimização; o que se apaga a pedido dele é o que se entrega a pedido dele
+   * (Art. 18 II). Opcional como `reply_drafts`: o tipo é montado à mão nos
+   * testes de PDF, e quem vigia o esquecimento é
+   * `tests/unit/lgpd-exporta-o-que-redige.test.ts`, que lê o catálogo.
+   */
+  b2b?: {
+    pessoa: {
+      id: string;
+      full_name: string;
+      email: string | null;
+      notes: string | null;
+      created_at: string;
+    } | null;
+    vinculos: Array<{
+      company_id: string;
+      job_title: string | null;
+      department: string | null;
+      is_decision_maker: boolean;
+      notes: string | null;
+    }>;
+    linhas_importadas: Array<{
+      id: string;
+      batch_id: string;
+      row_number: number;
+      status: string;
+      raw_data: unknown;
+      normalized_data: unknown;
+      error: string | null;
+      created_at: string;
+    }>;
+  };
   reply_drafts?: Array<{
     id: string;
     status: string;
@@ -1106,6 +1141,54 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
     }
   }
 
+  // Empresas e pessoas (0448/0449) — ver o comentário do campo `b2b` no tipo.
+  // A pessoa vem de `contacts.person_id`; as linhas de planilha casam pelo
+  // contato OU pela pessoa, o MESMO escopo da redação da 0449. Erro lança:
+  // um relatório sem este bloco diria ao titular que não guardamos o que
+  // guardamos.
+  let b2b: ExportPayload["b2b"];
+  if (contactId) {
+    const { data: vinculo, error: eVinculo } = await admin
+      .from("contacts")
+      .select("person_id")
+      .eq("organization_id", organizationId)
+      .eq("id", contactId)
+      .maybeSingle();
+    if (eVinculo) throw eVinculo;
+    const personId = vinculo?.person_id ?? null;
+    let pessoa: NonNullable<ExportPayload["b2b"]>["pessoa"] = null;
+    let vinculos: NonNullable<ExportPayload["b2b"]>["vinculos"] = [];
+    if (personId) {
+      const { data: p, error: eP } = await admin
+        .from("people")
+        .select("id, full_name, email, notes, created_at")
+        .eq("organization_id", organizationId)
+        .eq("id", personId)
+        .maybeSingle();
+      if (eP) throw eP;
+      pessoa = p;
+      const { data: v, error: eV } = await admin
+        .from("company_people")
+        .select("company_id, job_title, department, is_decision_maker, notes")
+        .eq("organization_id", organizationId)
+        .eq("person_id", personId)
+        .limit(500);
+      if (eV) throw eV;
+      vinculos = v ?? [];
+    }
+    const { data: linhas, error: eL } = await admin
+      .from("import_rows")
+      .select("id, batch_id, row_number, status, raw_data, normalized_data, error, created_at")
+      .eq("organization_id", organizationId)
+      .or(personId ? `contact_id.eq.${contactId},person_id.eq.${personId}` : `contact_id.eq.${contactId}`)
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (eL) throw eL;
+    if (pessoa || vinculos.length > 0 || (linhas ?? []).length > 0) {
+      b2b = { pessoa, vinculos, linhas_importadas: linhas ?? [] };
+    }
+  }
+
   // Tarefas — contact_id direto em crm_tasks (migration 0210).
   //
   // O texto que a equipe escreveu sobre o titular ("ligar para Fulano confirmar
@@ -1199,7 +1282,7 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
   }
 
   // Grupos de WhatsApp — `contact_id` direto em `channel_session_groups`
-  // (migration 0445). Ver o docstring de `ChannelSessionGroupRow`: a FK só
+  // (migration 0478). Ver o docstring de `ChannelSessionGroupRow`: a FK só
   // aponta para o CONTATO PLACEHOLDER do grupo, então este bloco só devolve
   // linha quando o titular do pedido é esse placeholder — o mesmo escopo que a
   // redação usa (`fn_lgpd_cascade_redact_contact`, `contact_id = p_contact_id`).
@@ -1706,6 +1789,7 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
     group_messages_authored,
     conversation_drafts,
     contact_field_proposals,
+    b2b,
   };
 }
 

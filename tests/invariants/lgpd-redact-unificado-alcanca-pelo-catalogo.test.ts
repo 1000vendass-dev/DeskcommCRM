@@ -237,6 +237,11 @@ const DECISOES: Record<string, Decisao> = {
     caminho: "gatilho",
     razao: "0391: resumo corrido, compromissos, objeções, próxima ação e declaração do turno são texto de modelo sobre a pessoa — redigidos pela virada, que é o caminho que os DOIS compartilham.",
   },
+  import_rows: {
+    decidida: "redigir",
+    caminho: "gatilho",
+    razao: "0449 (metade B2B do #1621): raw_data/normalized_data são a linha da planilha como veio — nome, telefone, e-mail, cargo — e error citava o telefone; zerados na virada por fn_redigir_b2b_do_contato_anonimizado, que também redige a pessoa (people) e o vínculo (company_people). A linha fica: número, status e lote são a prova de que o lote rodou.",
+  },
   webhook_lead_captures: {
     decidida: "redigir",
     caminho: "gatilho",
