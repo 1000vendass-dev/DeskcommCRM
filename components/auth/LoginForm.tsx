@@ -89,10 +89,11 @@ export function LoginForm({ next }: { next?: string }) {
           <button
             type="button"
             className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:outline-hidden focus-visible:ring-inset"
-            aria-label={t(showPassword ? "Ocultar senha" : "Mostrar senha")}
             aria-pressed={showPassword}
             onClick={() => setShowPassword((visible) => !visible)}
           >
+            {/* Nome em sr-only, não aria-label: getByLabel(/senha/i) casa aria-label e acharia o botão junto do campo. */}
+            <span className="sr-only">{t(showPassword ? "Ocultar senha" : "Mostrar senha")}</span>
             {showPassword ? <EyeSlash size={20} aria-hidden /> : <Eye size={20} aria-hidden />}
           </button>
         </div>

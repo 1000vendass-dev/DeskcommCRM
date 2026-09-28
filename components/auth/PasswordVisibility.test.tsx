@@ -28,6 +28,12 @@ describe("visibilidade de senha no acesso", () => {
     expect(password).toHaveAttribute("type", "password");
   });
 
+  // As specs e2e entram com getByLabel(/senha/i); nome do botão em aria-label o faria casar junto do campo.
+  it("o botão não entra na busca por rótulo de senha", () => {
+    render(<LoginForm />);
+    expect(screen.getAllByLabelText(/senha/i)).toEqual([screen.getByLabelText("Senha")]);
+  });
+
   it.each(["cadastro", "convite"])(
     "mostra cada senha separadamente no %s e informa a força",
     (modo) => {
