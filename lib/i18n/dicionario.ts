@@ -12660,6 +12660,11 @@ export const DICIONARIO: Traducoes = {
     es: "Conecta una base de datos de otro sistema para que el agente la consulte en tiempo real.",
   },
   "Módulos da instalação": { es: "Módulos de la instalación" },
+  "Instalado": { es: "Instalado" },
+  "Honorários (advocacia)": { es: "Honorarios (abogacía)" },
+  "Contrato de honorários (fixo, êxito ou misto) e o calendário de parcelas, ligado ao caixa do núcleo. Para escritórios de advocacia que cobram por caso.": {
+    es: "Contrato de honorarios (fijo, éxito o mixto) y el calendario de cuotas, vinculado a la caja del núcleo. Para despachos de abogados que cobran por caso.",
+  },
   "Módulos opcionais com tabela própria, criados quando você instala — quem não instala não carrega as tabelas dele. Instalar aqui vale para todas as organizações desta instalação.": {
     es: "Módulos opcionales con tabla propia, creados cuando los instalas — quien no instala no carga sus tablas. Instalar aquí vale para todas las organizaciones de esta instalación.",
   },

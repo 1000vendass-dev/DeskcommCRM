@@ -934,12 +934,12 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
       )
       .eq("organization_id", organizationId)
       .in("lead_id", leadIds);
+    // Qualquer OUTRO erro lança: o worker marca a tentativa como falha e tenta de
+    // novo, em vez de entregar ao titular um export sem o contrato como se fosse
+    // completo (ADR-0002 D8 — seção de módulo ilegível nunca sai como completa).
     if (error) {
       if (error.code !== "42P01") {
-        logger.warn("[lgpd-export-worker] honorarios contratos load failed", {
-          request_id: requestId,
-          error: error.message,
-        });
+        throw new Error(`honorarios_contratos_load_failed: ${error.message}`);
       }
     } else if (data) {
       honorarios_contratos = data;
@@ -952,10 +952,7 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
           .in("contrato_id", contratoIds)
           .order("numero", { ascending: true });
         if (erroParcelas) {
-          logger.warn("[lgpd-export-worker] honorarios parcelas load failed", {
-            request_id: requestId,
-            error: erroParcelas.message,
-          });
+          throw new Error(`honorarios_parcelas_load_failed: ${erroParcelas.message}`);
         } else if (parcelas) {
           honorarios_parcelas = parcelas;
         }
