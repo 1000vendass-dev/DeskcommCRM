@@ -40329,7 +40329,7 @@ begin
   -- anonimizar a linha e manter o documento. Vai para a mesma fila de expurgo
   -- da mídia (passo 7), com o bucket CERTO — a mensagem que levou o PDF
   -- aponta para o mesmo caminho, mas o passo 7 só enfileira `whatsapp-media`.
-  -- Lido ANTES do update abaixo, que zera `pdf_path`.
+  -- Lido ANTES de o passo seguinte zerar `pdf_path`.
   insert into storage_redaction_queue (organization_id, request_id, bucket, object_path)
   select p_organization_id, p_request_id, 'propostas', pdf_path
     from crm_proposals
