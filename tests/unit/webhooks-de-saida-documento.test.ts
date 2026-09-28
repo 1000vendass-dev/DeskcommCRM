@@ -60,9 +60,9 @@ type Caso = {
   agora: number;
   corpo: string;
   entrega: string;
-  /** `X-Deskcomm-Signature-2`; `null` = o cabeçalho não veio. */
+  /** `X-Webhook-Signature`; `null` = o cabeçalho não veio. */
   assinatura: string | null;
-  /** `X-Deskcomm-Timestamp`, que NÃO é assinado; ausente = não veio. */
+  /** `X-Webhook-Timestamp`, que NÃO é assinado; ausente = não veio. */
   carimbo?: number;
   /** `X-Deskcomm-Signature` legado; ausente = não veio. */
   legada?: string;
@@ -137,8 +137,8 @@ const CASOS: Caso[] = [
   },
   {
     // Repetição com o cabeçalho solto trocado: a janela é medida pelo `t`
-    // assinado, e o X-Deskcomm-Timestamp atual não salva a requisição velha.
-    nome: "velha com X-Deskcomm-Timestamp trocado pela hora atual",
+    // assinado, e o X-Webhook-Timestamp atual não salva a requisição velha.
+    nome: "velha com X-Webhook-Timestamp trocado pela hora atual",
     agora: VETOR.t + 86_400,
     corpo: VETOR.corpo,
     entrega: VETOR.entrega,
@@ -147,8 +147,8 @@ const CASOS: Caso[] = [
     esperado: false,
   },
   {
-    // Rebaixamento: a Signature-2 apagada e o legado (válido) mantido.
-    nome: "sem Signature-2, só com o legado válido",
+    // Rebaixamento: a X-Webhook-Signature apagada e o legado (válido) mantido.
+    nome: "sem X-Webhook-Signature, só com o legado válido",
     agora: VETOR.t,
     corpo: VETOR.corpo,
     entrega: VETOR.entrega,
@@ -160,9 +160,9 @@ const CASOS: Caso[] = [
 
 /** Os cabeçalhos de um caso, com os nomes em minúsculas (como o Node entrega). */
 function cabecalhosDoCaso(c: Caso): Record<string, string> {
-  const cab: Record<string, string> = { "x-deskcomm-delivery": c.entrega };
-  if (c.assinatura !== null) cab["x-deskcomm-signature-2"] = c.assinatura;
-  if (c.carimbo !== undefined) cab["x-deskcomm-timestamp"] = String(c.carimbo);
+  const cab: Record<string, string> = { "x-webhook-delivery": c.entrega };
+  if (c.assinatura !== null) cab["x-webhook-signature"] = c.assinatura;
+  if (c.carimbo !== undefined) cab["x-webhook-timestamp"] = String(c.carimbo);
   if (c.legada !== undefined) cab["x-deskcomm-signature"] = c.legada;
   return cab;
 }

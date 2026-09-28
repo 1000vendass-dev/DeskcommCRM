@@ -7,16 +7,16 @@
  *
  * Cabeçalhos de toda entrega (#1529) — o guia de quem recebe é
  * docs/integracao/webhooks-de-saida.md:
- *  - Event: o tipo do evento;
- *  - Delivery: id da ENTREGA (uuid v5 de evento + regra + posição da ação +
+ *  - X-Deskcomm-Event: o tipo do evento;
+ *  - X-Webhook-Delivery: id da ENTREGA (uuid v5 de evento + regra + posição da ação +
  *    lista de ações). É o mesmo nas retentativas e no botão Reenviar — é a
  *    chave de deduplicação;
- *  - Attempt: número da tentativa (1..n), que continua contando no Reenviar;
- *  - Timestamp: hora do envio em segundos unix, recalculada a cada tentativa;
- *  - Signature-2 (só com segredo): `t=<ts>,v1=<hex>`, HMAC de
+ *  - X-Webhook-Attempt: número da tentativa (1..n), que continua contando no Reenviar;
+ *  - X-Webhook-Timestamp: hora do envio em segundos unix, recalculada a cada tentativa;
+ *  - X-Webhook-Signature (só com segredo): `t=<ts>,v1=<hex>`, HMAC de
  *    "<ts>.<delivery>.<corpo>" — cobre a hora e o id, então uma requisição
  *    capturada e repetida fora da janela do receptor é recusável;
- *  - Signature (só com segredo): o HMAC só do corpo, LEGADO. Continua saindo
+ *  - X-Deskcomm-Signature (só com segredo): o HMAC só do corpo, LEGADO. Continua saindo
  *    byte a byte igual durante a convivência (contrato de fio, white-label.md);
  *    a saída dele vai ser anunciada com `exige_acao`.
  */
@@ -32,15 +32,19 @@ const TIMEOUT_MS = 10_000;
 const RETRY_DELAYS_MS = [1_000, 5_000]; // total 3 tentativas
 
 /**
- * Nomes dos cabeçalhos num lugar só: o receptor casa cada um por igualdade, e a
- * catraca de marca (tests/unit/branding.test.ts) guarda o conjunto exato deles.
+ * Nomes dos cabeçalhos num lugar só: o receptor casa cada um por igualdade.
+ * Os de #1529 nascem com nome neutro (X-Webhook-*): nome de protocolo não se
+ * renomeia depois do release, e a instalação de marca própria não pode mandar a
+ * marca de origem ao sistema do cliente. Event e a assinatura legada já eram
+ * contrato publicado e ficam — são as entradas PROTOCOLO de
+ * tests/unit/branding.test.ts, lista que só encolhe.
  */
 const CABECALHOS = {
   evento: "X-Deskcomm-Event",
-  entrega: "X-Deskcomm-Delivery",
-  tentativa: "X-Deskcomm-Attempt",
-  carimbo: "X-Deskcomm-Timestamp",
-  assinaturaComCarimbo: "X-Deskcomm-Signature-2",
+  entrega: "X-Webhook-Delivery",
+  tentativa: "X-Webhook-Attempt",
+  carimbo: "X-Webhook-Timestamp",
+  assinaturaComCarimbo: "X-Webhook-Signature",
   assinaturaLegada: "X-Deskcomm-Signature",
 } as const;
 

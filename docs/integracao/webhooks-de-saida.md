@@ -30,8 +30,8 @@ Um `POST` com `Content-Type: application/json` e este corpo:
 | Campo | O que é |
 |---|---|
 | `event` | O tipo do evento que disparou a automação (o mesmo do cabeçalho `X-Deskcomm-Event`). |
-| `occurred_at` | A hora em que o **fato** aconteceu, em ISO-8601 UTC com milissegundos. Não é a hora do envio: é a mesma em todas as tentativas e no Reenviar, e pode ter horas ou dias (uma automação adiada pela janela de envio do WhatsApp, um Reenviar clicado dias depois). **Até a versão que trouxe o `X-Deskcomm-Delivery`, este campo era a hora do envio** — ver a seção 8. Para medir a idade da requisição, use o `t` de dentro do `X-Deskcomm-Signature-2` (seção 3), que é o valor assinado — nunca o `occurred_at` nem o `X-Deskcomm-Timestamp`. |
-| `delivery_id` | O id da entrega — o mesmo valor do cabeçalho `X-Deskcomm-Delivery`. |
+| `occurred_at` | A hora em que o **fato** aconteceu, em ISO-8601 UTC com milissegundos. Não é a hora do envio: é a mesma em todas as tentativas e no Reenviar, e pode ter horas ou dias (uma automação adiada pela janela de envio do WhatsApp, um Reenviar clicado dias depois). **Até a versão que trouxe o `X-Webhook-Delivery`, este campo era a hora do envio** — ver a seção 8. Para medir a idade da requisição, use o `t` de dentro do `X-Webhook-Signature` (seção 3), que é o valor assinado — nunca o `occurred_at` nem o `X-Webhook-Timestamp`. |
+| `delivery_id` | O id da entrega — o mesmo valor do cabeçalho `X-Webhook-Delivery`. |
 | `data` | Os dados do evento, com a projeção pública do lead, do contato e do compromisso quando existem. |
 
 ## 2. Os cabeçalhos
@@ -39,21 +39,21 @@ Um `POST` com `Content-Type: application/json` e este corpo:
 | Cabeçalho | Quando sai | O que significa |
 |---|---|---|
 | `X-Deskcomm-Event` | sempre | O tipo do evento. |
-| `X-Deskcomm-Delivery` | sempre | Id da **entrega** (um uuid). É o mesmo em todas as tentativas da mesma entrega **e** no botão Reenviar da tela de atividade. É a chave para deduplicar. |
-| `X-Deskcomm-Attempt` | sempre | Número da tentativa: `1`, `2`, `3`… O Reenviar continua a contagem (se a entrega já teve 3 tentativas, o Reenviar chega com `4`). É informativo — a chave de deduplicação é o Delivery. |
-| `X-Deskcomm-Timestamp` | sempre | Hora do **envio desta tentativa**, em segundos unix. Muda a cada tentativa. **Informativo:** nenhuma assinatura o cobre. Para a janela de tempo, use o `t` do `X-Deskcomm-Signature-2`. |
-| `X-Deskcomm-Signature-2` | com segredo | `t=<timestamp>,v1=<hex>`, em que `v1 = HMAC-SHA256(segredo, "<t>.<delivery>.<corpo cru>")`. Cobre a hora e o id além do corpo. |
+| `X-Webhook-Delivery` | sempre | Id da **entrega** (um uuid). É o mesmo em todas as tentativas da mesma entrega **e** no botão Reenviar da tela de atividade. É a chave para deduplicar. |
+| `X-Webhook-Attempt` | sempre | Número da tentativa: `1`, `2`, `3`… O Reenviar continua a contagem (se a entrega já teve 3 tentativas, o Reenviar chega com `4`). É informativo — a chave de deduplicação é o Delivery. |
+| `X-Webhook-Timestamp` | sempre | Hora do **envio desta tentativa**, em segundos unix. Muda a cada tentativa. **Informativo:** nenhuma assinatura o cobre. Para a janela de tempo, use o `t` do `X-Webhook-Signature`. |
+| `X-Webhook-Signature` | com segredo | `t=<timestamp>,v1=<hex>`, em que `v1 = HMAC-SHA256(segredo, "<t>.<delivery>.<corpo cru>")`. Cobre a hora e o id além do corpo. |
 | `X-Deskcomm-Signature` | com segredo | **Legado.** `HMAC-SHA256(segredo, corpo cru)` em hex, sem hora nem id. Continua saindo exatamente igual durante a convivência; a saída dele será anunciada nas notas da versão como mudança que exige ação. |
 
-**O que a assinatura cobre.** O `v1` do `X-Deskcomm-Signature-2` autentica o
-`t` que vai dentro dele, o `X-Deskcomm-Delivery` e o corpo — e só isso. Os
-cabeçalhos `X-Deskcomm-Event`, `X-Deskcomm-Attempt` e `X-Deskcomm-Timestamp`
+**O que a assinatura cobre.** O `v1` do `X-Webhook-Signature` autentica o
+`t` que vai dentro dele, o `X-Webhook-Delivery` e o corpo — e só isso. Os
+cabeçalhos `X-Deskcomm-Event`, `X-Webhook-Attempt` e `X-Webhook-Timestamp`
 **não são autenticados**: quem captura uma requisição pode trocá-los sem que a
 assinatura deixe de conferir. Em especial, a única cópia assinada da hora do
-envio é o `t` dentro do `X-Deskcomm-Signature-2`. Um receptor que mede a idade
-pelo `X-Deskcomm-Timestamp` e confere o HMAC com o `t` aceita uma requisição
-velha repetida com o `X-Deskcomm-Timestamp` trocado pela hora atual. Use o
-`X-Deskcomm-Event` e o `X-Deskcomm-Attempt` só para log e roteamento; o tipo do
+envio é o `t` dentro do `X-Webhook-Signature`. Um receptor que mede a idade
+pelo `X-Webhook-Timestamp` e confere o HMAC com o `t` aceita uma requisição
+velha repetida com o `X-Webhook-Timestamp` trocado pela hora atual. Use o
+`X-Deskcomm-Event` e o `X-Webhook-Attempt` só para log e roteamento; o tipo do
 evento que vale é o `event` do corpo, que é assinado.
 
 Sem segredo configurado na ação, as duas assinaturas não saem — não há o que
@@ -65,27 +65,27 @@ marca própria.
 1. **Leia o corpo CRU**, os bytes exatamente como chegaram, antes de qualquer
    `JSON.parse`. Reserializar o JSON muda espaços e a ordem das chaves, e a
    assinatura deixa de bater.
-2. **Exija o `X-Deskcomm-Signature-2`.** Se ele não veio, recuse — **não**
+2. **Exija o `X-Webhook-Signature`.** Se ele não veio, recuse — **não**
    caia para o `X-Deskcomm-Signature` legado como alternativa: quem captura uma
-   entrega apaga o `X-Deskcomm-Signature-2`, mantém o legado (que só cobre o
+   entrega apaga o `X-Webhook-Signature`, mantém o legado (que só cobre o
    corpo e vale para sempre) e repete a requisição quando quiser, sem que a
    janela do passo 3 seja consultada. Aceitar o legado só faz sentido enquanto o
    CRM que envia ainda não foi atualizado (seção 8).
-   **Separe `t` e `v1`** do `X-Deskcomm-Signature-2`: pares `chave=valor`
+   **Separe `t` e `v1`** do `X-Webhook-Signature`: pares `chave=valor`
    separados por vírgula. Ignore chaves que você não conhece — versões futuras
    podem acrescentar outras (`v2=`…) sem quebrar quem já confere `v1`.
 3. **Recuse se `|agora − t| > 300` segundos**, com o `t` de dentro do
-   `X-Deskcomm-Signature-2` — nunca com o `X-Deskcomm-Timestamp`, que não é
+   `X-Webhook-Signature` — nunca com o `X-Webhook-Timestamp`, que não é
    assinado (seção 2). Essa janela é o que torna inútil
    uma requisição capturada e repetida depois. Os 300 s são a recomendação; a
    janela é sua.
 4. **Calcule** `HMAC-SHA256(segredo, "<t>.<delivery>.<corpo cru>")` em hex, com
-   o `t` como veio no cabeçalho e o `delivery` do `X-Deskcomm-Delivery`.
+   o `t` como veio no cabeçalho e o `delivery` do `X-Webhook-Delivery`.
 5. **Compare em tempo constante** (`crypto.timingSafeEqual` no Node,
    `hmac.compare_digest` no Python). Uma comparação comum (`===`, `==`) devolve
    mais cedo no primeiro caractere diferente, e o tempo de resposta vaza a
    assinatura aos poucos.
-6. **Deduplique pelo `X-Deskcomm-Delivery`**: guarde os ids já processados. Se
+6. **Deduplique pelo `X-Webhook-Delivery`**: guarde os ids já processados. Se
    chegar um que você já processou, responda `2xx` sem processar de novo —
    senão o CRM entende como falha e tenta outra vez. **24 horas** de memória
    cobrem as retentativas automáticas, que acabam em segundos. O Reenviar
@@ -106,11 +106,11 @@ ser recusada.
 
 ## 4. Retentativa e Reenviar
 
-- **Retentativa automática:** mesmo corpo, mesmo `X-Deskcomm-Delivery`,
-  `X-Deskcomm-Attempt` subindo, `X-Deskcomm-Timestamp` e
-  `X-Deskcomm-Signature-2` novos a cada tentativa.
+- **Retentativa automática:** mesmo corpo, mesmo `X-Webhook-Delivery`,
+  `X-Webhook-Attempt` subindo, `X-Webhook-Timestamp` e
+  `X-Webhook-Signature` novos a cada tentativa.
 - **Reenviar** (botão na tela de atividade da automação): mesmo
-  `X-Deskcomm-Delivery` da entrega original, `X-Deskcomm-Attempt` continuando a
+  `X-Webhook-Delivery` da entrega original, `X-Webhook-Attempt` continuando a
   contagem. O corpo é **remontado com os dados atuais** do lead e do contato.
   Como o id é o mesmo, um receptor que **ainda guarda** aquele id descarta o
   Reenviar pela deduplicação. Isso é de propósito: o Reenviar existe para a
@@ -139,8 +139,8 @@ const JANELA_EM_SEGUNDOS = 300;
  * corpoCru: string ou Buffer com o corpo exatamente como chegou.
  */
 export function verificarWebhook({ segredo, cabecalhos, corpoCru, agoraEmSegundos = Math.floor(Date.now() / 1000) }) {
-  const entrega = cabecalhos["x-deskcomm-delivery"];
-  const assinatura = cabecalhos["x-deskcomm-signature-2"];
+  const entrega = cabecalhos["x-webhook-delivery"];
+  const assinatura = cabecalhos["x-webhook-signature"];
   if (typeof entrega !== "string" || typeof assinatura !== "string") return false;
 
   const partes = {};
@@ -159,7 +159,7 @@ export function verificarWebhook({ segredo, cabecalhos, corpoCru, agoraEmSegundo
 
 No Express, leia o corpo cru com `express.raw({ type: "application/json" })`
 (e não `express.json()`) e passe `req.body` como `corpoCru`. Depois de
-`verificarWebhook` devolver `true`, confira o `X-Deskcomm-Delivery` contra os
+`verificarWebhook` devolver `true`, confira o `X-Webhook-Delivery` contra os
 ids já processados.
 
 ## 6. Exemplo em Python (3.9 ou mais novo)
@@ -176,8 +176,8 @@ JANELA_EM_SEGUNDOS = 300
 def verificar_webhook(segredo, cabecalhos, corpo_cru, agora_em_segundos=None):
     """corpo_cru: bytes exatamente como chegaram (ex.: request.get_data() no Flask)."""
     cab = {k.lower(): v for k, v in cabecalhos.items()}
-    entrega = cab.get("x-deskcomm-delivery")
-    assinatura = cab.get("x-deskcomm-signature-2")
+    entrega = cab.get("x-webhook-delivery")
+    assinatura = cab.get("x-webhook-signature")
     if not entrega or not assinatura:
         return False
 
@@ -206,10 +206,10 @@ se um valor daqui deixar de bater com o que o CRM assina, o teste reprova.
 | | |
 |---|---|
 | Segredo | `segredo-de-exemplo-nao-use-em-producao` |
-| `t` do `X-Deskcomm-Signature-2` (o mesmo valor sai no `X-Deskcomm-Timestamp`) | `1767225600` |
-| `X-Deskcomm-Delivery` | `209f529f-3a34-5ccb-9486-5e20cd48fb45` |
+| `t` do `X-Webhook-Signature` (o mesmo valor sai no `X-Webhook-Timestamp`) | `1767225600` |
+| `X-Webhook-Delivery` | `209f529f-3a34-5ccb-9486-5e20cd48fb45` |
 | Corpo cru (uma linha, sem espaços) | `{"event":"lead.created","occurred_at":"2026-01-01T00:00:00.000Z","delivery_id":"209f529f-3a34-5ccb-9486-5e20cd48fb45","data":{"lead":{"id":"lead-1"}}}` |
-| `X-Deskcomm-Signature-2` esperado | `t=1767225600,v1=619127abca12d74bf823c17866b3c6c6a6f2f25c1da06a3e72bc8a28c5c55b37` |
+| `X-Webhook-Signature` esperado | `t=1767225600,v1=619127abca12d74bf823c17866b3c6c6a6f2f25c1da06a3e72bc8a28c5c55b37` |
 | `X-Deskcomm-Signature` (legado) esperado | `c1549192249a39856d29a655e835efb52787b22f7c4be8777fd8abf81cb539d6` |
 
 Com `agora = 1767225610` a verificação passa; com `agora = 1767225901`
@@ -225,22 +225,22 @@ recusar requisição velha (*"recuso se agora − occurred_at > 5 min"*), ele va
 passar a recusar entregas legítimas: a retentativa de uma automação adiada pela
 janela de envio do WhatsApp e o Reenviar clicado horas depois saem com o
 `occurred_at` de quando o fato aconteceu. Troque essa conta pelo `t` de dentro
-do `X-Deskcomm-Signature-2`, que é a hora do envio de cada tentativa **e** é
-coberto pela assinatura. O `X-Deskcomm-Timestamp` leva o mesmo número, mas não é
+do `X-Webhook-Signature`, que é a hora do envio de cada tentativa **e** é
+coberto pela assinatura. O `X-Webhook-Timestamp` leva o mesmo número, mas não é
 assinado: medir a idade por ele deixa passar uma requisição velha repetida com
 esse cabeçalho trocado (seção 2).
 
 Para migrar:
 
 1. Se você mede a idade da requisição pelo `occurred_at`, passe a medir pelo
-   `t` do `X-Deskcomm-Signature-2` (parágrafo acima).
-2. Passe a conferir o `X-Deskcomm-Signature-2` (seções 3, 5 e 6) e, **a partir
+   `t` do `X-Webhook-Signature` (parágrafo acima).
+2. Passe a conferir o `X-Webhook-Signature` (seções 3, 5 e 6) e, **a partir
    desse momento, recuse a requisição que chega sem ele**. Não use o
    `X-Deskcomm-Signature` como alternativa quando a v2 falta: toda entrega sai
    com as duas assinaturas, e quem captura uma entrega remove a v2 e repete a
    requisição sem limite de tempo, porque o legado só cobre o corpo. Se você
    recebe de várias instalações do CRM, aceite o legado sozinho só das que
    ainda não foram atualizadas — nunca como regra geral.
-3. Passe a deduplicar pelo `X-Deskcomm-Delivery`.
+3. Passe a deduplicar pelo `X-Webhook-Delivery`.
 4. Pare de ler o `X-Deskcomm-Signature`. Quando ele for removido, as notas da
    versão avisam com antecedência.

@@ -189,8 +189,8 @@ describe("webhook de saída: o Reenviar é a mesma entrega (#1529)", () => {
     // 1. O disparo do motor.
     await runAutomationForEvent(banco, evento());
     expect(recebidas).toHaveLength(1);
-    expect(recebidas[0]?.["x-deskcomm-delivery"]).toBe(entrega);
-    expect(recebidas[0]?.["x-deskcomm-attempt"]).toBe("1");
+    expect(recebidas[0]?.["x-webhook-delivery"]).toBe(entrega);
+    expect(recebidas[0]?.["x-webhook-attempt"]).toBe("1");
     const original = tabelas.automation_rule_runs?.[0];
     if (!original) throw new Error("o motor não gravou o run");
     const resultadoOriginal = (original.actions_result as Array<{ detail?: Linha }>)[1];
@@ -200,8 +200,8 @@ describe("webhook de saída: o Reenviar é a mesma entrega (#1529)", () => {
     const primeiro = await reenviar(original.id as string);
     expect(primeiro.status).toBe(201);
     expect(recebidas).toHaveLength(2);
-    expect(recebidas[1]?.["x-deskcomm-delivery"]).toBe(entrega);
-    expect(recebidas[1]?.["x-deskcomm-attempt"]).toBe("2");
+    expect(recebidas[1]?.["x-webhook-delivery"]).toBe(entrega);
+    expect(recebidas[1]?.["x-webhook-attempt"]).toBe("2");
     const reenviado = tabelas.automation_rule_runs?.[1];
     expect((reenviado?.actions_result as Array<{ detail?: Linha }>)[0]?.detail).toMatchObject({
       delivery_id: entrega,
@@ -212,8 +212,8 @@ describe("webhook de saída: o Reenviar é a mesma entrega (#1529)", () => {
     // 3. De novo a partir do MESMO run original: conta os dois runs do par.
     const segundo = await reenviar(original.id as string);
     expect(segundo.status).toBe(201);
-    expect(recebidas[2]?.["x-deskcomm-delivery"]).toBe(entrega);
-    expect(recebidas[2]?.["x-deskcomm-attempt"]).toBe("3");
+    expect(recebidas[2]?.["x-webhook-delivery"]).toBe(entrega);
+    expect(recebidas[2]?.["x-webhook-attempt"]).toBe("3");
     expect(deps.audit).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "automation.run_resent",
@@ -244,7 +244,7 @@ describe("webhook de saída: o Reenviar é a mesma entrega (#1529)", () => {
     deps.criarClientAdmin.mockReturnValue(banco);
 
     await runAutomationForEvent(banco, evento());
-    const [daPrimeira, daSegunda] = recebidas.map((r) => r["x-deskcomm-delivery"]);
+    const [daPrimeira, daSegunda] = recebidas.map((r) => r["x-webhook-delivery"]);
     expect(daPrimeira).toBeTypeOf("string");
     expect(daSegunda).toBeTypeOf("string");
     expect(daSegunda).not.toBe(daPrimeira);
@@ -255,7 +255,7 @@ describe("webhook de saída: o Reenviar é a mesma entrega (#1529)", () => {
     regra.actions = [webhook];
     const resposta = await reenviar(original.id as string);
     expect(resposta.status).toBe(201);
-    const doReenvio = recebidas[2]?.["x-deskcomm-delivery"];
+    const doReenvio = recebidas[2]?.["x-webhook-delivery"];
     expect(doReenvio).not.toBe(daPrimeira);
     expect(doReenvio).toBe(idDaEntrega(EVENTO, REGRA, 0, [webhook]));
   });

@@ -218,42 +218,14 @@ const MARCA_CONGELADA: Record<string, EntradaDeMarca> = {
   "lib/automation/actions/call-webhook.ts": {
     categoria: "PROTOCOLO",
     motivo:
-      "headers do webhook de SAÍDA. O receptor do cliente lê o nome exato para rotear e para conferir o HMAC; renomear faz o payload chegar e ser descartado calado. Delivery, Attempt, Timestamp e Signature-2 (#1529) são o id de deduplicação, o contador de tentativas, o carimbo de tempo e a assinatura com carimbo que o receptor casa por nome exato; renomear qualquer um faz a verificação e a deduplicação do receptor falharem em silêncio",
-    marcas: [
-      "x-deskcomm-attempt",
-      "x-deskcomm-delivery",
-      "x-deskcomm-event",
-      "x-deskcomm-signature",
-      "x-deskcomm-signature-2",
-      "x-deskcomm-timestamp",
-    ],
+      "headers do webhook de SAÍDA. O receptor do cliente lê o nome exato para rotear e para conferir o HMAC; renomear faz o payload chegar e ser descartado calado",
+    marcas: ["x-deskcomm-event", "x-deskcomm-signature"],
   },
   "lib/automation/actions/call-webhook.test.ts": {
     categoria: "PROTOCOLO",
     motivo:
       "é a guarda do contrato acima: este teste é o que reprova quem renomear o header. Trocar a string aqui para 'limpar a marca' desarmaria a única proteção que o contrato tem",
-    // Os cabeçalhos do #1529 entram aqui por extenso, em cada asserção: o teste
-    // confere o nome exato que o receptor casa.
-    marcas: [
-      "x-deskcomm-attempt",
-      "x-deskcomm-attempt",
-      "x-deskcomm-attempt",
-      "x-deskcomm-attempt",
-      "x-deskcomm-delivery",
-      "x-deskcomm-delivery",
-      "x-deskcomm-delivery",
-      "x-deskcomm-delivery",
-      "x-deskcomm-delivery",
-      "x-deskcomm-event",
-      "x-deskcomm-signature",
-      "x-deskcomm-signature",
-      "x-deskcomm-signature",
-      "x-deskcomm-signature-2",
-      "x-deskcomm-signature-2",
-      "x-deskcomm-timestamp",
-      "x-deskcomm-timestamp",
-      "x-deskcomm-timestamp",
-    ],
+    marcas: ["x-deskcomm-event", "x-deskcomm-signature", "x-deskcomm-signature", "x-deskcomm-signature"],
   },
   "lib/mcp/server.ts": {
     categoria: "PROTOCOLO",

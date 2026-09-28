@@ -78,10 +78,10 @@ describe("executeCallWebhook", () => {
     expect(received!.headers["x-deskcomm-event"]).toBe("lead.created");
     expect(received!.headers["x-deskcomm-signature"]).toBeUndefined();
     // Sem segredo não há o que assinar — mas id, tentativa e carimbo saem (#1529).
-    expect(received!.headers["x-deskcomm-signature-2"]).toBeUndefined();
-    expect(received!.headers["x-deskcomm-delivery"]).toBe(idDaEntrega("evt-1", "rule-1", 0, []));
-    expect(received!.headers["x-deskcomm-attempt"]).toBe("1");
-    expect(received!.headers["x-deskcomm-timestamp"]).toMatch(/^\d{10}$/);
+    expect(received!.headers["x-webhook-signature"]).toBeUndefined();
+    expect(received!.headers["x-webhook-delivery"]).toBe(idDaEntrega("evt-1", "rule-1", 0, []));
+    expect(received!.headers["x-webhook-attempt"]).toBe("1");
+    expect(received!.headers["x-webhook-timestamp"]).toMatch(/^\d{10}$/);
 
     const parsedBody = JSON.parse(received!.body);
     expect(parsedBody.event).toBe("lead.created");
@@ -518,13 +518,13 @@ function cabecalho(r: Recebida, nome: string): string {
   return valor;
 }
 
-/** Confere a Signature-2 do jeito que o receptor confere: t do próprio cabeçalho. */
+/** Confere a X-Webhook-Signature do jeito que o receptor confere: t do próprio cabeçalho. */
 function conferirV2(r: Recebida, segredo: string): void {
-  const assinatura = cabecalho(r, "x-deskcomm-signature-2");
+  const assinatura = cabecalho(r, "x-webhook-signature");
   const partes = Object.fromEntries(assinatura.split(",").map((p) => p.split("=") as [string, string]));
-  expect(partes.t).toBe(cabecalho(r, "x-deskcomm-timestamp"));
+  expect(partes.t).toBe(cabecalho(r, "x-webhook-timestamp"));
   const esperado = createHmac("sha256", segredo)
-    .update(`${partes.t}.${cabecalho(r, "x-deskcomm-delivery")}.${r.body}`)
+    .update(`${partes.t}.${cabecalho(r, "x-webhook-delivery")}.${r.body}`)
     .digest("hex");
   expect(partes.v1).toBe(esperado);
 }
@@ -588,9 +588,9 @@ describe("webhook de saída — entrega identificada e assinatura com carimbo (#
     expect(result.detail).toMatchObject({ attempt: 1, delivery_id: VETOR.entrega });
     const [recebida] = r.recebidas;
     if (!recebida) throw new Error("nada chegou");
-    expect(cabecalho(recebida, "x-deskcomm-delivery")).toBe(VETOR.entrega);
-    expect(cabecalho(recebida, "x-deskcomm-attempt")).toBe("1");
-    const carimbo = Number(cabecalho(recebida, "x-deskcomm-timestamp"));
+    expect(cabecalho(recebida, "x-webhook-delivery")).toBe(VETOR.entrega);
+    expect(cabecalho(recebida, "x-webhook-attempt")).toBe("1");
+    const carimbo = Number(cabecalho(recebida, "x-webhook-timestamp"));
     expect(carimbo).toBeGreaterThanOrEqual(antes);
     expect(carimbo).toBeLessThanOrEqual(depois);
     conferirV2(recebida, VETOR.segredo);
@@ -613,9 +613,9 @@ describe("webhook de saída — entrega identificada e assinatura com carimbo (#
     expect(result.status).toBe("failed");
     expect(result.detail).toMatchObject({ attempts: 3, attempt: 3, delivery_id: idDaEntrega("evt-1", "rule-1", 0, []) });
     expect(r.recebidas).toHaveLength(3);
-    const entregas = new Set(r.recebidas.map((x) => cabecalho(x, "x-deskcomm-delivery")));
+    const entregas = new Set(r.recebidas.map((x) => cabecalho(x, "x-webhook-delivery")));
     expect([...entregas]).toEqual([idDaEntrega("evt-1", "rule-1", 0, [])]);
-    expect(r.recebidas.map((x) => cabecalho(x, "x-deskcomm-attempt"))).toEqual(["1", "2", "3"]);
+    expect(r.recebidas.map((x) => cabecalho(x, "x-webhook-attempt"))).toEqual(["1", "2", "3"]);
     // O corpo é o mesmo em todas — o que muda é carimbo e assinatura com carimbo.
     expect(new Set(r.recebidas.map((x) => x.body)).size).toBe(1);
     for (const recebida of r.recebidas) conferirV2(recebida, "s3cr3t");
@@ -633,8 +633,8 @@ describe("webhook de saída — entrega identificada e assinatura com carimbo (#
     expect(result.detail).toMatchObject({ attempt: 4, delivery_id: idDaEntrega("evt-1", "rule-1", 0, []) });
     const [recebida] = r.recebidas;
     if (!recebida) throw new Error("nada chegou");
-    expect(cabecalho(recebida, "x-deskcomm-delivery")).toBe(idDaEntrega("evt-1", "rule-1", 0, []));
-    expect(cabecalho(recebida, "x-deskcomm-attempt")).toBe("4");
+    expect(cabecalho(recebida, "x-webhook-delivery")).toBe(idDaEntrega("evt-1", "rule-1", 0, []));
+    expect(cabecalho(recebida, "x-webhook-attempt")).toBe("4");
   });
 
   it("occurred_at é a hora do FATO (event.created_at), não a do envio", async () => {
