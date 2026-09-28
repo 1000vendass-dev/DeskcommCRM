@@ -331,7 +331,7 @@ describe("ChaveDeConhecimento — o beco vira saída", () => {
     fireEvent.click(screen.getByTestId("conhecimento-provedor-openrouter"));
     expect(screen.getByTestId("conhecimento-chave-input")).toHaveAttribute("placeholder", "sk-or-…");
     fireEvent.change(screen.getByTestId("conhecimento-chave-input"), {
-      target: { value: "sk-or-chave-de-teste" },
+      target: { value: "chave-ficticia-openrouter" },
     });
     fireEvent.click(screen.getByTestId("conhecimento-chave-salvar"));
 
@@ -339,7 +339,7 @@ describe("ChaveDeConhecimento — o beco vira saída", () => {
     expect(corpoEnviado(spy)).toMatchObject({
       provider: "openrouter",
       label: "Chave da OpenRouter",
-      api_key: "sk-or-chave-de-teste",
+      api_key: "chave-ficticia-openrouter",
     });
   });
 });

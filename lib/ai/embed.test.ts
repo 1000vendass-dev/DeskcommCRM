@@ -109,7 +109,7 @@ describe("embedText", () => {
     }), { status: 200, headers: { "content-type": "application/json" } }));
     vi.stubGlobal("fetch", fetchSpy);
     chaveMock = () => ({
-      apiKey: "sk-or-teste",
+      apiKey: "chave-ficticia-openrouter",
       baseUrl: "https://openrouter.ai/api/v1",
       provedor: "openrouter",
       viaGateway: false,
@@ -131,7 +131,7 @@ describe("embedText", () => {
       model: "openai/text-embedding-3-small",
       input: ["oi"],
     });
-    expect(request.headers).toMatchObject({ authorization: "Bearer sk-or-teste" });
+    expect(request.headers).toMatchObject({ authorization: "Bearer chave-ficticia-openrouter" });
   });
 
   it("organização SEM chave nenhuma vira erro tipado, não uma falha genérica", async () => {

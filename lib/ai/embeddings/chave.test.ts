@@ -52,7 +52,7 @@ function credential(overrides: Record<string, unknown>) {
     organization_id: "org-1",
     provider: "openrouter",
     label: "Chave de conhecimento",
-    api_key_encrypted: "sk-or-teste",
+    api_key_encrypted: "chave-ficticia-openrouter",
     api_key_iv: "iv",
     api_key_tag: "tag",
     is_active: true,
@@ -82,7 +82,7 @@ describe("resolverChaveDeEmbedding", () => {
 
     for (const chave of [indexar, consultar]) {
       expect(chave).toMatchObject({
-        apiKey: "sk-or-teste",
+        apiKey: "chave-ficticia-openrouter",
         baseUrl: "https://openrouter.ai/api/v1",
         provedor: "openrouter",
         origem: "credencial_da_organizacao",
@@ -94,11 +94,11 @@ describe("resolverChaveDeEmbedding", () => {
   it("preserva a precedência da credencial OpenAI existente", async () => {
     state.credentials = [
       credential({}),
-      credential({ id: "cred-openai", provider: "openai", api_key_encrypted: "sk-openai-teste" }),
+      credential({ id: "cred-openai", provider: "openai", api_key_encrypted: "chave-ficticia-openai" }),
     ];
 
     expect(await resolverChaveDeEmbedding("org-1")).toMatchObject({
-      apiKey: "sk-openai-teste",
+      apiKey: "chave-ficticia-openai",
       baseUrl: null,
       provedor: "openai",
     });
@@ -114,10 +114,10 @@ describe("resolverChaveDeEmbedding", () => {
   });
 
   it("aceita a chave OpenRouter da instalação quando não há credencial da organização", async () => {
-    state.env.OPENROUTER_API_KEY = "sk-or-instalacao";
+    state.env.OPENROUTER_API_KEY = "chave-ficticia-instalacao";
 
     expect(await resolverChaveDeEmbedding("org-1")).toMatchObject({
-      apiKey: "sk-or-instalacao",
+      apiKey: "chave-ficticia-instalacao",
       baseUrl: "https://openrouter.ai/api/v1",
       provedor: "openrouter",
       origem: "chave_da_instalacao",
