@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { collectExportData } from "@/lib/lgpd/export-collector";
 
 /**
- * LGPD ALCANÇA AS MENSAGENS DE GRUPO DE QUEM JÁ É CONTATO (migration 0411).
+ * LGPD ALCANÇA AS MENSAGENS DE GRUPO DE QUEM JÁ É CONTATO (migration 0445).
  *
  * A mensagem de grupo mora na conversa do contato PLACEHOLDER do grupo, não na do
  * titular: o autor só existe em `messages.metadata.group_sender`. Sem o casamento

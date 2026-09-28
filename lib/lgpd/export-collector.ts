@@ -123,7 +123,7 @@ export interface CheckpointRow {
 }
 
 /**
- * Vínculo do titular com um grupo de WhatsApp (migration 0411).
+ * Vínculo do titular com um grupo de WhatsApp (migration 0445).
  *
  * A FK `channel_session_groups.contact_id` só aponta para o CONTATO PLACEHOLDER
  * do grupo (`contacts.kind = 'whatsapp_group'`), nunca para uma pessoa real — é
@@ -561,14 +561,14 @@ export interface ExportPayload {
    */
   campaign_suppressions: CampaignSuppressionRow[];
   /**
-   * Grupos de WhatsApp vinculados ao titular (migration 0411) — ver o
+   * Grupos de WhatsApp vinculados ao titular (migration 0445) — ver o
    * docstring de `ChannelSessionGroupRow`. Obrigatório, não opcional, pela
    * mesma razão de `case_chat_messages`: campo obrigatório faz um caminho de
    * export novo NÃO COMPILAR se esquecer.
    */
   channel_session_groups: ChannelSessionGroupRow[];
   /**
-   * Mensagens que o titular escreveu em GRUPOS de WhatsApp (migration 0411).
+   * Mensagens que o titular escreveu em GRUPOS de WhatsApp (migration 0445).
    * Moram na conversa do placeholder do grupo, não na dele, então
    * `messages_recent` não as vê. Casadas pelo autor em `metadata.group_sender`
    * — telefone (grafias com e sem o nono dígito) ou lid (`contacts.wa_lid`) —,
@@ -576,6 +576,29 @@ export interface ExportPayload {
    * Só alcança quem JÁ É contato: o participante sem ficha não tem titular.
    */
   group_messages_authored: MessageRow[];
+  /** Rascunhos escritos PARA o titular por outro sistema (0419), apagados na
+   *  anonimização. Opcional como `reply_drafts`: o tipo é montado à mão nos testes de PDF. */
+  conversation_drafts?: Array<{
+    id: string;
+    conversation_id: string;
+    body: string;
+    source: string;
+    consumed_at: string | null;
+    created_at: string;
+  }>;
+  /** Propostas de campo do contato (0123), também APAGADAS na anonimização. */
+  contact_field_proposals?: Array<{
+    id: string;
+    campo: string;
+    valor_proposto: string;
+    valor_anterior: string | null;
+    conversation_id: string | null;
+    trecho: string | null;
+    status: string;
+    proposed_at: string;
+    decided_at: string | null;
+    motivo_recusa: string | null;
+  }>;
   reply_drafts?: Array<{
     id: string;
     status: string;
@@ -1120,7 +1143,7 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
   }
 
   // Grupos de WhatsApp — `contact_id` direto em `channel_session_groups`
-  // (migration 0411). Ver o docstring de `ChannelSessionGroupRow`: a FK só
+  // (migration 0445). Ver o docstring de `ChannelSessionGroupRow`: a FK só
   // aponta para o CONTATO PLACEHOLDER do grupo, então este bloco só devolve
   // linha quando o titular do pedido é esse placeholder — o mesmo escopo que a
   // redação usa (`fn_lgpd_cascade_redact_contact`, `contact_id = p_contact_id`).
@@ -1206,6 +1229,32 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
     }
   }
 
+  // Propostas de campo do contato: a anonimização as APAGA, e o valor proposto é
+  // dado do titular. Mesmo escopo da função que apaga, com os ids internos fora.
+  //
+  // POR PÁGINA, não por teto: esta fila a IA alimenta enquanto a conversa dura, e
+  // um `limit` faria as mais antigas sumirem do relatório sem ninguém saber. A
+  // chave é `id` (única) — ordenar por `proposed_at` deixaria empates decidirem a
+  // página. Mesma forma do bloco dos rascunhos, logo acima.
+  const contact_field_proposals: NonNullable<ExportPayload["contact_field_proposals"]> = [];
+  if (contactId) {
+    for (let offset = 0; ; offset += 500) {
+      const { data, error } = await admin
+        .from("contact_field_proposals")
+        .select(
+          "id, campo, valor_proposto, valor_anterior, conversation_id, trecho, status, proposed_at, decided_at, motivo_recusa",
+        )
+        .eq("organization_id", organizationId)
+        .eq("contact_id", contactId)
+        .order("id")
+        .range(offset, offset + 499);
+      // Uma falha não pode virar um relatório que diz que não guardamos dados.
+      if (error) throw error;
+      contact_field_proposals.push(...(data ?? []));
+      if (!data || data.length < 500) break;
+    }
+  }
+
   // Audit log extract (best-effort: rows where metadata.contact_id matches).
   let audit_log_extract: AuditRow[] = [];
   if (contactId) {
@@ -1285,6 +1334,7 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
   const case_chat_messages: CaseChatMessageRow[] = [];
   const passagens: PassagemDeAtendimentoRow[] = [];
   const avisos_de_caso: AvisoDeCasoEntregaRow[] = [];
+  const conversation_drafts: NonNullable<ExportPayload["conversation_drafts"]> = [];
   if (contactId) {
     const pageSize = 500;
     const refBatchSize = 100; // Mantém o filtro IN abaixo dos limites de URL dos proxies.
@@ -1417,6 +1467,23 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
       }
       passagens.push(...(pagina ?? []));
       if (!pagina || pagina.length < pageSize) break;
+    }
+    // Os rascunhos das conversas do titular — o MESMO escopo que a função de
+    // anonimização usa, a partir dos ids já paginados acima: sem FK para
+    // `contacts`, nenhuma outra leitura alcançaria a tabela.
+    for (let batch = 0; batch < conversationIds.length; batch += refBatchSize) {
+      for (let offset = 0; ; offset += pageSize) {
+        const { data, error } = await admin
+          .from("conversation_drafts")
+          .select("id, conversation_id, body, source, consumed_at, created_at")
+          .eq("organization_id", organizationId)
+          .in("conversation_id", conversationIds.slice(batch, batch + refBatchSize))
+          .order("id")
+          .range(offset, offset + pageSize - 1);
+        if (error) throw error;
+        conversation_drafts.push(...(data ?? []));
+        if (!data || data.length < pageSize) break;
+      }
     }
     // O registro de entrega do aviso ao suporte (migration 0292). O escopo sai
     // dos CASOS já coletados, e não de uma segunda derivação pela conversa: um
@@ -1580,6 +1647,8 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
     campaign_suppressions,
     channel_session_groups,
     group_messages_authored,
+    conversation_drafts,
+    contact_field_proposals,
   };
 }
 

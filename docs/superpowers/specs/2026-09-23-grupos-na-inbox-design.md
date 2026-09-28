@@ -183,7 +183,7 @@ do participante de grupo que NÃO é contato do CRM** (ver abaixo).
 PLACEHOLDER do grupo, e o autor só existe em `messages.metadata.group_sender`
 (`{name, phone, lid}`). Para quem **já é contato do CRM**, a anonimização alcança essas
 mensagens: o gatilho da virada de `is_anonymized` (`fn_redigir_conversas_ao_anonimizar`,
-migration 0391, redefinido na 0411) — por onde passam os DOIS caminhos, o pedido formal
+migration 0391, redefinido na 0445) — por onde passam os DOIS caminhos, o pedido formal
 (`fn_lgpd_cascade_redact_contact`) e o botão da ficha — casa o autor pelo telefone
 (`fn_telefone_variantes`, com e sem o nono dígito) **ou** pelo lid (`contacts.wa_lid`),
 lidos da linha ANTIGA do contato, e redige corpo, mídia (o arquivo entra em
