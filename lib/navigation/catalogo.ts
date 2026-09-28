@@ -1,5 +1,6 @@
 import type { Role } from "@/lib/auth/types";
 import type { ModuloOpcional } from "@/lib/instalacao/modulos";
+import type { CapacidadeDaOrganizacao } from "@/lib/organizacao/capacidades";
 
 /**
  * Registro de navegação — a ÚNICA lista de destinos do app do tenant.
@@ -45,11 +46,24 @@ export interface NavMetadata {
   sidebar?: boolean;
   healthDot?: boolean;
   /**
+   * Contador de pendências ao lado do rótulo. `casos`: casos em que a IA espera
+   * uma pessoa (`awaiting_human`) — quem desenha é `ContadorDeCasos`. `fila`:
+   * conversas que esperam uma pessoa (a aba Fila do Inbox) — `ContadorDaFila`.
+   * Zero não desenha nada: número que nunca some ensina a ignorar o número.
+   */
+  contador?: "casos" | "fila";
+  /**
    * A porta de um MÓDULO OPCIONAL da instalação (`lib/instalacao/modulos.ts`).
    * Com o módulo desligado ela some do menu, do hub e do ⌘K — para todo papel.
    * É apresentação, como o resto deste arquivo: quem recusa é a tela e a rota.
    */
   modulo?: ModuloOpcional;
+  /**
+   * A porta de uma CAPACIDADE que a organização liga para si
+   * (`lib/organizacao/capacidades.ts`). Desligada, some do menu, do hub e do
+   * ⌘K. Apresentação, como `modulo`: quem recusa é a tela e a rota.
+   */
+  capacidade?: CapacidadeDaOrganizacao;
 }
 
 /**
@@ -139,6 +153,8 @@ export const NAV_CATALOG = [
     icon: "Inbox",
     group: "atendimento",
     sidebar: true,
+    // Quantas conversas a IA passou para a equipe e esperam uma pessoa (aba Fila).
+    contador: "fila",
   },
   {
     href: "/app/radar",
@@ -299,6 +315,15 @@ export const NAV_CATALOG = [
     // Inbox e o funil, que continuam no menu.
   },
   {
+    href: "/app/proposals",
+    label: "Propostas",
+    description: "Rascunhe, revise e envie propostas comerciais — do orçamento ao aceite.",
+    icon: "FileText",
+    group: "crm",
+    section: "Fechar a venda",
+    capacidade: "propostas",
+  },
+  {
     // A promessa que o comentário da Agenda fazia desde que ela nasceu. Aqui se
     // decide O QUE se pode marcar, quanto dura e quem atende — e é isto que a
     // tela de marcar e o agente de IA oferecem ao cliente.
@@ -320,6 +345,31 @@ export const NAV_CATALOG = [
     // tem hub, e se chega às telas dele por "Configurações". Eu tinha posto
     // `sidebar: true` e a cerca reprovou dizendo "a tela existe e não tem porta
     // na navegação" — a porta existia, era outra.
+  },
+  {
+    href: "/app/settings/tenant/proposals",
+    label: "Propostas",
+    description: "Configure a validade padrão e condições para propostas comerciais.",
+    icon: "FileText",
+    group: "organizacao",
+    section: "Sua empresa",
+    minRole: "manager",
+    // Doc 79: é aqui que a EMPRESA liga — então a porta depende só da chave da
+    // INSTALAÇÃO (a capacidade da empresa ainda está desligada quando se chega).
+    modulo: "propostas",
+    // SEM `sidebar`: mora atrás de "Configurações", como as demais telas de
+    // settings/tenant que não são de acompanhamento diário.
+  },
+  {
+    href: "/app/settings/tenant/proposals/modelos",
+    label: "Modelos de proposta",
+    description: "Personalize os modelos da plataforma ou crie os da sua empresa, inclusive a partir de uma proposta que você já usa.",
+    icon: "FileText",
+    group: "organizacao",
+    section: "Sua empresa",
+    minRole: "manager",
+    capacidade: "propostas",
+    // SEM `sidebar`, como a tela-mãe de Propostas: chega-se por Configurações.
   },
   {
     // O BALCÃO. Fica em CRM, e não em Configurações, porque é uso diário de quem
@@ -441,7 +491,9 @@ export const NAV_CATALOG = [
     group: "ia",
     section: "Montar o agente",
     minRole: "manager",
-    sidebar: true,
+    // Saiu do sidebar para dar lugar a Casos: roteador se configura poucas
+    // vezes, e o caso pede resposta no mesmo dia. A troca é um-por-um porque o
+    // menu inteiro tem de caber em 900px (e2e `navegacao.spec.ts`).
   },
   {
     href: "/app/ai/credentials",
@@ -512,6 +564,11 @@ export const NAV_CATALOG = [
     group: "ia",
     section: "Acompanhar o agente",
     minRole: "agent",
+    // Uso diário: a IA abre caso quando precisa de uma pessoa e segue
+    // atendendo enquanto espera. Escondido no hub, o caso só era visto por quem
+    // fosse procurar — medido numa loja que vende pelo WhatsApp.
+    sidebar: true,
+    contador: "casos",
   },
   {
     href: "/app/ai/inbox",
