@@ -1,4 +1,4 @@
-# Contribuing — DeskcommCRM
+# Contributing — DeskcommCRM
 
 🇧🇷 Português · [🇺🇸 English](CONTRIBUTING.en.md)
 

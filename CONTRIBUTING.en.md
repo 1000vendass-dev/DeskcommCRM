@@ -1,6 +1,6 @@
 # Contributing — DeskcommCRM
 
-🇧🇷 [Português](CONTRIBUTING.md) · 🇺🇸 English
+[🇧🇷 Português](CONTRIBUTING.md) · 🇺🇸 English
 
 ## Before you start
 
@@ -40,7 +40,7 @@ PT-BR messages are accepted. The subject must be imperative and ≤72 chars.
 
 ### epic-executor
 
-Large changes follow [`docs/stories/epics/`]. The `epic-executor` consumes the frontmatter (`epic_id`, `priority`, `depends_on`, `status`) and executes wave-by-wave with continuous E2E validation.
+Large changes follow [`docs/stories/epics/`](docs/stories/epics/). The `epic-executor` consumes the frontmatter (`epic_id`, `priority`, `depends_on`, `status`) and executes wave-by-wave with continuous E2E validation.
 
 When finishing an epic:
 
@@ -59,7 +59,7 @@ When finishing an epic:
    **What CI rejects by itself** — run it before opening the PR and there will be no surprise:
 
    ```bash
-   pnpm cercas    # ~30 s: the structural guards (baseline, MANIFEST, docs, workflows) — what rejects the most PRs
+   pnpm cercas    # ~30 s: the structural guards (baseline, MANIFEST, docs, workflows, Spanish i18n, .changes/ fragments) — what rejects the most PRs
    pnpm typecheck && pnpm lint && pnpm lint:channels && pnpm test:unit && pnpm test:shell && pnpm build
    pnpm test:db   # needs Docker; brings up a clean Postgres and applies the baseline
    ```

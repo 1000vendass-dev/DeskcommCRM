@@ -156,7 +156,7 @@ is needed. If you ran the command anyway, know that in Claude Code the installed
 the one in the clone — and stays on the version of the day you ran it, until you run it again (or
 undo). The old way still works too: drop just the `hostgator-setup-kit/` folder into the **Claude
 Code** chat inside the VPS — it reads the kit's [`CLAUDE.md`](hostgator-setup-kit/CLAUDE.md) and
-walks you through everything.
+walks you through everything, in Portuguese.
 
 ---
 
@@ -338,7 +338,7 @@ DeskcommCRM/
 │   ├── app/                # Authenticated routes: inbox, radar, kanban, contacts,
 │   │                       #   connections, ai/*, integrations, metrics, lgpd,
 │   │                       #   audit, team, settings
-│   └── api/v1/             # Canonical REST API (196 route handlers)
+│   └── api/v1/             # Canonical REST API
 ├── components/             # React (ui/, inbox/, kanban/, shell/, ...)
 ├── lib/                    # supabase/, waha/, channels/, ai/, agent-engine/,
 │                           #   api/, routing/, navigation/, env.ts
