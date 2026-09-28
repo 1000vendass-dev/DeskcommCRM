@@ -1,4 +1,4 @@
--- 0411: índice para a consulta de cooldown do gatilho de silêncio
+-- 0447: índice para a consulta de cooldown do gatilho de silêncio
 -- (lib/followup/silence-sweep.ts, loadContactIdsEmCooldown).
 --
 -- A consulta filtra followup_enrollments por (organization_id, pointer_id,

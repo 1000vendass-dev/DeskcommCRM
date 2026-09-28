@@ -36790,9 +36790,9 @@ alter table public.meta_templates
 comment on column public.meta_templates.saved_values is
   'Valores que o operador salvou para reaproveitar em todo disparo deste modelo, chaveados como template_values (slotKey: header:1, button0:1). Só link de mídia: a rota de escrita recusa valor de texto, que costuma ser dado de pessoa. Sobrevive à sincronização, que não lista esta coluna no upsert.';
 
--- ---- honorários: primeiro módulo oficial via ADR-0002 (migration 0398) ----
+-- ---- honorários: primeiro módulo oficial via ADR-0002 (migration 0446) ----
 -- ⚠️ ANTES DA VARREDURA anon: cria função. Corpo completo e o porquê de cada
--- decisão (D2/D4/D5/D8) em supabase/migrations/20260924025737_0398_honorarios_modulo_oficial.sql —
+-- decisão (D2/D4/D5/D8) em supabase/migrations/20260928131000_0446_honorarios_modulo_oficial.sql —
 -- criar a função aqui NÃO cria tabela nenhuma; as tabelas só nascem quando um
 -- administrador da instalação chama fn_modulo_instalar('honorarios', ...).
 
@@ -36911,7 +36911,7 @@ $f$;
 revoke execute on function public.fn_honorarios_provisionar() from public, anon, authenticated;
 grant execute on function public.fn_honorarios_provisionar() to service_role;
 
--- ---- fn_honorarios_parcela_pagar: pagamento atômico (migration 0398, achado da revisão do PR #1578) ----
+-- ---- fn_honorarios_parcela_pagar: pagamento atômico (migration 0446, achado da revisão do PR #1578) ----
 -- D7 (ADR-0002): `record`, não `honorarios_parcelas%rowtype` — compila mesmo antes do módulo
 -- instalado. Mesmo desenho de fn_finalizar_comanda (migration 0351): security definer + for
 -- update + fn_role_at_least, para a transição pendente→pago ser atômica (dois cliques na
@@ -36925,7 +36925,7 @@ create or replace function public.fn_honorarios_parcela_pagar(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   v_parcela record;
@@ -36944,6 +36944,23 @@ begin
   end if;
   if v_parcela.status = 'pago' then
     raise exception 'parcela_ja_paga' using errcode = '22023';
+  end if;
+
+  -- A conta e o plano vêm do corpo da requisição, e a função é definer: sem esta
+  -- conferência a FK aceitaria a conta de OUTRA organização e o dinheiro desta
+  -- entraria no extrato de lá. fn_finalizar_comanda resolve a conta pela forma de
+  -- pagamento filtrada por p_org; aqui a conta chega direto, então o filtro é este.
+  if not exists (
+    select 1 from public.financial_accounts
+     where id = p_account_id and organization_id = p_org and is_active
+  ) then
+    raise exception 'conta_invalida' using errcode = '22023';
+  end if;
+  if p_account_plan_id is not null and not exists (
+    select 1 from public.account_plans
+     where id = p_account_plan_id and organization_id = p_org and is_active
+  ) then
+    raise exception 'conta_invalida' using errcode = '22023';
   end if;
 
   insert into public.financial_entries
@@ -40474,9 +40491,9 @@ begin
   end if;
 end $$;
 
--- ---- índice de cooldown do gatilho de silêncio (migration 0411) ----
+-- ---- índice de cooldown do gatilho de silêncio (migration 0447) ----
 --
--- Racional inteiro na migration 0411: a consulta de cooldown de
+-- Racional inteiro na migration 0447: a consulta de cooldown de
 -- `loadContactIdsEmCooldown` (lib/followup/silence-sweep.ts) filtra
 -- `followup_enrollments` por (organization_id, pointer_id, contact_id,
 -- updated_at) a cada tick do cron, e não havia índice cobrindo `pointer_id`.

@@ -1,4 +1,4 @@
--- 0398 — Honorários: primeiro módulo oficial a usar o mecanismo da ADR-0002.
+-- 0446 — Honorários: primeiro módulo oficial a usar o mecanismo da ADR-0002.
 --
 -- Lei: docs/adr/0002-tabelas-de-modulo-num-banco-so.md. Onda 1 (D4/D5, migration 0325) e onda 2
 -- (D3/D6, migration 0340) já entregaram o harness — registro `modulos_instalados`,
@@ -184,7 +184,7 @@ create or replace function public.fn_honorarios_parcela_pagar(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   v_parcela record;
@@ -203,6 +203,23 @@ begin
   end if;
   if v_parcela.status = 'pago' then
     raise exception 'parcela_ja_paga' using errcode = '22023';
+  end if;
+
+  -- A conta e o plano vêm do corpo da requisição, e a função é definer: sem esta
+  -- conferência a FK aceitaria a conta de OUTRA organização e o dinheiro desta
+  -- entraria no extrato de lá. fn_finalizar_comanda resolve a conta pela forma de
+  -- pagamento filtrada por p_org; aqui a conta chega direto, então o filtro é este.
+  if not exists (
+    select 1 from public.financial_accounts
+     where id = p_account_id and organization_id = p_org and is_active
+  ) then
+    raise exception 'conta_invalida' using errcode = '22023';
+  end if;
+  if p_account_plan_id is not null and not exists (
+    select 1 from public.account_plans
+     where id = p_account_plan_id and organization_id = p_org and is_active
+  ) then
+    raise exception 'conta_invalida' using errcode = '22023';
   end if;
 
   insert into public.financial_entries
