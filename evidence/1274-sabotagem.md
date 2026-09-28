@@ -30,10 +30,65 @@ depois do verde é racionalização, não prova.
 
 ## Como cada uma é executada
 
-Cada linha é aplicada com `git stash` em cima do commit, roda-se o arquivo de teste
-alvo por `dk-heavy.sh`, e o resultado é colado abaixo. Sem o medido, a tabela acima é
-apenas uma intenção — e uma intenção não é prova de cobertura.
+Cada sabotagem é uma troca EXATA de texto num arquivo de produção, aplicada por um
+script que (1) falha em voz alta se o texto velho não existir mais, (2) copia o
+arquivo antes, (3) roda a suíte-alvo por `dk-heavy.sh`, (4) restaura o arquivo da
+cópia. O script roda UMA vez só, com as seis sabotagens em sequência, e no fim
+roda a suíte de novo: o `rc=0` final é a prova de que nenhum arquivo ficou
+sabotado. Sem o medido, a tabela acima é apenas uma intenção — e uma intenção não
+é prova de cobertura.
 
-## RESULTADO MEDIDO
+Comando (sempre fora do terminal do gateway):
 
-(preenchido depois de rodar — ver final deste arquivo)
+```
+export PATH=/root/.hermes/node/bin:$PATH
+/root/workspace/bin/dk-heavy.sh /root/workspace/wt-dk1274 onda4-1274-sab2 \
+  'python3 /root/.hermes/profiles/webtecnica/cache/scratch/sab-1274.py'
+/root/workspace/bin/dk-heavy.sh --wait onda4-1274-sab2 280
+```
+
+Suíte-alvo de cada sabotagem: `tests/unit/filtro-multi-etiqueta.test.ts` +
+`tests/unit/funil-filtro-de-tag-le-as-duas-caixas.test.ts`.
+
+## RESULTADO MEDIDO (2026-09-28, rc lido do `/tmp/dk-onda4-1274-sab2.log`)
+
+**BASE sem sabotagem: rc=0. APÓS restaurar as seis: rc=0.** As seis sabotagens:
+rc=1 VERMELHO, e em todas o teste MIRADO foi o que quebrou.
+
+| # | rc | O teste mirado quebrou | Outros testes que também ficaram vermelhos |
+|---|---|---|---|
+| S1 | 1 (VERMELHO) | SIM — `E com DUAS etiquetas: \`cs\` com a LISTA nas DUAS caixas` | `E e OU com as MESMAS etiquetas só diferem no OPERADOR`; `conversas, modo E: um \`or=\` só, com \`cs\` e as DUAS etiquetas num literal` (6 no total) |
+| S2 | 1 (VERMELHO) | SIM — `E com DUAS etiquetas` | 12 testes, incluindo `conversas, modo E` e `conversas, modo OU` |
+| S3 | 1 (VERMELHO) | SIM — `conversas, modo OU: o MESMO literal com o operador \`ov\`` | só ele (2 contagens do mesmo caso) |
+| S4 | 1 (VERMELHO) | SIM — `a repetição na URL vira LISTA no schema` | `\`?tag=vip\` (um só) continua sendo ACEITO`; `o marcador é normalizado item a item`; `\`modo\` fora dos dois é RECUSADO (422)`; `CONTROLE: mais etiquetas que o teto é recusado` (10 no total) |
+| S5 | 1 (VERMELHO) | SIM — `UMA etiqueta pelo caminho plural é IDÊNTICA ao caminho singular` | `conversas, uma etiqueta só: continua o \`or=\` singular de sempre` (4 no total) |
+| S6 | 1 (VERMELHO) | SIM — `OU devolve quem tem QUALQUER uma — e a lista CRESCE` | `CONTROLE: a diferença entre E e OU é o TAMANHO`; **`E do funil NÃO aceita mistura de caixas`** (6 no total) |
+
+### Duas correções sobre o que estava previsto acima (a previsão é de antes do fix)
+
+1. **S3 — o caso previsto não existe.** A tabela previa o caso "o handler aplica o
+   modo que veio da URL"; ele nunca foi escrito com esse nome. O caso que cumpre a
+   mesma função é `conversas, modo OU: o MESMO literal com o operador \`ov\``, do
+   bloco novo do handler, e foi ele que quebrou.
+2. **S5 — a sabotagem como estava escrita é um APAGÃO, não uma troca.** Fazer o
+   caminho de tamanho 1 passar pelo plural NÃO muda o byte: `listaDeValoresParaOr(["vip"])`
+   produz exatamente `arrayDeUmValorParaOr("vip")`, porque a lista de um é o
+   literal de um item. Trocar só o caminho deixaria o teste verde — e um teste
+   verde sob sabotagem não é prova. A sabotagem EXECUTADA muda o OPERADOR da forma
+   singular (`cs` → `ov` no predicado do marcador), que é a mesma classe de
+   regressão (o `?tag=vip` deixa de ser o de sempre) e sim é detectável: o caso
+   byte a byte e o caso do handler ficaram vermelhos.
+   **Corolário para quem vier depois:** a delegação de tamanho 1 para a função
+   singular é redundante por construção — quem a remover não é pegue por este
+   arquivo, e sim pelo operador. O que segura o contrato é a comparação byte a
+   byte com a função singular, não o desvio de caminho.
+
+### Um achado que a sabotagem S6 revelou (e que o fix já tinha corrigido)
+
+Quando o `passaMarcador` do funil foi sabotado para `every` sobre a união das três
+caixas, ficaram vermelhos NÃO só os casos de E/OU, mas também
+`E do funil NÃO aceita mistura de caixas`. É esse o caso: a primeira versão desta
+fatia (escrita antes desta medição) fazia exatamente aquele `every` — aceitava
+"vip na conversa E orçamento no negócio", que o servidor recusa. O teste que
+cobriu a mistura de caixas é o que transformou um defeito silencioso (duas telas
+com respostas diferentes para o mesmo filtro) em vermelho.
