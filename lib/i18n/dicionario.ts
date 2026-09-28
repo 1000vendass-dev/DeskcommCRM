@@ -6606,6 +6606,8 @@ export const DICIONARIO: Traducoes = {
   "Velocidade de reprodução": { es: "Velocidad de reproducción" },
   "Ampliar imagem": { es: "Ampliar imagen" },
   "Imagem recebida": { es: "Imagen recibida" },
+  // Anexo da nota interna (#1863, F3) — "recebida" mentiria: quem anexou é o time.
+  "Imagem da nota interna": { es: "Imagen de la nota interna" },
   Baixar: { es: "Descargar" },
   "Abrir conversa com este contato": { es: "Abrir conversación con este contacto" },
   "Localização compartilhada": { es: "Ubicación compartida" },
