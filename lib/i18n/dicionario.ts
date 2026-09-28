@@ -13180,6 +13180,8 @@ export const DICIONARIO: Traducoes = {
   "Depois de tantas vezes sem resposta, a pergunta é encerrada como não respondida e deixa de ser feita.": { es: "Después de tantas veces sin respuesta, la pregunta se cierra como no respondida y deja de hacerse." },
   "Encerrar o roteiro depois de quantas horas sem resposta": { es: "Cerrar el guion después de cuántas horas sin respuesta" },
   "Em branco, o roteiro encerra depois de 72 horas sem resposta.": { es: "En blanco, el guion se cierra después de 72 horas sin respuesta." },
+  "Pode recomeçar para quem já concluiu": { es: "Puede reiniciarse para quien ya lo completó" },
+  "Desligado, o cliente que já respondeu tudo não recebe as mesmas perguntas de novo, mesmo repetindo a palavra-gatilho. Ligue para roteiros que se repetem, como agendamento.": { es: "Desactivado, el cliente que ya respondió todo no recibe las mismas preguntas de nuevo, aunque repita la palabra clave. Actívalo para guiones que se repiten, como el agendamiento." },
   "Pergunta (o que a IA deve perguntar)": { es: "Pregunta (lo que la IA debe preguntar)" },
   "Chave do campo (onde a resposta é guardada)": { es: "Clave del campo (dónde se guarda la respuesta)" },
   "Minúsculas, sem espaço (ex.: cidade, cnh, moto_interesse).": { es: "Minúsculas, sin espacio (ej.: ciudad, licencia, moto_interes)." },
