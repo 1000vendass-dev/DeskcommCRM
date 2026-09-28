@@ -367,11 +367,13 @@ if [ -f supabase/baseline.sql ]; then
   #
   # ── E A COMPARAÇÃO RODA EM ORDEM DE BYTES, SEMPRE ─────────────────────────
   #
-  # ⛔ `sort` e `comm` precisam concordar na ordenação, e sob um locale UTF-8
-  # eles não concordam. O `en_US.UTF-8` — padrão de muita VPS — ordena IGNORANDO
-  # pontuação: `_` e `|` não pesam, e `org_voice_calls_admin_write|…` vai parar
-  # numa posição que o `comm` não espera. Ele mesmo denuncia, na stderr —
-  # "comm: input is not in sorted order" —, e o que devolve depois é lixo.
+  # ⛔ `sort` e `comm` precisam concordar na ordenação. No GNU coreutils os dois
+  # seguem o mesmo locale e concordam (medido: Ubuntu 20.04–25.10, Debian 12,
+  # AlmaLinux 8/9 dão 0 em C, C.UTF-8, en_US e pt_BR). No Ubuntu 26.04, que troca
+  # o coreutils pelo uutils (Rust, 0.8.0), o `sort` ordena pelo locale e o `comm`
+  # compara BYTES: sob en_US/pt_BR.UTF-8, `orgs_select` cai entre `org_guardrail_*`
+  # e `org_voice_calls_*`, o `comm` perde o passo — "comm: file 2 is not in
+  # sorted order" na stderr — e o que devolve depois é lixo.
   #
   # MEDIDO numa instalação real, 2026-09-28: com as 114 regras TODAS no banco, a
   # comparação acusou 2 faltando (`org_voice_calls_admin_write` e
