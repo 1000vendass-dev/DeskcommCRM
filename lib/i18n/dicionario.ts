@@ -4762,6 +4762,9 @@ export const DICIONARIO: Traducoes = {
   "Se preencher, enviaremos uma assinatura para o outro sistema conferir que fomos nós.": {
     es: "Si lo completas, enviaremos una firma para que el otro sistema confirme que fuimos nosotros.",
   },
+  "Como o outro sistema confere a assinatura e reconhece reenvios: guia de integração em docs/integracao/webhooks-de-saida.md, na documentação do projeto.": {
+    es: "Cómo el otro sistema verifica la firma y reconoce los reenvíos: guía de integración en docs/integracao/webhooks-de-saida.md, en la documentación del proyecto.",
+  },
   "Incluir o responsável no corpo": { es: "Incluir al responsable en el cuerpo" },
   "Padrão: o aviso não diz quem atende. Ligue só se o outro sistema precisar do nome da equipe.": {
     es: "Por defecto, el aviso no dice quién atiende. Actívalo solo si el otro sistema necesita el nombre del equipo.",
@@ -8457,6 +8460,9 @@ export const DICIONARIO: Traducoes = {
   "faturado": { es: "facturado" },
   "O faturado soma comandas; o que entrou soma lançamentos pagos. Os dois não precisam bater.": {
     es: "Lo facturado suma órdenes de servicio y lo que entró suma movimientos pagados. Las dos cifras no tienen por qué coincidir.",
+  },
+  "Moedas diferentes não se somam: cada uma tem o seu bloco.": {
+    es: "Las monedas distintas no se suman: cada una tiene su propio bloque.",
   },
   "Por forma de pagamento": { es: "Por forma de pago" },
   "Nenhuma comanda no período.": { es: "Ninguna orden de servicio en el período." },
@@ -13080,6 +13086,40 @@ export const DICIONARIO: Traducoes = {
   "Comandos pelo celular ligados — já valem no próximo atendimento.":
     { es: "Comandos desde el celular activados — ya valen en la próxima atención." },
   "Comandos pelo celular desligados.": { es: "Comandos desde el celular desactivados." },
+  // ─── #1540 — lembrete interno (cercas de espanhol) ───
+  "sem mensagem ao cliente": { es: "sin mensaje al cliente" },
+  "Título da tarefa": { es: "Título de la tarea" },
+  "Ligar para {{contact.name}} sobre {{lead.title}}": { es: "Llamar a {{contact.name}} sobre {{lead.title}}" },
+  "Vence em (dias)": { es: "Vence en (días)" },
+  "Atribuir a": { es: "Asignar a" },
+  "Dono do negócio": { es: "Dueño del negocio" },
+  "Este nó cria uma tarefa para a equipe — nenhuma mensagem sai para o cliente.":
+    { es: "Este nodo crea una tarea para el equipo — ningún mensaje sale al cliente." },
+  "Somente interno": { es: "Solo interno" },
+  "O fluxo inteiro não fala com o cliente: a publicação recusa qualquer nó que envie mensagem.":
+    { es: "El flujo entero no habla con el cliente: la publicación rechaza cualquier nodo que envíe un mensaje." },
+  "O lembrete sai quando se passarem N dias sem mensagem na direção escolhida. Chegando mensagem nova, o relógio zera — e um novo silêncio de N dias gera outro lembrete. Nada é enviado ao cliente.": { es: "El recordatorio sale cuando pasan N días sin mensaje en la dirección elegida. Llegando un mensaje nuevo, el reloj se reinicia — y un nuevo silencio de N días genera otro recordatorio. No se envía nada al cliente." },
+  "O lembrete sai quando se passarem N dias com o card na mesma etapa. Mudando a etapa, o relógio zera. Nada é enviado ao cliente.": { es: "El recordatorio sale cuando la tarjeta lleva N días en la misma etapa. Cambiando de etapa, el reloj se reinicia. No se envía nada al cliente." },
+  "Depois de N dias": { es: "Después de N días" },
+  "Silêncio de": { es: "Silencio de" },
+  "De quem é o silêncio": { es: "De quién es el silencio" },
+  "Não gerar lembrete quando o cliente tiver compromisso marcado": { es: "No generar recordatorio cuando el cliente tenga un compromiso marcado" },
+  "Quando ficar N dias sem mensagem": { es: "Cuando pasen N días sin mensaje" },
+  "Quando um lead ficar N dias na mesma etapa": { es: "Cuando un lead lleve N días en la misma etapa" },
+  "Criar tarefa interna (sem mensagem ao cliente)": { es: "Crear tarea interna (sin mensaje al cliente)" },
+  "A tarefa não foi criada: o evento que disparou a regra não trouxe um lead nem um contato para pendurar nela.": {
+    es: "La tarea no se creó: el evento que disparó la regla no trajo un lead ni un contacto donde colgarla.",
+  },
+  "A tarefa não foi criada: a pessoa escolhida como responsável não ficou resolvida para esta tarefa. Escolha outro responsável na automação.": {
+    es: "La tarea no se creó: la persona elegida como responsable no quedó resuelta para esta tarea. Elija otro responsable en la automatización.",
+  },
+  "A tarefa não foi criada: o título ficou vazio depois de preencher os campos do texto. Escreva um título que não dependa só de dado que faltou.": {
+    es: "La tarea no se creó: el título quedó vacío después de completar los campos del texto. Escriba un título que no dependa solo de un dato que faltó.",
+  },
+  "A tarefa não foi criada: o banco recusou a gravação. Tente de novo em alguns minutos; se persistir, abra a tarefa na agenda para ver o detalhe.": {
+    es: "La tarea no se creó: la base de datos rechazó el registro. Inténtelo de nuevo en unos minutos; si persiste, abra la tarea en la agenda para ver el detalle.",
+  },
+
   // ─── PREVISÃO PONDERADA DO FUNIL (issue #1535) ───
   "Previsão": { es: "Previsión" },
   "Ponderado": { es: "Ponderado" },
