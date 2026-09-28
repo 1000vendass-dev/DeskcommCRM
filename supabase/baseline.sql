@@ -40561,6 +40561,10 @@ create trigger trg_crm_proposal_items_org_consistente
   before insert or update on public.crm_proposal_items
   for each row execute function public.fn_verificar_org_do_item_da_proposta();
 
+-- Função de gatilho: não é RPC, mas nasce com EXECUTE para public e anon
+-- como qualquer função em public (CLAUDE.md, Migrations item 9).
+revoke execute on function public.fn_verificar_org_do_item_da_proposta() from public, anon;
+
 alter table public.crm_proposals enable row level security;
 alter table public.crm_proposal_items enable row level security;
 
