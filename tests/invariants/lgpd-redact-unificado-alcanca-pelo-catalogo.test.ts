@@ -161,6 +161,11 @@ const DECISOES: Record<string, Decisao> = {
     caminho: "cascata",
     razao: "Venda redigida no mesmo molde do pedido: o que é da pessoa sai, o que é do negócio (valor, data) fica pela mesma obrigação fiscal.",
   },
+  crm_proposals: {
+    decidida: "redigir",
+    caminho: "cascata",
+    razao: "0477: destinatario_nome (nome impresso no PDF, D10/0466), briefing_json e resumo_comercial saem — número, valores, itens, datas e status ficam, mesmo molde de orders/crm_leads.",
+  },
   voice_calls: {
     decidida: "redigir",
     caminho: "cascata",
