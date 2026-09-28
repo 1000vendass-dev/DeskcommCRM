@@ -975,6 +975,15 @@ export const AUDIT_ACTIONS = [
   // o dado que importa quando alguém pergunta "por que este cliente voltou a
   // receber?".
   "contact.unblocked",
+
+  // ── Grupos de WhatsApp na inbox (2026-09-23) ─────────────────────────────
+  // Ligar/desligar QUAL grupo de um número entra no CRM. O filtro do WhatsApp é
+  // tudo-ou-nada por número (ligar o primeiro liga todos, desligar o último
+  // volta a ignorar) — a pergunta que esta trilha responde é "quem trocou o que
+  // este número recebe, e quando", separada em duas porque ligar e desligar são
+  // decisões opostas e o painel filtra por `action`, não por metadata.
+  "channel.group_enabled",
+  "channel.group_disabled",
   // "Enviar vendas pelo canal da conversa" (doc 76, PR #1819): ligar faz o
   // valor da venda e o telefone do cliente saírem para o provedor do canal.
   "conversions.report_via_channel_updated",
