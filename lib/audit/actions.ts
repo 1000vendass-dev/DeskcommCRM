@@ -978,6 +978,17 @@ export const AUDIT_ACTIONS = [
   // "Enviar vendas pelo canal da conversa" (doc 76, PR #1819): ligar faz o
   // valor da venda e o telefone do cliente saírem para o provedor do canal.
   "conversions.report_via_channel_updated",
+
+  // CRM B2B fase 1 — companies / people / import (migration 0239)
+  "companies.created",
+  "companies.updated",
+  "companies.enriched",
+  "people.created",
+  "people.updated",
+  "company_people.linked",
+  "company_people.updated",
+  "contacts.person_linked",
+  "imports.companies_people",
 ] as const;
 
 /** Um código de auditoria. Derivado de `AUDIT_ACTIONS` — não redigite a lista. */

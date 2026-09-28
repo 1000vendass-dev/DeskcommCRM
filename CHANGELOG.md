@@ -8,6 +8,124 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
 
 ## [Não lançado]
 
+## [1.60.0] — 2026-09-28
+
+### Adicionado
+
+- **O ícone enviado em Marca também identifica o aplicativo instalado** O campo de ícone da instalação passa a usar a mesma imagem na aba do navegador e no app instalado no celular, com tamanhos de 192 e 512 pixels. Sem imagem própria, mantém o desenho da marca. PNG ou JPG até 512 KB, sem editar arquivos no servidor. Crédito: @vitorlacerdadigital.
+
+  Contribuição de @vitorlacerdadigital (#1848).
+
+- **Use uma chave OpenRouter para preparar o acervo de conhecimento** O acervo aceita uma chave OpenRouter cadastrada em IA › Credenciais ou na instalação (`OPENROUTER_API_KEY`) para indexar e consultar documentos com o mesmo modelo de embedding. Em IA › Conhecimento, o aviso de chave faltando permite cadastrá-la sem sair da página. A OpenRouter só entra quando não há chave OpenAI nem gateway: quem já usa OpenAI continua com a configuração anterior.
+
+  Contribuição de @obrunogonzaga (#1854).
+
+- **A empresa passa a ter proposta comercial, do rascunho da IA ao PDF que o cliente recebe no WhatsApp** Nova tela Propostas. É módulo opcional, desligado por padrão, com duas chaves: quem
+  administra o servidor liga "Propostas comerciais" em /admin/sistema › Módulos
+  opcionais (com ela desligada, nenhuma empresa vê a tela, o menu nem as ferramentas
+  do agente), e cada empresa liga a dela em Configurações › Propostas. Ligada, o assistente que conversa com o cliente levanta o briefing antes
+  de rascunhar — objetivo, entregas, o que o cliente já tem e os acessos,
+  responsabilidades, prazo, quem decide e orçamento, e uma referência —, formulando as
+  perguntas com as palavras de cada pedido (serve para site, automação ou projeto sem
+  nicho), mostra um resumo e só cria o rascunho depois que o cliente confirma. O
+  rascunho abre um aviso na Central, aparece em destaque na tela de quem está com o
+  CRM aberto e entra no Radar como "proposta esperando revisão"; nada sai para o
+  cliente sem uma pessoa revisar. A empresa escolhe os modelos em Configurações ›
+  Propostas › Modelos: pode desligar os que vêm com o sistema, editar, criar os dela
+  e importar o PDF ou o texto que já usa — a IA divide em seções, troca por campos o
+  que muda de um cliente e de um projeto para outro, e mostra o que o modelo vai pedir
+  antes de salvar. No editor, "Preencher com a conversa" sugere valores para os campos
+  em aberto (você confirma cada um), cada seção pode ser reescrita, e "Ver como o
+  cliente recebe" abre o PDF exatamente como ele vai chegar. O envio exige modelo
+  confirmado e preços definidos, grava o que foi digitado antes de enviar, numera a
+  proposta por organização e ano, e manda o PDF pelo WhatsApp da empresa, com a marca
+  dela. Anonimizar um contato (LGPD) também apaga do armazenamento o PDF das propostas
+  dele, e o relatório de acesso aos dados passa a listá-las. Nada exige ação de quem
+  opera a instalação: quem não liga o módulo não vê diferença nenhuma.
+
+  Contribuição de @paulolimajr77 (#1832).
+
+- **A venda que veio de anúncio pode ir para a Meta pelo próprio canal intermediado, atrás de uma chave que vem desligada** Contribuição de @jmpo (#1819).
+
+  Quando o número de WhatsApp está conectado por um canal intermediado que já
+  liga o conjunto de dados da Meta ao número (na tela do próprio provedor), a
+  venda fechada no CRM — botão Ganhar, arrasto no quadro ou mover em lote —
+  pode ser reportada por esse canal: o evento `Purchase` sai com o valor, a
+  moeda, o telefone e o id da conversa, e o provedor completa o vínculo com o
+  clique do anúncio.
+
+  **Vem desligado.** Nada muda na atualização: o envio só acontece depois que um
+  administrador liga **Enviar vendas pelo canal da conversa** em Configurações ›
+  Conversões. Com a chave desligada, nenhum dado da venda sai para o provedor e
+  a venda segue na pendência "sem conexão" de sempre.
+
+  Com a chave ligada, o canal só entra quando a organização não tem conexão
+  direta com a Meta; quem já configurou a conexão direta segue por ela. A venda
+  sai por um caminho só, e a resposta do canal é lida por inteiro — um evento
+  recusado dentro de uma resposta de sucesso aparece como recusa na tela de
+  conversões, não como enviado.
+
+### Alterado
+
+- **O menu mostra quantos casos e quantas conversas esperam uma pessoa** «Casos» passa a aparecer no menu lateral do grupo de IA, com um número vermelho
+  quando há casos em que a IA espera uma pessoa. Antes a tela ficava atrás de
+  «Ver tudo em IA», e o caso só era visto por quem fosse procurar. O item «Inbox»
+  ganha o mesmo número para as conversas que esperam uma pessoa (a aba Fila) —
+  as que a IA passou para a equipe. Sem nada esperando, não aparece número.
+
+  Para o menu continuar cabendo na tela de um notebook, «Roteadores» — que se
+  configura poucas vezes — passa a ficar em «Ver tudo em IA».
+
+  Contribuição de @jmpo (#1817).
+
+- **Um gate novo compara o tipo da coluna no banco com o tipo declarado no TypeScript** O repositório ganhou um invariante novo, tests/invariants/tipo-de-coluna-x-typescript.test.ts,
+  que compara o TIPO de cada coluna lido do supabase/baseline.sql com o tipo declarado
+  na interface do TypeScript, nulidade incluída, e impede que o tipo de uma linha venha
+  através de as unknown as, que é o que desliga a checagem do compilador na hora em que
+  o dado entra. Ele é o irmão do vocabulario-banco-x-typescript, que compara o CHECK:
+  juntos cobrem as duas metades do contrato entre o banco e o código. A cobertura
+  inicial é a view ai_provider_credentials_safe contra a interface CredentialRow,
+  que é onde nasceu o achado da issue #533. Nada é transcrito de um lado para o
+  outro: o banco sai do baseline versionado e o TypeScript sai do próprio arquivo da
+  interface, e toda falha de extração passa a recusar em vez de devolver lista vazia.
+  Dois defeitos reais que o gate reprovara foram corrigidos junto: a coluna
+  api_key_last4 é NOT NULL no baseline e estava declarada como anulável no TypeScript,
+  e os três as unknown as CredentialRow[] das telas de Credenciais e de Agentes viraram
+  a asserção verificável as CredentialRow[], que o TypeScript confere. Não há ação
+  para quem opera a VPS.
+
+  Contribuição de @webtecnica (#1850).
+
+- **Os testes do envio de mensagem usam um dublê só** Os quatro testes do `sendMessageHandler` que ainda montavam o banco à mão passam a usar o dublê compartilhado, e a lista de exceções do gate que exige isso fica vazia: dublê novo feito à mão reprova. Nada muda no produto nem para quem opera.
+
+  Contribuição de @webtecnica (#1843, issue #286).
+
+- **Todo identificador que sai para um serviço de fora tem o limite do serviço conferido em teste** Um registro único lista as fronteiras (nome de sessão do WAHA, chave no Storage, `Idempotency-Key`, cabeçalhos do webhook de saída, sessão WaCalls, `external_id`), cada uma com o limite ou a forma que o serviço impõe e a fonte. O limite do WAHA vem da mesma constante que o código usa, e uma varredura reprova um envio novo para o Storage ou uma chave de idempotência nova que fique fora do registro. Nada muda no produto nem para quem opera.
+
+  Contribuição de @webtecnica (#1851, issue #686).
+
+### Corrigido
+
+- **A resposta enviada pelo CRM não aparece mais duas vezes na conversa** Quando o WhatsApp devolvia o eco de uma mensagem enviada pelo CRM (pelo atendente ou pela IA) quase ao mesmo tempo em que o envio era confirmado, a mesma frase podia aparecer duas vezes na conversa. O eco agora é registrado com o mesmo identificador do envio, e o banco recusa a segunda linha. Mensagens duplicadas antes desta versão continuam no histórico. Nenhuma ação é necessária no servidor.
+
+  Contribuição de @webtecnica (#1855).
+
+- **As telas de convite, de erro e as páginas legais declaram o idioma em que estão escritas** Sete telas já apareciam traduzidas, mas diziam ao navegador que estavam em português: o convite para entrar na equipe, as páginas legais, as de acesso negado (403 e a do painel da instalação), a de erro interno (500), a de conta suspensa e a de acesso revogado. Para quem usa o sistema em espanhol, o leitor de tela lia o texto com a pronúncia do português, e o navegador oferecia traduzir "do português" uma página que já estava em espanhol. No convite, era a primeira tela que o convidado via. Agora essas telas declaram o idioma do texto, como as demais já faziam. Não há nada a fazer na atualização.
+
+  Contribuição de @FabioMundoDigital (#1853).
+
+- **O app instalado usa o nome configurado na marca da instalação** O diálogo de instalação do aplicativo no navegador passa a ler o nome configurado na instalação, em vez de manter o nome da compilação da imagem. A correção preserva as configurações existentes e não exige editar arquivos no servidor. Crédito: @vitorlacerdadigital.
+
+  Contribuição de @vitorlacerdadigital (#1847, fecha #1845).
+
+- **O vigia de saúde ignora a sessão de teste do e2e em vez de vigiá-la como conexão** Os seeds do e2e gravam em `channel_sessions` e nada apaga a linha, então entre uma suíte e outra a conexão de teste continua lá, parada. O cron de saúde varre a tabela, pergunta ao transporte e, com `STOPPED` entre os status que avisam, abria um aviso na Central de quem opera — resíduo de teste virando alarme permanente numa instalação de verdade. A faixa do topo anunciava o mesmo caso, dizendo que nenhuma mensagem entra nem sai por aquela conexão.
+
+  Agora os dois caminhos reconhecem a categoria antes de agir: o cron conta a linha como ignorada sem perguntar nada a ela, e a faixa não a anuncia. A lista é a MESMA que a limpeza de fim de suíte apaga, e mora em `lib/channels/sessoes-e2e.ts` — num só lugar, para não haver uma cópia envelhecendo ao lado da outra. Quem não está na lista continua vigiado e anunciado como sempre, inclusive quando está mesmo caído.
+
+  Este fragmento não cobre a limpeza do resíduo que já existe em instalação (é o script do PR #1051) nem o religamento de sessão parada.
+
+  Contribuição de @webtecnica (#1844, issue #1032).
+
 ## [1.59.0] — 2026-09-28
 
 ### Adicionado
@@ -9100,7 +9218,8 @@ Primeira versão marcada do DeskcommCRM. O projeto vinha sendo desenvolvido publ
 
 - **Node 22 é obrigatório para desenvolvimento.** A suíte de invariantes instancia o cliente do Supabase, que exige o `WebSocket` global — nativo apenas a partir do Node 22. Isso não afeta quem apenas hospeda: a VPS roda a imagem pronta.
 
-[Não lançado]: https://github.com/melgarafael/DeskcommCRM/compare/v1.59.0...HEAD
+[Não lançado]: https://github.com/melgarafael/DeskcommCRM/compare/v1.60.0...HEAD
+[1.60.0]: https://github.com/melgarafael/DeskcommCRM/compare/v1.59.0...v1.60.0
 [1.59.0]: https://github.com/melgarafael/DeskcommCRM/compare/v1.58.1...v1.59.0
 [1.58.1]: https://github.com/melgarafael/DeskcommCRM/compare/v1.58.0...v1.58.1
 [1.58.0]: https://github.com/melgarafael/DeskcommCRM/compare/v1.57.0...v1.58.0

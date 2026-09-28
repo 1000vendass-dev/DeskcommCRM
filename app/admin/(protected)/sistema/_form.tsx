@@ -209,6 +209,13 @@ const MODULOS_NA_TELA: ReadonlyArray<{ modulo: ModuloPorFlag; id: string; rotulo
     descricao:
       "Ligado, cada empresa pode ligar em Configurações › Propostas o módulo de proposta comercial: a IA levanta o que o cliente precisa, monta a proposta pelos modelos da empresa e o PDF sai pelo WhatsApp. Desligado, nenhuma empresa vê a tela, o menu nem as ferramentas do agente.",
   },
+  {
+    modulo: "crm_b2b",
+    id: "modulo-crm-b2b",
+    rotulo: "Empresas e pessoas (venda para empresas)",
+    descricao:
+      "Ligado, cada empresa ganha no CRM o cadastro de Empresas (razão social e CNPJ, com os dados públicos preenchidos pela BrasilAPI), as Pessoas que decidem dentro delas, com vários telefones, e a importação de planilha CSV ou Excel. Consultar um CNPJ manda o número para a BrasilAPI. Desligado, as telas e o menu somem.",
+  },
 ];
 
 export function FormularioDeModulos({ ligados }: { ligados: readonly ModuloOpcional[] }) {

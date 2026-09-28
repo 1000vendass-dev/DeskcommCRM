@@ -40,7 +40,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
 
 /**
- * `banco_externo`, `fluxos_atendimento` e `propostas` ligam/desligam por uma linha em `platform_config`
+ * `banco_externo`, `fluxos_atendimento`, `propostas` e `crm_b2b` ligam/desligam por uma linha em `platform_config`
  * (ver o resto deste arquivo). `honorarios` é um MÓDULO DE TABELA (ADR-0002): a fonte da
  * verdade é `modulos_instalados`, escrita só por `fn_modulo_instalar` (`lib/modulos/service.ts`),
  * nunca por esta tela. Os dois mecanismos convivem na mesma lista porque é isso que
@@ -51,6 +51,7 @@ export const MODULOS_OPCIONAIS = [
   "banco_externo",
   "fluxos_atendimento",
   "propostas",
+  "crm_b2b",
   "honorarios",
 ] as const;
 export type ModuloOpcional = (typeof MODULOS_OPCIONAIS)[number];
@@ -70,6 +71,7 @@ export const MODULOS_OPCIONAIS_POR_FLAG = [
   "banco_externo",
   "fluxos_atendimento",
   "propostas",
+  "crm_b2b",
 ] as const satisfies readonly ModuloOpcional[];
 
 /** A linha de cada módulo por FLAG em `platform_config`. O formato é o da CHECK da 0341.
@@ -85,6 +87,10 @@ export const CHAVE_DO_MODULO: Record<(typeof MODULOS_OPCIONAIS_POR_FLAG)[number]
   // empresa em Configurações › Propostas. Desligada aqui, nenhuma empresa vê
   // nem liga (`lib/organizacao/capacidades.ts` exige as duas).
   propostas: "MODULO_PROPOSTAS",
+  // Doc 68 (b): empresas, pessoas que decidem e importação de planilha — a
+  // metade B2B do #1621. A maior parte de quem usa vende para pessoas; quem
+  // vende para empresas liga. Desligado, as telas e as rotas somem (404).
+  crm_b2b: "MODULO_CRM_B2B",
 };
 
 const LIGADO = "ligado";
