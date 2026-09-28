@@ -1269,6 +1269,22 @@ os recursos que dependem do servidor em tela nenhuma.
 (regra no `page.tsx`, sem spec); telefonia por SIP é "não dá para ver daqui" —
 ela vive nos contêineres, fora do alcance do app.
 
+## J36 — Perguntar ao acervo sem sair da conversa `[P1]` (2026-09-28)
+
+**Origem:** #1869 (F1+F2), contribuição de @webtecnica no #1877. O atendente
+consulta o material da empresa pela caixa "Acervo" no painel da conversa, com a
+mesma busca que a IA usa; a pergunta vira linha em `knowledge_searches` com
+`author_kind='human'`, e a Evolução a mostra num gráfico próprio.
+
+| Caso | Spec | Estado |
+|---|---|---|
+| Atendente abre a conversa, pergunta na caixa "Acervo" e recebe o diagnóstico (acervo vazio, ou 409 de chave ausente), nunca o erro genérico | `tests/e2e/busca-na-conversa.spec.ts` | CI (PARTE_3) |
+| 429 por pessoa/organização, pergunta > 1000 caracteres, agentId não-uuid, 409 sem chave | `app/api/v1/ai/knowledge/busca/route.test.ts` | unit |
+| Busca da equipe fora das lacunas do agente e numa série própria | `lib/ai/evolution/aggregate.test.ts` | unit |
+
+**Não coberto:** a busca com material indexado e chave de embedding real (nenhum
+e2e do CI tem chave); o gráfico "Consultas da equipe ao acervo" em tela.
+
 ## Jornadas exercitadas (instalação final, virgem)
 
 | Jornada | Resultado |
