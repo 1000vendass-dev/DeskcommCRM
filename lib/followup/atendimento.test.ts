@@ -568,6 +568,8 @@ describe("roteiro já concluído: recomeça só se o roteiro permitir", () => {
     expect(chamadas[0]!.params).toEqual([ORG, "ct-1"]);
     expect(chamadas[0]!.sql).toMatch(/e\.contact_id = \$2/);
     expect(chamadas[0]!.sql).toMatch(/e\.status = 'completed'/);
+    // ...e do MESMO roteiro: sem isto, concluir QUALQUER roteiro tiraria todos da disputa.
+    expect(chamadas[0]!.sql).toMatch(/e\.pointer_id = p\.id/);
   });
 
   it("gatilho: com `pode_recomecar`, o roteiro concluído volta a ganhar a palavra", async () => {
@@ -607,6 +609,7 @@ describe("roteiro já concluído: recomeça só se o roteiro permitir", () => {
       expect(r).toBeNull();
       expect(sqls.some((s) => /insert into followup_enrollments/.test(s))).toBe(false);
       expect(params[0]).toEqual([ORG, "ptr-1", "ct-1"]);
+      expect(sqls[0]).toMatch(/e\.pointer_id = p\.id/);
     });
   }
 
@@ -630,5 +633,51 @@ describe("roteiro já concluído: recomeça só se o roteiro permitir", () => {
       origem: "gatilho",
     });
     expect(r).toBe("enr-1");
+  });
+
+  // Revisão da 2ª rodada: apagar `e.pointer_id = p.id` do `jaConcluiuSql` deixava
+  // a suíte verde. O dublê abaixo guarda a tabela de enrollments e calcula o
+  // `ja_concluiu` aplicando SÓ os predicados que o SQL escreve — sem o do
+  // roteiro, o A recém-concluído conta como "B já concluído" e B é recusado.
+  it("encadeamento A→B: B começa com A concluído (B sem `pode_recomecar`)", async () => {
+    const enrollments = [{ id: "enr-A", pointer_id: "ptr-A", contact_id: "ct", status: "coletando" }];
+    const grafoB = grafo([trigger("tB"), collect("cB", "outro"), end("eB")], [aresta("tB", "cB"), aresta("cB", "eB")]);
+    const sqls: string[] = [];
+    const query = async (sql: string, v: unknown[] = []) => {
+      sqls.push(sql);
+      if (/update followup_enrollments/.test(sql)) {
+        for (const e of enrollments) if (e.id === v[1] && e.status === "coletando") e.status = "completed";
+        return { rows: [], rowCount: 1 };
+      }
+      if (/select p\.active_version_id, v\.graph/.test(sql)) {
+        const [, pointer, contato] = v;
+        const ja_concluiu = enrollments.some(
+          (e) =>
+            (!/e\.pointer_id = p\.id/.test(sql) || e.pointer_id === pointer) &&
+            (!/e\.contact_id = \$3/.test(sql) || e.contact_id === contato) &&
+            (!/e\.status = 'completed'/.test(sql) || e.status === "completed"),
+        );
+        return { rows: [{ active_version_id: "ver-B", graph: grafoB, ja_concluiu }], rowCount: 1 };
+      }
+      if (/insert into followup_enrollments/.test(sql)) return { rows: [{ id: "enr-B" }], rowCount: 1 };
+      return { rows: [], rowCount: 1 };
+    };
+    const fimParaB = no({
+      id: "e",
+      type: "end",
+      config: {
+        outcome: "converted",
+        ao_finalizar: { tipo: "proximo_fluxo", fluxo: "ptr-B" },
+      } as Extract<FlowNode, { type: "end" }>["config"],
+    });
+    const r = await finalizarFluxoDeAtendimento({ query } as unknown as pg.Pool, {
+      organizationId: ORG,
+      estado: estadoCom(lista([trigger("t"), collect("c1", "cidade"), fimParaB], [aresta("t", "c1"), aresta("c1", "e")]), {
+        cidade: "Campinas",
+      }),
+    });
+    expect(enrollments[0]!.status).toBe("completed");
+    expect(r.proximoEnrollmentId).toBe("enr-B");
+    expect(sqls.some((s) => /insert into followup_enrollments/.test(s))).toBe(true);
   });
 });
