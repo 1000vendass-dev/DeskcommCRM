@@ -4526,6 +4526,9 @@ export type Database = {
           created_by_name: string | null
           created_by_user_id: string | null
           id: string
+          media_mime: string | null
+          media_size_bytes: number | null
+          media_storage_path: string | null
           organization_id: string
         }
         Insert: {
@@ -4535,6 +4538,9 @@ export type Database = {
           created_by_name?: string | null
           created_by_user_id?: string | null
           id?: string
+          media_mime?: string | null
+          media_size_bytes?: number | null
+          media_storage_path?: string | null
           organization_id: string
         }
         Update: {
@@ -4544,6 +4550,9 @@ export type Database = {
           created_by_name?: string | null
           created_by_user_id?: string | null
           id?: string
+          media_mime?: string | null
+          media_size_bytes?: number | null
+          media_storage_path?: string | null
           organization_id?: string
         }
         Relationships: [
