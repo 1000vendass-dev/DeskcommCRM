@@ -16,13 +16,14 @@ import { requireRole } from "@/lib/auth/require-role";
 import type { AuthUser } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
 import { comIdempotencia } from "@/lib/api/idempotency";
+import type * as Idempotencia from "@/lib/api/idempotency";
 
 vi.mock("@/lib/auth/require-role", () => ({ requireRole: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
 vi.mock("@/lib/impersonate/support", () => ({ requireSupportWrite: vi.fn(async () => null) }));
 vi.mock("@/lib/audit", () => ({ audit: vi.fn() }));
 vi.mock("@/lib/api/idempotency", async (importOriginal) => {
-  const real = await importOriginal<typeof import("@/lib/api/idempotency")>();
+  const real = await importOriginal<typeof Idempotencia>();
   return { ...real, comIdempotencia: vi.fn(real.comIdempotencia) };
 });
 
