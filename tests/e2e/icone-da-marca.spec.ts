@@ -50,10 +50,7 @@ test.describe("o ícone e o título carregam a marca da instalação", () => {
     page,
   }) => {
     await page.goto("/login");
-    const href = await page
-      .locator('link[rel~="icon"]')
-      .first()
-      .getAttribute("href");
+    const href = await page.locator('link[rel~="icon"]').first().getAttribute("href");
     expect(href, "nenhum <link rel=icon> no <head>").toBeTruthy();
     // `/icon` com ou sem query de cache-busting do Next.
     expect(new URL(href ?? "", "http://x").pathname).toBe("/icon");
