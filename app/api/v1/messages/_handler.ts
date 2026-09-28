@@ -38,6 +38,7 @@ import { ARCHIVED_AT, queryTolerantToMissingArchived } from "@/lib/channels/arch
 import { conferirDefinicao } from "@/lib/channels/conferir-definicao";
 import { estadoDaJanela } from "@/lib/channels/janela";
 import { isMediaPathOwnedBy } from "@/lib/messaging/media/upload-validation";
+import { assertUrlDeMidiaSegura } from "@/lib/messaging/media/url-de-midia-externa";
 import {
   buildVcard,
   normalizePhoneForDisplay,
@@ -532,6 +533,22 @@ export async function sendMessageHandler(
     );
   }
 
+  // Só `media_url` (sem `media_storage_path`) é baixada pelo gateway: é esse o
+  // envio que precisa da guarda anti-SSRF, e antes de a linha existir.
+  if (input.media_url && !input.media_storage_path) {
+    try {
+      await assertUrlDeMidiaSegura(input.media_url);
+    } catch (erro) {
+      throw new ApiError(
+        422,
+        "unsafe_media_url",
+        { motivo: erro instanceof Error ? erro.message : "unsafe_url" },
+        ctx.requestId,
+        "media_url recusada: o endereço não pode ser baixado pelo servidor.",
+      );
+    }
+  }
+
   let outboundBody = input.body ?? null;
   let outboundMetadata: Record<string, unknown> = { ...(input.metadata ?? {}) };
 
@@ -959,9 +976,10 @@ export async function sendMessageHandler(
         // media_url") e nunca chegou a ser ligado: um envio só com `media_url`
         // (sem `media_storage_path` — que é só para arquivo já dentro da
         // PRÓPRIA conversa, ver `isMediaPathOwnedBy` acima) caía no `else` de
-        // texto puro, com corpo vazio — nenhum arquivo saía. URL externa não
-        // tem "dono" para checar: quem chama este handler já é código de
-        // servidor confiável (proposta, MCP).
+        // texto puro, com corpo vazio — nenhum arquivo saía. A URL já passou
+        // pela guarda anti-SSRF antes de a linha existir
+        // (`assertUrlDeMidiaSegura`): ela chega também pela API pública e
+        // pelo MCP, e quem a baixa é o gateway, de dentro da rede do servidor.
         await checkBoundary();
         ({ externalId } = await adapter.send({
           beforeSend: checkBoundary,
