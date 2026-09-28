@@ -63,11 +63,19 @@ const PAULO_LIMA_JR = "Paulo Lima Jr";
  * — e o vermelho aparece por motivo nenhum.
  */
 function supabaseEspiao() {
-  const estado = { aberturas: 0, execucoes: 0, filtros: [] as string[] };
+  const estado = {
+    aberturas: 0,
+    execucoes: 0,
+    filtros: [] as string[],
+    igualdades: [] as Array<[string, unknown]>,
+  };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chain: any = {
     select: () => chain,
-    eq: () => chain,
+    eq: (coluna: string, valor: unknown) => {
+      estado.igualdades.push([coluna, valor]);
+      return chain;
+    },
     order: () => chain,
     limit: () => chain,
     contains: () => chain,
@@ -105,6 +113,7 @@ async function busca(termo: string) {
     aberturas: estado.aberturas,
     execucoes: estado.execucoes,
     filtro: estado.filtros[0] ?? "",
+    igualdades: estado.igualdades,
   };
 }
 
@@ -195,6 +204,38 @@ describe("busca de contatos: o termo é normalizado pela régua do repo (#1835, 
     const { aberturas, execucoes } = await busca(", ,");
     expect(aberturas).toBe(0);
     expect(execucoes).toBe(0);
+  });
+
+  it.each(["()", "((", "(a", "a)", "( a )"])(
+    'parêntese não fura o piso: "%s" NÃO consulta',
+    async (termo) => {
+      // O filtro tira os parênteses antes da régua; o piso tem de medir a MESMA
+      // string. Medido o cru, "()" passava (2 caracteres) e consultava `%%`, e
+      // "(a" consultava `%a%` — a lista inteira de volta, pela porta irmã de ", ,".
+      const { aberturas, execucoes } = await busca(termo);
+      expect(aberturas).toBe(0);
+      expect(execucoes).toBe(0);
+    },
+  );
+
+  it.each([
+    "a,organization_id.neq.x",
+    "a),or(id.not.is.null",
+    "a,organization_id.eq.00000000-0000-0000-0000-000000000000,id.not.is.null",
+    '"a"',
+    "a.b:c",
+    "a&or=(id.not.is.null)",
+  ])('termo malicioso "%s" não abre condição nova no or= nem tira o filtro de org', async (termo) => {
+    const { execucoes, filtro, igualdades } = await busca(termo);
+    expect(execucoes).toBe(1);
+    // Nenhum delimitador do DSL do `or=` sobra dentro de um valor: parêntese
+    // aninharia, e cada vírgula restante tem de ser a que o handler pôs.
+    expect(filtro).not.toMatch(/[()]/);
+    const colunas = filtro.split(",").map((cond) => cond.split(".")[0]);
+    expect(colunas).toEqual(["name", "display_name", "email", "phone_number"]);
+    // O recorte por organização é parâmetro PRÓPRIO da query (E com o `or=`):
+    // é ele que segura o caminho de service role (Bearer e MCP).
+    expect(igualdades).toContainEqual(["organization_id", ORG]);
   });
 
   it("CONTROLE: termo de verdade continua consultando e filtrando", async () => {

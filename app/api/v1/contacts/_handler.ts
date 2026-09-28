@@ -110,7 +110,12 @@ export async function listContactsHandler(
   // receberia um `ZodError` no meio da ferramenta. O efeito pedido é o mesmo
   // dos dois lados: abaixo do piso a busca NÃO VAI AO BANCO, e quem digita vê
   // a lista vazia até completar os dois caracteres.
-  if (q.search && !buscaValeConsulta(q.search)) {
+  //
+  // O piso mede o MESMO termo que vai ao filtro: sem os parênteses (ver o
+  // bloco do `.or()` abaixo). Medir o cru deixava `"()"` consultar `%%` e
+  // `"(a"` consultar `%a%` — a lista inteira de volta pela porta do parêntese.
+  const termoDeTexto = q.search ? q.search.replace(/[()]/g, " ") : undefined;
+  if (termoDeTexto !== undefined && !buscaValeConsulta(termoDeTexto)) {
     return { contacts: [], cursor: null, has_more: false };
   }
 
@@ -149,7 +154,7 @@ export async function listContactsHandler(
     .order("id", { ascending: asc })
     .limit(q.limit + 1);
 
-  if (q.search) {
+  if (q.search && termoDeTexto !== undefined) {
     // ─── Duas normalizações, em ordem, com responsabilidades diferentes ─────
     // É a MESMA composição da busca de conversas
     // (`conversations/_handler.ts:297`, `termoSeguroParaOr(normalizarTermoDeBusca(...))`):
@@ -165,7 +170,7 @@ export async function listContactsHandler(
     // a normalização não os conhece — tirá-los depois deixaria `Paulo* Jr` com
     // espaço solto, que não casa nada. Mesmo escape de sempre, mesmo defeito de
     // sempre: um nome com vírgula injetaria condição extra no `.or()`.
-    const s = normalizarTermoDeBusca(q.search.replace(/[()]/g, " ")).replace(/[%_]/g, (m) => `\\${m}`);
+    const s = normalizarTermoDeBusca(termoDeTexto).replace(/[%_]/g, (m) => `\\${m}`);
     const digits = q.search.replace(/\D/g, "");
     const orParts = [
       `name.ilike.%${s}%`,
