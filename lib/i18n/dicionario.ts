@@ -8321,6 +8321,9 @@ export const DICIONARIO: Traducoes = {
   "O faturado soma comandas; o que entrou soma lançamentos pagos. Os dois não precisam bater.": {
     es: "Lo facturado suma órdenes de servicio y lo que entró suma movimientos pagados. Las dos cifras no tienen por qué coincidir.",
   },
+  "Moedas diferentes não se somam: cada uma tem o seu bloco.": {
+    es: "Las monedas distintas no se suman: cada una tiene su propio bloque.",
+  },
   "Por forma de pagamento": { es: "Por forma de pago" },
   "Nenhuma comanda no período.": { es: "Ninguna orden de servicio en el período." },
   "Comissão por pessoa": { es: "Comisión por persona" },
