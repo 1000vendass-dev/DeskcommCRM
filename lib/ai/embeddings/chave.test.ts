@@ -124,6 +124,40 @@ describe("resolverChaveDeEmbedding", () => {
     });
   });
 
+  // A chave OpenRouter da organização costuma estar ali para a CONVERSA. Se ela
+  // passasse na frente da OpenAI ou do gateway da instalação, a atualização
+  // trocaria em silêncio o fornecedor de quem já indexava.
+  it("OPENAI_API_KEY da instalação vence a credencial OpenRouter da organização", async () => {
+    state.env.OPENAI_API_KEY = "chave-ficticia-env-openai";
+    state.credentials = [credential({})];
+
+    expect(await resolverChaveDeEmbedding("org-1")).toMatchObject({
+      apiKey: "chave-ficticia-env-openai",
+      provedor: "openai",
+      origem: "chave_da_instalacao",
+    });
+  });
+
+  it("o gateway da instalação vence a credencial OpenRouter da organização", async () => {
+    state.env.AI_GATEWAY_API_KEY = "gateway-ficticio";
+    state.credentials = [credential({})];
+
+    expect(await resolverChaveDeEmbedding("org-1")).toMatchObject({
+      provedor: "gateway",
+      origem: "gateway_da_instalacao",
+    });
+  });
+
+  it("a credencial OpenRouter da organização vence a OPENROUTER_API_KEY da instalação", async () => {
+    state.env.OPENROUTER_API_KEY = "chave-ficticia-instalacao";
+    state.credentials = [credential({})];
+
+    expect(await resolverChaveDeEmbedding("org-1")).toMatchObject({
+      apiKey: "chave-ficticia-openrouter",
+      origem: "credencial_da_organizacao",
+    });
+  });
+
   it("binding explícito de OpenRouter usa a própria credencial e o modelo permanece fixo", async () => {
     state.bindings = [
       {

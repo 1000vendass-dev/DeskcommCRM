@@ -354,7 +354,7 @@ ANTHROPIC_API_KEY=sk-ant-api03-...
 
 O acervo usa `openai/text-embedding-3-small` com 1536 dimensões para indexar e buscar. A chave pode vir da OpenAI ou da OpenRouter; não troque o modelo só de um lado, porque o agente deixaria de encontrar o material.
 
-Cadastre a chave em **IA → Credenciais** ou no próprio acervo, escolhendo o provedor. Também é possível definir `OPENAI_API_KEY` ou `OPENROUTER_API_KEY` na instalação. Uma credencial ativa da organização tem prioridade sobre a chave da instalação; quando há credenciais dos dois provedores, a OpenAI mantém a precedência anterior. A chave OpenAI continua sendo necessária para transcrever áudio, mesmo que o acervo use OpenRouter.
+Cadastre a chave em **IA → Credenciais** ou no próprio acervo, escolhendo o provedor. Também é possível definir `OPENAI_API_KEY` ou `OPENROUTER_API_KEY` na instalação. A OpenAI vem primeiro: a chave OpenRouter só é usada quando não há chave OpenAI (da organização ou da instalação) nem gateway de IA configurado. Assim, quem já indexava com a OpenAI continua com ela depois de cadastrar a OpenRouter para a conversa. Entre as duas OpenRouter, a da organização vence a da instalação. A chave OpenAI continua sendo necessária para transcrever áudio, mesmo que o acervo use OpenRouter.
 
 ---
 

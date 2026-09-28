@@ -25,13 +25,18 @@
  *  1. **Binding do ponto** (`ai_purpose_bindings`) — a escolha explícita feita
  *     no painel de provedores. É a superfície que o operador enxerga, então ela
  *     vence.
- *  2. **Credencial da organização** (`ai_provider_credentials`, ativa e
- *     validada): OpenAI primeiro, OpenRouter como alternativa. É o degrau que faz "cadastrei a chave na tela e funcionou"
+ *  2. **Credencial OpenAI da organização** (`ai_provider_credentials`, ativa e
+ *     validada). É o degrau que faz "cadastrei a chave na tela e funcionou"
  *     virar verdade sem exigir que ninguém entenda o que é um binding.
  *  3. **Gateway da Vercel** (`AI_GATEWAY_API_KEY`) — quando a instalação roteia
  *     tudo por ele.
- *  4. **Chave da instalação** (`OPENAI_API_KEY`, depois `OPENROUTER_API_KEY`).
- *  5. Nada. E "nada" é uma resposta legítima que o chamador precisa saber
+ *  4. **Chave OpenAI da instalação** (`OPENAI_API_KEY`).
+ *  5. **Credencial OpenRouter da organização.** Vem DEPOIS da OpenAI e do
+ *     gateway de propósito: a chave OpenRouter costuma estar cadastrada para a
+ *     CONVERSA, e subi-la acima da OpenAI trocaria em silêncio o fornecedor (e
+ *     a conta que paga) de quem já indexava com a OpenAI na atualização.
+ *  6. **Chave OpenRouter da instalação** (`OPENROUTER_API_KEY`).
+ *  7. Nada. E "nada" é uma resposta legítima que o chamador precisa saber
  *     mostrar, não um erro para engolir.
  *
  * A decisão devolve a ORIGEM junto com a chave. Não é enfeite: é o que permite
@@ -130,28 +135,29 @@ export async function resolverChaveDeEmbedding(
     );
   }
 
-  // 2 · Credencial da organização, sem exigir binding nenhum. OpenAI conserva
-  // a precedência anterior; OpenRouter atende quem não cadastrou OpenAI.
-  const daOrg =
-    (await credencialDaOrganizacao(organizationId, "openai")) ??
-    (await credencialDaOrganizacao(organizationId, "openrouter"));
-  if (daOrg) {
-    if (daOrg.quantas > 1) {
+  const daOrganizacao = (
+    credencial: NonNullable<Awaited<ReturnType<typeof credencialDaOrganizacao>>>,
+  ): ChaveDeEmbedding => {
+    if (credencial.quantas > 1) {
       avisos.push(
-        `Esta organização tem ${daOrg.quantas} chaves ${daOrg.provedor} cadastradas e nenhuma escolhida para ` +
-          `a base de conhecimento. Usando "${daOrg.rotulo}" — desative as excedentes em Credenciais para não depender da ordem.`,
+        `Esta organização tem ${credencial.quantas} chaves ${credencial.provedor} cadastradas e nenhuma escolhida para ` +
+          `a base de conhecimento. Usando "${credencial.rotulo}" — desative as excedentes em Credenciais para não depender da ordem.`,
       );
     }
     return {
-      apiKey: daOrg.apiKey,
-      baseUrl: daOrg.provedor === "openrouter" ? OPENROUTER_BASE_URL : null,
-      provedor: daOrg.provedor,
+      apiKey: credencial.apiKey,
+      baseUrl: credencial.provedor === "openrouter" ? OPENROUTER_BASE_URL : null,
+      provedor: credencial.provedor,
       viaGateway: false,
       origem: "credencial_da_organizacao",
-      rotulo: daOrg.rotulo,
+      rotulo: credencial.rotulo,
       avisos,
     };
-  }
+  };
+
+  // 2 · Credencial OpenAI da organização, sem exigir binding nenhum.
+  const openAiDaOrg = await credencialDaOrganizacao(organizationId, "openai");
+  if (openAiDaOrg) return daOrganizacao(openAiDaOrg);
 
   // 3 · O gateway da instalação. A chave não sai daqui: o SDK a lê do process.env.
   if (env.AI_GATEWAY_API_KEY) {
@@ -166,7 +172,7 @@ export async function resolverChaveDeEmbedding(
     };
   }
 
-  // 4 · Chaves da instalação. OpenAI conserva a precedência anterior.
+  // 4 · Chave OpenAI da instalação.
   if (env.OPENAI_API_KEY) {
     return {
       apiKey: env.OPENAI_API_KEY,
@@ -179,6 +185,12 @@ export async function resolverChaveDeEmbedding(
     };
   }
 
+  // 5 · Credencial OpenRouter da organização — só depois de toda OpenAI e do
+  // gateway, para a atualização não trocar o fornecedor de quem já indexava.
+  const openRouterDaOrg = await credencialDaOrganizacao(organizationId, "openrouter");
+  if (openRouterDaOrg) return daOrganizacao(openRouterDaOrg);
+
+  // 6 · Chave OpenRouter da instalação.
   if (env.OPENROUTER_API_KEY) {
     return {
       apiKey: env.OPENROUTER_API_KEY,
