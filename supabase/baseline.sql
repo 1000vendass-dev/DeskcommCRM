@@ -34010,16 +34010,18 @@ create unique index if not exists sales_agendamento_unico_idx
   on public.sales (organization_id, appointment_id)
   where appointment_id is not null and status <> 'cancelled';
 
--- ---- relatório financeiro (migrations 0353 + 0356) ----
+-- ---- relatório financeiro (migrations 0353 + 0356 + 0444) ----
 -- Agrega NO BANCO: o PostgREST corta em 1000 linhas sem avisar, e somar na
 -- aplicação devolve um número menor com cara de certo (medido nesta base:
 -- R$ 141.436,00 em vez de R$ 641.103,60). Invoker, para a RLS de cada tabela
 -- continuar valendo.
 --
--- O corpo abaixo é o da 0247, que ACRESCENTOU `por_servico` e `por_cliente`
--- sem mudar a assinatura. O apêndice guarda o estado final, nunca as duas
--- versões empilhadas — senão quem lê o baseline vê a definição antiga
--- primeiro e conclui que ela é a que vale.
+-- O corpo abaixo é o da 0444, que ACRESCENTOU `por_moeda` (os mesmos totais e
+-- listas, separados por moeda — #1531) sobre o da 0356, que ACRESCENTOU
+-- `por_servico` e `por_cliente`; nenhuma das duas mudou a assinatura nem os
+-- campos que já existiam. O apêndice guarda o estado final, nunca as versões
+-- empilhadas — senão quem lê o baseline vê a definição antiga primeiro e
+-- conclui que ela é a que vale.
 create or replace function public.fn_relatorio_financeiro(
   p_org uuid,
   p_de date,
@@ -34031,14 +34033,14 @@ stable
 set search_path = public
 as $$
   with lancamentos as (
-    select direction, amount_cents
+    select direction, amount_cents, currency
       from public.financial_entries
      where organization_id = p_org
        and status = 'paid'
        and entry_date between p_de and p_ate
   ),
   comandas as (
-    select id, status, total_cents, reversed_at, payment_method_id, contact_id
+    select id, status, total_cents, currency, reversed_at, payment_method_id, contact_id
       from public.sales
      where organization_id = p_org
        and finalized_at is not null
@@ -34086,6 +34088,56 @@ as $$
       from comandas c
      where c.contact_id is not null
      group by 1
+  ),
+  -- Daqui para baixo, os mesmos agrupamentos com a moeda na chave. Ficam
+  -- paralelos aos de cima, em vez de o topo passar a somar os blocos, para que
+  -- se prove por leitura que nenhum campo antigo mudou de conta.
+  moedas as (
+    select currency as moeda from lancamentos
+    union
+    select currency from comandas
+  ),
+  forma_por_moeda as (
+    select c.currency                     as moeda,
+           coalesce(pm.name, 'Sem forma') as nome,
+           count(*)                       as quantidade,
+           sum(c.total_cents)             as total_cents
+      from comandas c
+      left join public.payment_methods pm
+        on pm.id = c.payment_method_id and pm.organization_id = p_org
+     group by 1, 2
+  ),
+  profissional_por_moeda as (
+    select s.currency            as moeda,
+           co.attendant_user_id,
+           count(*)              as itens,
+           sum(co.amount_cents)  as comissao_cents
+      from public.commissions co
+      join public.sale_items si
+        on si.id = co.sale_item_id and si.organization_id = p_org
+      join comandas s on s.id = si.sale_id
+     where co.organization_id = p_org
+       and co.status <> 'reversed'
+     group by 1, 2
+  ),
+  servico_por_moeda as (
+    select s.currency           as moeda,
+           si.description       as nome,
+           sum(si.quantity)     as quantidade,
+           sum(si.total_cents)  as total_cents
+      from public.sale_items si
+      join comandas s on s.id = si.sale_id
+     where si.organization_id = p_org
+     group by 1, 2
+  ),
+  cliente_por_moeda as (
+    select c.currency           as moeda,
+           c.contact_id,
+           count(*)             as comandas,
+           sum(c.total_cents)   as total_cents
+      from comandas c
+     where c.contact_id is not null
+     group by 1, 2
   )
   select jsonb_build_object(
     'de', p_de,
@@ -34116,7 +34168,43 @@ as $$
       select jsonb_agg(jsonb_build_object('contact_id', contact_id, 'comandas', comandas, 'total_cents', total_cents)
              order by total_cents desc)
         from (select * from por_cliente order by total_cents desc limit 10) t
-    ), '[]'::jsonb)
+    ), '[]'::jsonb),
+    -- O corte de 10 vale POR MOEDA: a lista do real e a do euro são listas
+    -- diferentes, e cortar a soma misturada deixaria a moeda menor sem linha.
+    'por_moeda', coalesce((
+      select jsonb_object_agg(m.moeda, jsonb_build_object(
+        'entradas_cents', coalesce((select sum(l.amount_cents) from lancamentos l where l.currency = m.moeda and l.direction = 'in'), 0),
+        'saidas_cents',   coalesce((select sum(l.amount_cents) from lancamentos l where l.currency = m.moeda and l.direction = 'out'), 0),
+        'saldo_cents',    coalesce((select sum(case when l.direction = 'in' then l.amount_cents else -l.amount_cents end) from lancamentos l where l.currency = m.moeda), 0),
+        'comandas_finalizadas', (select count(*) from comandas c where c.currency = m.moeda),
+        'comandas_estornadas',  (select count(*) from comandas c where c.currency = m.moeda and c.reversed_at is not null),
+        'faturado_cents',       coalesce((select sum(c.total_cents) from comandas c where c.currency = m.moeda), 0),
+        'ticket_medio_cents',   coalesce((select sum(c.total_cents) / nullif(count(*), 0) from comandas c where c.currency = m.moeda), 0),
+        'por_forma', coalesce((
+          select jsonb_agg(jsonb_build_object('nome', f.nome, 'quantidade', f.quantidade, 'total_cents', f.total_cents)
+                 order by f.total_cents desc)
+            from forma_por_moeda f
+           where f.moeda = m.moeda
+        ), '[]'::jsonb),
+        'por_profissional', coalesce((
+          select jsonb_agg(jsonb_build_object('attendant_user_id', p.attendant_user_id, 'itens', p.itens, 'comissao_cents', p.comissao_cents)
+                 order by p.comissao_cents desc)
+            from profissional_por_moeda p
+           where p.moeda = m.moeda
+        ), '[]'::jsonb),
+        'por_servico', coalesce((
+          select jsonb_agg(jsonb_build_object('nome', t.nome, 'quantidade', t.quantidade, 'total_cents', t.total_cents)
+                 order by t.total_cents desc)
+            from (select * from servico_por_moeda sv where sv.moeda = m.moeda order by sv.total_cents desc limit 10) t
+        ), '[]'::jsonb),
+        'por_cliente', coalesce((
+          select jsonb_agg(jsonb_build_object('contact_id', t.contact_id, 'comandas', t.comandas, 'total_cents', t.total_cents)
+                 order by t.total_cents desc)
+            from (select * from cliente_por_moeda cl where cl.moeda = m.moeda order by cl.total_cents desc limit 10) t
+        ), '[]'::jsonb)
+      ))
+        from moedas m
+    ), '{}'::jsonb)
   );
 $$;
 
@@ -39241,6 +39329,58 @@ grant execute on function public.fn_metricas_links_rastreaveis(uuid) to service_
 
 notify pgrst, 'reload schema';
 
+-- ---- o aviso da Central anuncia no barramento que nasceu (migration 0442) ----
+--
+-- Ver o cabeçalho da migration: trigger AFTER INSERT em `agent_inbox_items`
+-- emite `central.aviso_criado` (item, kind, ref) para o push decidir o que vai
+-- ao celular. Sem I/O; falha do anúncio não impede o aviso de nascer; aviso de
+-- plataforma (organização nula) não anuncia. Função com as DUAS origens de
+-- EXECUTE revogadas. Entra ANTES da VARREDURA anon porque cria função.
+-- Idempotente (`create or replace` + `drop trigger if exists`).
+create or replace function public.fn_emit_aviso_da_central()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  -- Aviso de PLATAFORMA (organização nula) não vai para o celular de ninguém.
+  if new.organization_id is null then
+    return null;
+  end if;
+  begin
+    perform public.emit_event(
+      'central.aviso_criado',
+      'agent_inbox_item',
+      new.id,
+      jsonb_build_object(
+        'item_id',  new.id,
+        'kind',     new.kind,
+        'ref_kind', new.ref_kind,
+        'ref_id',   new.ref_id
+      ),
+      '{}'::jsonb,
+      new.organization_id   -- SEMPRE de `new`: é o filtro de tenant
+    );
+  exception when others then
+    raise warning 'fn_emit_aviso_da_central: anúncio do aviso % falhou: %', new.id, sqlerrm;
+  end;
+  return null;              -- AFTER trigger: o retorno é ignorado
+end;
+$$;
+
+alter function public.fn_emit_aviso_da_central() owner to postgres;
+
+-- As DUAS origens de EXECUTE (doutrina de migrations, item 9). Função de
+-- trigger: ninguém a chama pela REST, então não há `grant` a ninguém.
+revoke all     on function public.fn_emit_aviso_da_central() from public;
+revoke execute on function public.fn_emit_aviso_da_central() from anon, authenticated;
+
+drop trigger if exists trg_aviso_da_central_criado on public.agent_inbox_items;
+create trigger trg_aviso_da_central_criado
+  after insert on public.agent_inbox_items
+  for each row execute function public.fn_emit_aviso_da_central();
+
 -- ---- VARREDURA anon: função nova nasce exposta em quem ATUALIZA (migration 0116) ----
 --
 -- ⚠️ DE PROPÓSITO, NENHUMA FUNÇÃO É CRIADA DEPOIS DESTE BLOCO. Apêndice que cria
@@ -40348,3 +40488,25 @@ on conflict (id) do update
   set public             = excluded.public,
       file_size_limit    = excluded.file_size_limit,
       allowed_mime_types = excluded.allowed_mime_types;
+
+-- ---- ícone da aba: coluna da instalação (migration 0443) ----
+-- 0443 — Ícone da aba (favicon) opcional da instalação, subido em /admin/marca.
+-- Aditiva: sem arquivo, a aba segue com o ícone desenhado por `app/icon.tsx`
+-- (cor + inicial). Rollback de imagem não exige apagar coluna nem arquivo: o
+-- código anterior não lê a coluna e volta ao ícone desenhado.
+-- Só a instalação tem ícone: a aba é a mesma para todas as organizações, e o
+-- login (anterior a qualquer organização) também a mostra.
+-- Somente a rota `/api/v1/marca/logo` escreve o caminho, no mesmo bucket
+-- `brand-logos` e sob o mesmo prefixo `platform/` do logo.
+
+alter table public.platform_branding add column if not exists favicon_path text;
+update public.platform_branding set favicon_path = null
+ where favicon_path is not null
+   and favicon_path !~ '^platform/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(png|jpg)$';
+alter table public.platform_branding drop constraint if exists platform_branding_favicon_path;
+alter table public.platform_branding add constraint platform_branding_favicon_path check (
+  favicon_path is null or
+  favicon_path ~ '^platform/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(png|jpg)$'
+);
+comment on column public.platform_branding.favicon_path is
+  'Ícone da aba do navegador, subido pela tela. Caminho em brand-logos; null mantém o ícone desenhado (cor + inicial).';

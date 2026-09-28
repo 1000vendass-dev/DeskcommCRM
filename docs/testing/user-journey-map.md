@@ -397,7 +397,13 @@ Provado por sabotagem em `evidence/handoff-avisa-antes/sabotagem-ordem-invertida
 
 Guardas: `tests/invariants/handoff-avisa-o-lead.test.ts` (turno real contra
 Postgres do baseline), `tests/unit/handoff-avisa-o-lead.test.ts` (varredura AST
-dos dois motores) e `tests/unit/aviso-ao-lead.test.ts` (o texto).
+dos dois motores), `tests/unit/aviso-ao-lead.test.ts` (o texto) e
+`tests/unit/aviso-so-quando-a-ia-falou.test.ts` (as duas guardas do lado do CRM:
+sem fala prévia da IA na conversa o aviso não sai — numa instalação real, o
+sentimento disparou a passagem numa organização sem agente publicado e o cliente
+recebeu "já acionei o time" do nada; a exceção é a passagem pedida por agente
+externo via MCP, cujas falas são gravadas como `system` —, e no máximo um aviso
+por conversa a cada 24 h, contado no banco, sem contar aviso `failed`).
 
 ---
 
@@ -3036,6 +3042,12 @@ Migration 0441. Spec: `tests/e2e/sons-dos-avisos.spec.ts` (job e2e, parte 1). O 
 **NÃO coberto por esta spec:** o som saindo de um alto-falante de verdade, e o navegador que recusa áudio antes de a pessoa interagir (o hook cai no bipe e, se nem isso, o aviso segue visível).
 
 Evidência: `evidence/sons-dos-avisos/01-som-personalizado.png` (a gestora com o som escolhido para «Precisa de uma pessoa») e `evidence/sons-dos-avisos/02-visualizadora.png` (a visualizadora, sem o botão de trocar).
+
+### O push dos avisos no celular `[P1]` (2026-09-27)
+
+Migration 0442. **Sem spec de tela, e é declarado:** o que muda é o que chega a um celular com o CRM fechado, e o CI não tem aparelho nem serviço de push de navegador. A regra (quais avisos, texto no idioma da organização, sem dado do cliente, destino da Central) está em `tests/unit/push-dos-avisos.test.ts`; o anúncio do aviso no barramento, contra Postgres, em `tests/invariants/aviso-da-central-no-barramento.test.ts`.
+
+**NÃO coberto:** a notificação aparecendo num celular de verdade (Android/iPhone), com o par VAPID configurado.
 
 ### Continuação de conversões: links nomeados (27/09/2026)
 

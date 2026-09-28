@@ -538,6 +538,25 @@ export const DICIONARIO: Traducoes = {
   "Logo para o tema escuro (opcional)": { es: "Logo para el tema oscuro (opcional)" },
   "Remover logo escuro": { es: "Eliminar logo oscuro" },
   "Use uma versão legível sobre fundo escuro. Ela aparece sem moldura branca. Sem ela, o logo padrão mantém a proteção de contraste. PNG ou JPG, até 512 KB.": { es: "Usa una versión legible sobre fondo oscuro. Se muestra sin marco blanco. Sin ella, el logo predeterminado conserva la protección de contraste. PNG o JPG, hasta 512 KB." },
+  // /admin/marca — ícone da aba (favicon), migration 0443.
+  "Ícone da aba (favicon)": { es: "Ícono de la pestaña (favicon)" },
+  "Ícone da aba": { es: "Ícono de la pestaña" },
+  "Remover ícone": { es: "Eliminar ícono" },
+  "Ícone da aba atualizado.": { es: "Ícono de la pestaña actualizado." },
+  "Ícone da aba removido.": { es: "Ícono de la pestaña eliminado." },
+  "Não consegui trocar o ícone da aba agora.": { es: "No pude cambiar el ícono de la pestaña ahora." },
+  "Sua sessão expirou. Entre de novo para trocar o ícone da aba.": {
+    es: "Tu sesión expiró. Vuelve a entrar para cambiar el ícono de la pestaña.",
+  },
+  "Você não tem permissão para trocar o ícone da aba.": {
+    es: "No tienes permiso para cambiar el ícono de la pestaña.",
+  },
+  "Imagem quadrada, de preferência 64×64 ou maior. PNG ou JPG, até": {
+    es: "Imagen cuadrada, preferiblemente de 64×64 o mayor. PNG o JPG, hasta",
+  },
+  "KB. Sem ícone próprio, a aba mostra a inicial do nome sobre a cor da marca.": {
+    es: "KB. Sin ícono propio, la pestaña muestra la inicial del nombre sobre el color de la marca.",
+  },
   // /admin/email — o servidor SMTP da instalação (PR #714, @betoarts, recorte).
   "Servidor de e-mail conectado e autenticado.": { es: "Servidor de correo conectado y autenticado." },
   "Preencha e salve o servidor e o remetente antes de testar.": {
@@ -1094,6 +1113,11 @@ export const DICIONARIO: Traducoes = {
   "aberto excepcionalmente": { es: "abierto excepcionalmente" },
   "Abrir atendimento": { es: "Abrir atención" },
   "Abra o atendimento e diga o que fazer: concluir, pedir informação ao cliente ou passar para uma pessoa.": { es: "Abre la atención e indica qué hacer: concluirla, pedir información al cliente o pasarla a una persona." },
+  // O caso aberto na Central, na hora (`lib/escalacao/caso-na-central.handler.ts`).
+  "A IA pediu ajuda à equipe": { es: "La IA pidió ayuda al equipo" },
+  "Abra o caso para responder. A IA continua atendendo o cliente enquanto isso.": {
+    es: "Abre el caso para responder. La IA sigue atendiendo al cliente mientras tanto.",
+  },
   "Um atendimento espera decisão da equipe": { es: "Una atención espera la decisión del equipo" },
   "Soltar o horário de um pedido não confirmado após (minutos)": { es: "Liberar el horario de una solicitud no confirmada después de (minutos)" },
   "Vale só para tipos de atendimento que pedem confirmação. Enquanto o pedido espera, o horário fica reservado e ninguém mais o pega; passado o prazo sem decisão, ele volta a ser oferecido. O cliente não é avisado, e o pedido continua na fila.": { es: "Solo aplica a los tipos de cita que requieren confirmación. Mientras la solicitud espera, el horario queda reservado y nadie más puede tomarlo. Si pasa el plazo sin una decisión, el horario vuelve a ofrecerse. El cliente no recibe aviso y la solicitud sigue en la fila." },
@@ -4599,6 +4623,9 @@ export const DICIONARIO: Traducoes = {
   "Se preencher, enviaremos uma assinatura para o outro sistema conferir que fomos nós.": {
     es: "Si lo completas, enviaremos una firma para que el otro sistema confirme que fuimos nosotros.",
   },
+  "Como o outro sistema confere a assinatura e reconhece reenvios: guia de integração em docs/integracao/webhooks-de-saida.md, na documentação do projeto.": {
+    es: "Cómo el otro sistema verifica la firma y reconoce los reenvíos: guía de integración en docs/integracao/webhooks-de-saida.md, en la documentación del proyecto.",
+  },
   "Incluir o responsável no corpo": { es: "Incluir al responsable en el cuerpo" },
   "Padrão: o aviso não diz quem atende. Ligue só se o outro sistema precisar do nome da equipe.": {
     es: "Por defecto, el aviso no dice quién atiende. Actívalo solo si el otro sistema necesita el nombre del equipo.",
@@ -5128,6 +5155,9 @@ export const DICIONARIO: Traducoes = {
     es: ": la respuesta del cliente no llega y la pantalla no muestra ningún aviso. El secreto aparece",
   },
   "uma única vez": { es: "una sola vez" },
+  "Na inscrição do webhook no provedor, preencha o filtro de contas (accountIds) com a Conta deste número: assim só chegam aqui os eventos dele.": {
+    es: "En la suscripción del webhook en el proveedor, completa el filtro de cuentas (accountIds) con la Cuenta de este número: así solo llegan aquí sus eventos.",
+  },
   " — se sair desta tela sem copiá-lo, reconecte para gerar outro.": {
     es: " — si sales de esta pantalla sin copiarlo, reconecta para generar otro.",
   },
@@ -8291,6 +8321,9 @@ export const DICIONARIO: Traducoes = {
   "O faturado soma comandas; o que entrou soma lançamentos pagos. Os dois não precisam bater.": {
     es: "Lo facturado suma órdenes de servicio y lo que entró suma movimientos pagados. Las dos cifras no tienen por qué coincidir.",
   },
+  "Moedas diferentes não se somam: cada uma tem o seu bloco.": {
+    es: "Las monedas distintas no se suman: cada una tiene su propio bloque.",
+  },
   "Por forma de pagamento": { es: "Por forma de pago" },
   "Nenhuma comanda no período.": { es: "Ninguna orden de servicio en el período." },
   "Comissão por pessoa": { es: "Comisión por persona" },
@@ -9264,6 +9297,12 @@ export const DICIONARIO: Traducoes = {
   "O som pode ter no máximo 1 MB.": { es: "El sonido puede tener como máximo 1 MB." },
   "O som precisa ser MP3, OGG ou WAV.": { es: "El sonido tiene que ser MP3, OGG o WAV." },
   "Aviso desconhecido.": { es: "Aviso desconocido." },
+  // ─── lib/notifications/push-dos-avisos.ts (migration 0442) ───
+  "A IA passou uma conversa para a equipe": { es: "La IA pasó una conversación al equipo" },
+  "Abra a conversa para responder o cliente.": { es: "Abre la conversación para responder al cliente." },
+  "Recarregue o saldo na conta do provedor: as respostas saem sozinhas quando ele voltar.": {
+    es: "Recarga el saldo en la cuenta del proveedor: las respuestas salen solas cuando vuelva.",
+  },
   // `informativo` e `crítico` saem iguais nos dois idiomas — sem linha, por isso.
   "atenção": { es: "atención" },
   // ─── lib/ai/agent-inbox-copy.ts (copyDaPromessaSemDono) ───
