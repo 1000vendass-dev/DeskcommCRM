@@ -16,7 +16,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { embedText } from "@/lib/ai/embed";
-import { MODELO_DE_EMBEDDING } from "@/lib/ai/embeddings/chave";
 
 /**
  * Limiar do CAMINHO DO HUMANO — o mesmo que a ferramenta MCP `crm_search_knowledge`
@@ -80,7 +79,9 @@ export async function buscarConhecimento(
   }
 
   const embed = deps?.embed ?? embedText;
-  const { embedding } = await embed(p.pergunta, {
+  // `model` é o que calculou ESTA pergunta; a busca só compara com trechos do
+  // mesmo modelo — trocar de provedor não mistura vetores de mapas diferentes.
+  const { embedding, model } = await embed(p.pergunta, {
     organizationId: p.organizationId,
     ponto: "embedding_consultar",
   });
@@ -97,7 +98,7 @@ export async function buscarConhecimento(
     p_embedding: `[${embedding.join(",")}]`,
     p_k: p.topK,
     p_threshold: PISO,
-    p_embedding_model: MODELO_DE_EMBEDDING,
+    p_embedding_model: model,
   });
 
   if (error) {
