@@ -197,6 +197,36 @@ export interface SaleRow {
 }
 
 /**
+ * Proposta comercial SOBRE a pessoa.
+ *
+ * A migration 0477 liga `destinatario_nome`, `briefing_json` e
+ * `resumo_comercial` à cascata de anonimização, e este bloco é a outra
+ * metade — o que se apaga a pedido do titular é o que se entrega a pedido
+ * dele.
+ */
+export interface ProposalRow {
+  id: string;
+  numero: number | null;
+  ano: number | null;
+  titulo: string;
+  status: string;
+  total_cents: number;
+  moeda: string;
+  valid_until: string | null;
+  sent_at: string | null;
+  decided_at: string | null;
+  destinatario_nome: string | null;
+  resumo_comercial: string | null;
+  /**
+   * Houve um PDF gerado e enviado. O ARQUIVO não vai no pacote — mesma regra
+   * de `has_media` das mensagens: o titular o recebeu no WhatsApp, e a
+   * anonimização o expurga do Storage (0477). O caminho interno não sai.
+   */
+  tem_pdf: boolean;
+  created_at: string;
+}
+
+/**
  * Tarefa combinada SOBRE a pessoa (migration 0210).
  *
  * ⚠️ ESTE BLOCO NASCEU COM A OUTRA METADE, e não depois dela. A migration liga o
@@ -497,6 +527,7 @@ export interface ExportPayload {
   checkpoints: CheckpointRow[];
   appointments: AppointmentRow[];
   sales: SaleRow[];
+  proposals: ProposalRow[];
   tasks: TaskRow[];
   webhook_captures: CaptureRow[];
   audit_log_extract: AuditRow[];
@@ -1047,6 +1078,31 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
       });
     } else if (data) {
       sales = data;
+    }
+  }
+
+  // Propostas comerciais — contact_id direto em crm_proposals. A 0477
+  // acrescentou destinatario_nome/briefing_json/resumo_comercial à cascata de
+  // redação; este bloco é a outra metade — sem ele, o titular pediria acesso
+  // e receberia um relatório que não menciona nenhuma proposta que recebeu.
+  let proposals: ProposalRow[] = [];
+  if (contactId) {
+    const { data, error } = await admin
+      .from("crm_proposals")
+      .select(
+        "id, numero, ano, titulo, status, total_cents, moeda, valid_until, sent_at, decided_at, destinatario_nome, resumo_comercial, pdf_path, created_at",
+      )
+      .eq("organization_id", organizationId)
+      .eq("contact_id", contactId)
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (error) {
+      logger.warn("[lgpd-export-worker] proposals load failed", {
+        request_id: requestId,
+        error: error.message,
+      });
+    } else if (data) {
+      proposals = data.map(({ pdf_path, ...p }) => ({ ...p, tem_pdf: Boolean(pdf_path) }));
     }
   }
 
@@ -1629,6 +1685,7 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
     checkpoints,
     appointments,
     sales,
+    proposals,
     tasks,
     webhook_captures,
     audit_log_extract,
@@ -1678,6 +1735,7 @@ function emptyPayload(
     checkpoints: [],
     appointments: [],
     sales: [],
+    proposals: [],
     tasks: [],
     webhook_captures: [],
     audit_log_extract: [],
