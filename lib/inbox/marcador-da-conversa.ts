@@ -50,7 +50,7 @@ export function arrayDeUmValorParaOr(valor: string): string {
  * ⚠️ CADA ELEMENTO VAI ENTRE ASPAS, e é isso que a torna uma lista e não uma
  * palavra. O literal de array do Postgres é `{"a","b"}`: sem as aspas internas,
  * `{a,b}` é um elemento só, de nome `a,b` — e o filtro casaria conversas com
- * uma etiqueta llamada "a,b", que ninguém escreveu. A forma de um item já
+ * uma etiqueta chamada "a,b", que ninguém escreveu. A forma de um item já
  * tinha as aspas (`arrayDeUmValorParaOr("vip")` → `{"vip"}`); a lista tem de
  * manter, senão as duas formas da mesma coluna divergiriam por construção.
  *
@@ -94,7 +94,7 @@ export function predicadoDoMarcador(marcador: string): string {
  * ⚠️ ESTA É A FORMA SINGULAR, E ELA CONTINUA SENDO O CONTRATO DE HOJE. O plural
  * nasce em `aplicarMarcadores` (logo abaixo), que delega a forma de um item a
  * ESTA função — de modo que `?tag=vip` produz byte a byte o mesmo `or=` que
- * produzia antes desta mudança. `tests/unit/filtro-de-varias-etiquetas.test.ts`
+ * produzia antes desta mudança. `tests/unit/filtro-multi-etiqueta.test.ts`
  * fixa essa igualdade byte a byte.
  */
 export function aplicarMarcador<C extends { or: (filtro: string) => C }>(
@@ -119,9 +119,9 @@ export function aplicarMarcador<C extends { or: (filtro: string) => C }>(
  *   (`ov`).
  *
  * O intervalo entre as duas — "vip na conversa E orçamento no contato", misturando
- * caixas — não é expressável pelas duas caixas de hoje; a recomendação que
- *Combina com o dono do produto é ficar nas duas semânticas simples, e o terceiro
- * caso fica registrado como decisão de produto.
+ * caixas — não é expressável pelas duas caixas de hoje. A recomendação de quem
+ * abriu a issue é ficar nas duas semânticas simples, e o terceiro caso fica
+ * registrado aqui como decisão de produto pendente — é o que o PR declara.
  */
 
 /** Os dois modos, e só eles. `e` é o padrão: uma etiqueta só nunca muda de sentido. */
@@ -156,7 +156,7 @@ export function modoDeEtiqueta(cru: string | null | undefined): ModoDeEtiqueta |
  * A lista de marcadores que o filtro escolheu, sem vazio e sem repetido.
  *
  * A ordem da primeira aparição é preservada: é o que o operador reconhece, e o
- * que deixa a URL produced ser estável entre dois renders do mesmo filtro.
+ * que a URL produzida seja estável entre dois renders do mesmo filtro.
  */
 export function marcadoresEscolhidos(crus: readonly (string | null | undefined)[]): string[] {
   const vistos = new Set<string>();

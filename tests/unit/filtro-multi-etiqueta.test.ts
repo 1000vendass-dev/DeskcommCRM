@@ -9,13 +9,16 @@
  * nada aqui é testado pelo resultado visível na tela, e sim pelo TEXTO que sai
  * para o PostgREST — é o único lugar onde E e OU são distinguíveis sem banco.
  *
- * Os quatro blocos:
+ * Os cinco blocos:
  *
  * 1. **A régua** (E/OU, o caso de uma etiqueta, o controle negativo de vazio).
  * 2. **O schema e a rota** (a repetição na URL sobrevive até o handler).
  * 3. **A não-regressão do `?tag=` singular**, byte a byte.
  * 4. **O funil**, que filtra no cliente e por isso não tem `cs`/`ov` para
  *    delegar — a semântica é reimplementada e precisa bater.
+ * 5. **O handler**, que é quem monta o texto que vai ao PostgREST: a expressão
+ *    do E e a do OU, nas DUAS rotas que filtram no servidor (conversas e
+ *    contatos).
  *
  * ─── A semântica, e por que ela é a que é ──────────────────────────────────
  *
@@ -30,6 +33,8 @@
  */
 import { describe, expect, it } from "vitest";
 
+import { listContactsHandler } from "@/app/api/v1/contacts/_handler";
+import { listConversationsHandler } from "@/app/api/v1/conversations/_handler";
 import {
   aplicarMarcador,
   aplicarMarcadores,
@@ -324,6 +329,29 @@ describe("o funil: E e OU dão listas DIFERENTES", () => {
     expect(applyFilters(leia, { tag: [] })).toHaveLength(4);
     expect(applyFilters(leia, { tag: [], tagMode: "ou" })).toHaveLength(4);
   });
+
+  it("E do funil NÃO aceita mistura de caixas — é o caso que a issue deixa pendente", () => {
+    // O E do servidor é `tags.cs.{a,b}` OU `tags_do_contato.cs.{a,b}`: as duas
+    // etiquetas DENTRO de uma caixa. "vip na conversa E orçamento no negócio" é a
+    // mistura que a #1274 registra como decisão de produto e que o servidor não
+    // expressa — aceitar no funil e recusar no servidor faria o MESMO filtro
+    // devolver listas diferentes nas duas telas, sem erro em nenhuma.
+    const misturado = lead("g", { tags: ["vip"], contact_tags: ["orcamento"] });
+    expect(applyFilters([misturado], { tag: ["vip", "orcamento"], tagMode: "e" })).toHaveLength(0);
+    // No OU a mesma mistura passa: é "qualquer uma em qualquer caixa".
+    expect(applyFilters([misturado], { tag: ["vip", "orcamento"], tagMode: "ou" })).toHaveLength(1);
+    // E as DUAS na mesma caixa passam no E — em QUALQUER uma das três.
+    const naConversa = lead("h", { conversation_tags: ["vip", "orcamento"] });
+    const noNegocio = lead("i", { tags: ["vip", "orcamento"] });
+    expect(applyFilters([naConversa, noNegocio], { tag: ["vip", "orcamento"], tagMode: "e" })).toHaveLength(2);
+  });
+
+  it("uma etiqueta só no funil não muda de sentido por causa da mesma-caixa", () => {
+    // Com um item só, "todas na mesma caixa" é sinônimo de "está em alguma
+    // caixa": o filtro de sempre continua filtrando o de sempre.
+    const emCaixasDiferentes = lead("j", { tags: ["vip"], conversation_tags: ["vip"] });
+    expect(applyFilters([emCaixasDiferentes], { tag: "vip" })).toHaveLength(1);
+  });
 });
 
 describe("o deep-link do funil leva as várias etiquetas e volta", () => {
@@ -349,5 +377,119 @@ describe("o deep-link do funil leva as várias etiquetas e volta", () => {
     const lido = filtersFromParams(new URLSearchParams("tag=vip&tag=x&modo=xou"));
     expect(lido.tagMode).toBeUndefined();
     expect(marcadoresDoFiltro(lido.tag)).toEqual(["vip", "x"]);
+  });
+});
+
+// ══════════════════════════════════════════════════════ 5. O HANDLER
+
+/**
+ * Um builder do supabase que registra cada chamada — o mesmo desenho de
+ * `inbox-filtro-de-tag-le-as-duas-caixas`, porque quem filtra no servidor só
+ * revela a semântica pelo TEXTO que manda ao PostgREST.
+ */
+function supabaseQueRegistra() {
+  const chamadas: { metodo: string; args: unknown[] }[] = [];
+  const proxy: Record<string, unknown> = new Proxy(
+    {},
+    {
+      get(_t, prop) {
+        if (prop === "then") {
+          return (ok: (v: unknown) => unknown) => ok({ data: [], error: null });
+        }
+        return (...args: unknown[]) => {
+          chamadas.push({ metodo: String(prop), args });
+          return proxy;
+        };
+      },
+    },
+  ) as Record<string, unknown>;
+  return { client: { from: () => proxy } as never, chamadas };
+}
+
+const ctxDoHandler = {
+  organization_id: "11111111-1111-4111-8111-111111111111",
+  requestId: "req-1274",
+  actor: { type: "user" as const, id: "user-1" },
+} as never;
+
+/** Os `or=` que a consulta emitiu, na ordem em que saíram. */
+const orsDaConsulta = (chamadas: { metodo: string; args: unknown[] }[]): string[] =>
+  chamadas.filter((c) => c.metodo === "or").map((c) => String(c.args[0]));
+
+/**
+ * Os textos EXATOS que as duas rotas têm de mandar. Estão escritos à mão de
+ * propósito: derivá-los de `predicadoDeVariasEtiquetas` protegeria a função
+ * contra si mesma, e é justamente a função que a sabotagem troca.
+ */
+const OR_DE_E = String.raw`tags.cs."{\"vip\",\"orcamento\"}",tags_do_contato.cs."{\"vip\",\"orcamento\"}"`;
+const OR_DE_OU = String.raw`tags.ov."{\"vip\",\"orcamento\"}",tags_do_contato.ov."{\"vip\",\"orcamento\"}"`;
+const OR_SINGULAR = String.raw`tags.cs."{\"vip\"}",tags_do_contato.cs."{\"vip\"}"`;
+const OR_DE_CONTATOS_E = String.raw`tags.ov."{\"vip\"}",tags.ov."{\"orcamento\"}"`;
+
+describe("o handler monta a expressão certa, nos DOIS modos", () => {
+  it("conversas, modo E: um `or=` só, com `cs` e as DUAS etiquetas num literal", async () => {
+    const { client, chamadas } = supabaseQueRegistra();
+    await listConversationsHandler(client, ctxDoHandler, {
+      limit: 50,
+      tag: ["vip", "orcamento"],
+      modo: "e",
+    } as never);
+    expect(orsDaConsulta(chamadas)).toEqual([OR_DE_E]);
+  });
+
+  it("conversas, modo OU: o MESMO literal com o operador `ov`", async () => {
+    const { client, chamadas } = supabaseQueRegistra();
+    await listConversationsHandler(client, ctxDoHandler, {
+      limit: 50,
+      tag: ["vip", "orcamento"],
+      modo: "ou",
+    } as never);
+    expect(orsDaConsulta(chamadas)).toEqual([OR_DE_OU]);
+    // O E e o OU diferem num caractere — e é o caractere certo.
+    expect(orsDaConsulta(chamadas)).not.toEqual([OR_DE_E]);
+  });
+
+  it("conversas, uma etiqueta só: continua o `or=` singular de sempre", async () => {
+    const { client, chamadas } = supabaseQueRegistra();
+    await listConversationsHandler(client, ctxDoHandler, {
+      limit: 50,
+      tag: ["vip"],
+      modo: "ou",
+    } as never);
+    expect(orsDaConsulta(chamadas)).toEqual([OR_SINGULAR]);
+  });
+
+  it("contatos, modo E: `contains` com a LISTA — um parâmetro só, sem `or=`", async () => {
+    const { client, chamadas } = supabaseQueRegistra();
+    await listContactsHandler(client, ctxDoHandler, {
+      limit: 25,
+      tag: ["vip", "orcamento"],
+      modo: "e",
+    } as never);
+    const contem = chamadas.filter((c) => c.metodo === "contains" && c.args[0] === "tags");
+    expect(contem.map((c) => c.args[1])).toEqual([["vip", "orcamento"]]);
+    // Um `or=` com `tags.ov` aqui seria o OU com o nome do E.
+    expect(orsDaConsulta(chamadas)).not.toContain(OR_DE_CONTATOS_E);
+  });
+
+  it("contatos, modo OU: um `or=` com um `ov` por etiqueta", async () => {
+    const { client, chamadas } = supabaseQueRegistra();
+    await listContactsHandler(client, ctxDoHandler, {
+      limit: 25,
+      tag: ["vip", "orcamento"],
+      modo: "ou",
+    } as never);
+    expect(orsDaConsulta(chamadas)).toEqual([OR_DE_CONTATOS_E]);
+    // O `contains` (E) não pode ter saído junto: repetir `contains` no
+    // PostgREST é E de novo, com o nome de OU.
+    const contem = chamadas.filter((c) => c.metodo === "contains" && c.args[0] === "tags");
+    expect(contem).toEqual([]);
+  });
+
+  it("contatos, uma etiqueta só: `contains` com lista de um, byte a byte o de antes", async () => {
+    const { client, chamadas } = supabaseQueRegistra();
+    await listContactsHandler(client, ctxDoHandler, { limit: 25, tag: ["vip"] } as never);
+    const contem = chamadas.filter((c) => c.metodo === "contains" && c.args[0] === "tags");
+    expect(contem.map((c) => c.args[1])).toEqual([["vip"]]);
   });
 });

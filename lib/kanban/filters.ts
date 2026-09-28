@@ -1,5 +1,5 @@
 import type { Lead } from "@/lib/types/leads";
-import { cardTemMarcador } from "@/lib/kanban/marcadores-do-card";
+import { cardTemMarcador, cardTemTodasNaMesmaCaixa } from "@/lib/kanban/marcadores-do-card";
 import {
   type ModoDeEtiqueta,
   marcadoresEscolhidos,
@@ -144,21 +144,21 @@ export function applyFilters(
   // hoje e não precisa de um laço que cresce com ela.
   const marcadores = marcadoresDoFiltro(f.tag);
   // ⚠️ E/OU (#1274). O funil filtra no CLIENTE, então não há `cs`/`ov` para
-  // delegar: a semântica é reimplementada aqui com `every`/`some`, e ela tem de
-  // ser a MESMA que a do servidor (`lib/inbox/marcador-da-conversa.ts`).
+  // delegar: a semântica é reimplementada aqui, e ela tem de ser a MESMA que a do
+  // servidor (`lib/inbox/marcador-da-conversa.ts`).
   //
   // E o detalhe que é fácil errar: no servidor o E é `tags.cs.{a,b}` OU
-  // `tags_do_contato.cs.{a,b}` — as DUAS etiquetas NA MESMA CAIXAS, e as duas
-  // caixas em disjunção. Portanto o "every" aqui é sobre as etiquetas de UMA
-  // caixa, e o OU entre caixas é o de fora. Um `every` sobre a união das três
-  // caixas (o que o `marcadoresDoCard` devolve) aceitaria "vip na conversa E
+  // `tags_do_contato.cs.{a,b}` — as DUAS etiquetas NA MESMA CAIXA, e as caixas em
+  // disjunção. Portanto o E aqui é `cardTemTodasNaMesmaCaixa`, que pergunta caixa
+  // por caixa, e o OU entre caixas é o de fora. Um `every` sobre a união das três
+  // caixas (o que `cardTemMarcador` devolve) aceitaria "vip na conversa E
   // orçamento no contato" — que é justamente o caso que a issue registra como
   // decisão de produto pendente, e que o servidor NÃO aceita. Aceitar aqui e não
   // lá faria o mesmo filtro dar resultados diferentes em cada lista.
   const passaMarcador = (lead: Lead): boolean => {
     if (marcadores.length === 0) return true;
     if (f.tagMode === "ou") return marcadores.some((m) => cardTemMarcador(lead, m));
-    return marcadores.every((m) => cardTemMarcador(lead, m));
+    return cardTemTodasNaMesmaCaixa(lead, marcadores);
   };
 
   return leads.filter((l) => {
