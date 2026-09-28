@@ -147,7 +147,13 @@ export function criarDubleDoHandler(
       calendar_appointments: [],
     },
     inserts: { messages: [] },
-    selects: { conversations: [], messages: [], meta_templates: [], channel_sessions: [] },
+    selects: {
+      conversations: [],
+      messages: [],
+      meta_templates: [],
+      channel_sessions: [],
+      organizations: [],
+    },
     rpcs: [],
   };
 
@@ -259,7 +265,7 @@ export function criarDubleDoHandler(
         // agenda. Padrão `{ settings: {} }`, que é o que os casos legados devolviam.
         const cadeia = {
           select: (colunas = "") => {
-            capturas.selects.conversations!.push(colunas);
+            capturas.selects.organizations!.push(colunas);
             return cadeia;
           },
           eq: (coluna: string, valor: unknown) => {
