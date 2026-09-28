@@ -39,7 +39,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { logger } from "@/lib/logger";
 
-export const MODULOS_OPCIONAIS = ["banco_externo", "fluxos_atendimento", "propostas"] as const;
+export const MODULOS_OPCIONAIS = ["banco_externo", "fluxos_atendimento", "propostas", "crm_b2b"] as const;
 export type ModuloOpcional = (typeof MODULOS_OPCIONAIS)[number];
 
 /** A linha de cada módulo em `platform_config`. O formato é o da CHECK da 0341. */
@@ -54,6 +54,10 @@ export const CHAVE_DO_MODULO: Record<ModuloOpcional, string> = {
   // empresa em Configurações › Propostas. Desligada aqui, nenhuma empresa vê
   // nem liga (`lib/organizacao/capacidades.ts` exige as duas).
   propostas: "MODULO_PROPOSTAS",
+  // Doc 68 (b): empresas, pessoas que decidem e importação de planilha — a
+  // metade B2B do #1621. A maior parte de quem usa vende para pessoas; quem
+  // vende para empresas liga. Desligado, as telas e as rotas somem (404).
+  crm_b2b: "MODULO_CRM_B2B",
 };
 
 const LIGADO = "ligado";
