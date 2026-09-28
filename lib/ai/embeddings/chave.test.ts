@@ -44,7 +44,7 @@ vi.mock("@/lib/supabase/admin", () => ({
   }),
 }));
 
-import { resolverChaveDeEmbedding } from "@/lib/ai/embeddings/chave";
+import { modeloDeEmbedding, resolverChaveDeEmbedding } from "@/lib/ai/embeddings/chave";
 
 function credential(overrides: Record<string, unknown>) {
   return {
@@ -176,5 +176,52 @@ describe("resolverChaveDeEmbedding", () => {
       baseUrl: "https://openrouter.ai/api/v1",
       origem: "binding_do_ponto",
     });
+  });
+
+  // #1130 (@vgamkt): cada empresa escolhe OpenAI ou Google para a base.
+  it("binding explícito para uma credencial do Google: provedor google, sem base_url", async () => {
+    state.bindings = [
+      {
+        organization_id: "org-1",
+        purpose: "embedding_consultar",
+        is_enabled: true,
+        credential_id: "cred-google",
+        model_id: "google/gemini-embedding-001",
+        base_url: null,
+      },
+    ];
+    state.env.OPENAI_API_KEY = "chave-ficticia-env-openai";
+    state.credentials = [
+      credential({ id: "cred-google", provider: "google", api_key_encrypted: "chave-ficticia-google" }),
+    ];
+
+    const chave = await resolverChaveDeEmbedding("org-1", "embedding_consultar");
+    expect(chave).toMatchObject({
+      apiKey: "chave-ficticia-google",
+      provedor: "google",
+      baseUrl: null,
+      origem: "binding_do_ponto",
+      avisos: [],
+    });
+    expect(modeloDeEmbedding(chave!.provedor)).toBe("google/gemini-embedding-001");
+    // `semEscolha` desfaz o degrau 1: é o que a tela pergunta antes de oferecer
+    // "Trocar para a OpenAI".
+    expect(
+      await resolverChaveDeEmbedding("org-1", "embedding_consultar", { semEscolha: true }),
+    ).toMatchObject({ provedor: "openai", origem: "chave_da_instalacao" });
+  });
+
+  it("credencial do Google sem escolha só vale quando não há NENHUMA via OpenAI", async () => {
+    state.credentials = [
+      credential({ id: "cred-google", provider: "google", api_key_encrypted: "chave-ficticia-google" }),
+    ];
+    expect(await resolverChaveDeEmbedding("org-1")).toMatchObject({
+      provedor: "google",
+      origem: "credencial_da_organizacao",
+    });
+
+    // Quem já indexava pela OpenRouter não troca de fornecedor numa atualização.
+    state.credentials.push(credential({}));
+    expect(await resolverChaveDeEmbedding("org-1")).toMatchObject({ provedor: "openrouter" });
   });
 });

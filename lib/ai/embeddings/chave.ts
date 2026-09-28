@@ -36,20 +36,28 @@
  *     CONVERSA, e subi-la acima da OpenAI trocaria em silêncio o fornecedor (e
  *     a conta que paga) de quem já indexava com a OpenAI na atualização.
  *  6. **Chave OpenRouter da instalação** (`OPENROUTER_API_KEY`).
- *  7. Nada. E "nada" é uma resposta legítima que o chamador precisa saber
+ *  7. **Credencial Google da organização** — por último, pelo mesmo motivo da
+ *     OpenRouter: quem só tem a chave do Google passa a ter base, e quem já
+ *     indexava com a OpenAI não troca de fornecedor numa atualização.
+ *  8. Nada. E "nada" é uma resposta legítima que o chamador precisa saber
  *     mostrar, não um erro para engolir.
  *
  * A decisão devolve a ORIGEM junto com a chave. Não é enfeite: é o que permite
  * a tela responder *"está usando a chave X **porque**…"* em vez de deixar o dono
  * do negócio adivinhando por que a indexação não anda.
  *
- * ## O modelo NÃO é escolha
+ * ## O modelo NÃO é escolha solta — é consequência do provedor
  *
- * `text-embedding-3-small`, 1536 dimensões, dos dois lados. Indexação e busca
- * são coordenadas de um mesmo mapa: trocar só um lado não dá erro nenhum — o
- * agente simplesmente para de achar o seu conteúdo. É por isso que o binding
- * aqui governa a CHAVE e não o MODELO, e por isso que a versão de índice grava
- * com que modelo foi calculada (`ai_knowledge_versions.embedding_model`).
+ * OpenAI (direta, gateway ou OpenRouter) indexa com `text-embedding-3-small`;
+ * Google indexa com `gemini-embedding-001`. Os dois em 1536 dimensões — o Google
+ * a pedido (`outputDimensionality`, `lib/ai/embed.ts`) —, então a coluna
+ * `ai_chunks.embedding vector(1536)` serve aos dois sem migration.
+ *
+ * Indexação e busca são coordenadas de um mesmo mapa: trocar só um lado não dá
+ * erro nenhum — o agente simplesmente para de achar o seu conteúdo. Por isso a
+ * versão de índice grava com que modelo foi calculada
+ * (`ai_knowledge_versions.embedding_model`), a busca filtra por ele, e trocar de
+ * provedor (`PUT /api/v1/ai/knowledge/provedor`) refaz a base inteira.
  */
 import { byteaToBuffer, decryptKey } from "@/lib/crypto/aes_gcm";
 import { OPENROUTER_BASE_URL } from "@/lib/ai/gateway";
@@ -62,7 +70,20 @@ export type PontoDeEmbedding = "embedding_indexar" | "embedding_consultar";
 
 /** Pin de contrato: o mesmo modelo dos dois lados, com a mesma dimensão. */
 export const MODELO_DE_EMBEDDING = "openai/text-embedding-3-small";
+export const MODELO_DE_EMBEDDING_DO_GOOGLE = "google/gemini-embedding-001";
 export const DIMENSOES_DO_EMBEDDING = 1536;
+
+/** Quem prepara a base, do ponto de vista de quem escolhe na tela. */
+export type ProvedorDaBase = "openai" | "google";
+
+/** O modelo é função do provedor: OpenAI direta, gateway e OpenRouter dão o mesmo vetor. */
+export function modeloDeEmbedding(provedor: ChaveDeEmbedding["provedor"]): string {
+  return provedor === "google" ? MODELO_DE_EMBEDDING_DO_GOOGLE : MODELO_DE_EMBEDDING;
+}
+
+export function provedorDaBase(chave: ChaveDeEmbedding): ProvedorDaBase {
+  return chave.provedor === "google" ? "google" : "openai";
+}
 
 export type OrigemDaChave =
   | "binding_do_ponto"
@@ -82,7 +103,7 @@ export interface ChaveDeEmbedding {
   apiKey: string | null;
   /** `null` = falar direto com a OpenAI, quando não houver gateway. */
   baseUrl: string | null;
-  provedor: "openai" | "openrouter" | "gateway";
+  provedor: "openai" | "openrouter" | "gateway" | "google";
   /** Quando true, a chamada vai pelo gateway (o SDK lê a chave do process.env). */
   viaGateway: boolean;
   origem: OrigemDaChave;
@@ -98,15 +119,20 @@ export interface ChaveDeEmbedding {
  * `organizationId` é obrigatório: um resolvedor que aceitasse organização
  * opcional acabaria chamado sem ela justamente no caminho que mais importa,
  * aplicando a configuração de ninguém.
+ *
+ * `semEscolha` pula o degrau 1: responde "o que valeria se a escolha explícita
+ * fosse desfeita" — é o que a tela usa para saber se voltar para a OpenAI é
+ * possível antes de oferecer o botão.
  */
 export async function resolverChaveDeEmbedding(
   organizationId: string,
   ponto: PontoDeEmbedding = "embedding_indexar",
+  opcoes: { semEscolha?: boolean } = {},
 ): Promise<ChaveDeEmbedding | null> {
   const avisos: string[] = [];
 
   // 1 · A escolha explícita do painel.
-  const binding = await lerBindingDeEmbedding(ponto, organizationId);
+  const binding = opcoes.semEscolha ? null : await lerBindingDeEmbedding(ponto, organizationId);
   if (binding?.credential_id) {
     const credencial = await decifrarCredencial(binding.credential_id, organizationId);
     if (credencial) {
@@ -115,13 +141,15 @@ export async function resolverChaveDeEmbedding(
         // e quem configurou fica sabendo que o campo dele não é obedecido.
         avisos.push(
           `O painel aponta "${binding.model_id}" para este ponto, mas o modelo de embedding é fixo ` +
-            `(${MODELO_DE_EMBEDDING}) — trocá-lo exigiria reindexar todo o material de uma vez.`,
+            `(${modeloDeEmbedding(credencial.provedor)}) — trocá-lo exigiria reindexar todo o material de uma vez.`,
         );
       }
       return {
         apiKey: credencial.apiKey,
         baseUrl:
-          binding.base_url ?? (credencial.provedor === "openrouter" ? OPENROUTER_BASE_URL : null),
+          credencial.provedor === "google"
+            ? null
+            : (binding.base_url ?? (credencial.provedor === "openrouter" ? OPENROUTER_BASE_URL : null)),
         provedor: credencial.provedor,
         viaGateway: false,
         origem: "binding_do_ponto",
@@ -203,6 +231,10 @@ export async function resolverChaveDeEmbedding(
     };
   }
 
+  // 7 · Credencial Google da organização — só quando não há nenhuma via OpenAI.
+  const googleDaOrg = await credencialDaOrganizacao(organizationId, "google");
+  if (googleDaOrg) return daOrganizacao(googleDaOrg);
+
   return null;
 }
 
@@ -215,6 +247,13 @@ export async function resolverChaveDeEmbedding(
  */
 export async function temChaveDeEmbedding(organizationId: string): Promise<boolean> {
   return (await resolverChaveDeEmbedding(organizationId)) !== null;
+}
+
+/** As credenciais da organização que sabem gerar embedding. */
+type ProvedorDeCredencial = "openai" | "openrouter" | "google";
+
+function ehProvedorDeCredencial(p: unknown): p is ProvedorDeCredencial {
+  return p === "openai" || p === "openrouter" || p === "google";
 }
 
 // ---------------------------------------------------------------------------
@@ -257,7 +296,7 @@ async function lerBindingDeEmbedding(
 async function decifrarCredencial(
   credentialId: string,
   organizationId: string,
-): Promise<{ apiKey: string; rotulo: string; provedor: "openai" | "openrouter" } | null> {
+): Promise<{ apiKey: string; rotulo: string; provedor: ProvedorDeCredencial } | null> {
   try {
     const admin = createAdminClient();
     const { data } = await admin
@@ -268,7 +307,7 @@ async function decifrarCredencial(
       .eq("is_active", true)
       .not("validated_at", "is", null)
       .maybeSingle();
-    if (!data || (data.provider !== "openai" && data.provider !== "openrouter")) return null;
+    if (!data || !ehProvedorDeCredencial(data.provider)) return null;
     return {
       apiKey: decryptKey({
         ciphertext: byteaToBuffer(data.api_key_encrypted),
@@ -286,7 +325,7 @@ async function decifrarCredencial(
 }
 
 /**
- * A credencial ativa e validada da organização, OpenAI ou OpenRouter.
+ * A credencial ativa e validada da organização, OpenAI, OpenRouter ou Google.
  *
  * Desempate DETERMINÍSTICO pela mais antiga: com duas chaves e nenhuma escolha,
  * "a mais recente" faria o comportamento mudar sozinho no dia em que alguém
@@ -295,12 +334,12 @@ async function decifrarCredencial(
  */
 async function credencialDaOrganizacao(
   organizationId: string,
-  provedor: "openai" | "openrouter",
+  provedor: ProvedorDeCredencial,
 ): Promise<{
   apiKey: string;
   rotulo: string;
   quantas: number;
-  provedor: "openai" | "openrouter";
+  provedor: ProvedorDeCredencial;
 } | null> {
   try {
     const admin = createAdminClient();

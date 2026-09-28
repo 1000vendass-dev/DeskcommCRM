@@ -27,7 +27,9 @@ vi.mock("@/lib/ai/embed", () => ({
 }));
 vi.mock("@/lib/ai/embeddings/chave", () => ({
   resolverChaveDeEmbedding: vi.fn(),
-  MODELO_DE_EMBEDDING: "openai/text-embedding-3-small",
+  // O par real, copiado: o módulo real puxa env e banco no import.
+  modeloDeEmbedding: (provedor: string) =>
+    provedor === "google" ? "google/gemini-embedding-001" : "openai/text-embedding-3-small",
 }));
 vi.mock("@/lib/ai/rag/debounce", () => ({ acquireDebounce: vi.fn() }));
 vi.mock("@/lib/ai/rag/ingest/documento", () => ({
@@ -162,6 +164,38 @@ describe("rag-indexer — pulo incremental por hash do conteúdo", () => {
 
     expect(r.status).toBe("ok");
     expect(createKnowledgeVersion).toHaveBeenCalledTimes(1);
+  });
+
+  // #1130 (@vgamkt): trocar o provedor da base para o Google REFAZ a base. O
+  // gatilho é este: a chave agora é do Google, a versão ativa é da OpenAI, e o
+  // conteúdo é o mesmo — sem a comparação pelo modelo DA CHAVE, "Preparar tudo"
+  // pularia tudo como "sem mudança" e a busca (que filtra por modelo) não
+  // acharia nada.
+  it("trocou para o Google, mesmo conteúdo, versão ativa da OpenAI: reindexa e grava o modelo do Google", async () => {
+    const hash = await indexarUmaVez();
+    fonte = { ...fonteBase(), content_hash: hash, last_index_status: "success", active_kb_version_id: "v-1" };
+    vi.mocked(resolverChaveDeEmbedding).mockResolvedValue({ origem: "org", provedor: "google" } as never);
+    vi.mocked(createKnowledgeVersion).mockClear();
+
+    const r = await processRagIndexer(EVENTO as never);
+
+    expect(r.status).toBe("ok");
+    expect(createKnowledgeVersion).toHaveBeenCalledWith(
+      expect.objectContaining({ embeddingModel: "google/gemini-embedding-001" }),
+    );
+  });
+
+  it("controle: já no Google, mesmo conteúdo, versão ativa do Google: pula", async () => {
+    const hash = await indexarUmaVez();
+    fonte = { ...fonteBase(), content_hash: hash, last_index_status: "success", active_kb_version_id: "v-1" };
+    modeloDaVersaoAtiva = "google/gemini-embedding-001";
+    vi.mocked(resolverChaveDeEmbedding).mockResolvedValue({ origem: "org", provedor: "google" } as never);
+    vi.mocked(createKnowledgeVersion).mockClear();
+
+    const r = await processRagIndexer(EVENTO as never);
+
+    expect(r).toMatchObject({ status: "skipped", detail: "sem_mudanca" });
+    expect(createKnowledgeVersion).not.toHaveBeenCalled();
   });
 
   it("mesmo conteúdo, mas a última indexação falhou: reindexa", async () => {

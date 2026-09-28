@@ -36,7 +36,7 @@
 
 import { embedText, SemChaveDeEmbeddingError } from "@/lib/ai/embed";
 import {
-  MODELO_DE_EMBEDDING,
+  modeloDeEmbedding,
   resolverChaveDeEmbedding,
   type ChaveDeEmbedding,
 } from "@/lib/ai/embeddings/chave";
@@ -383,7 +383,9 @@ export async function indexarFonte(
   // ─── Pulo incremental ──────────────────────────────────────────────────────
   // Se o conteúdo NÃO mudou, já está `success` e a versão ativa foi indexada com
   // o MESMO modelo de embedding, não há nada a fazer — e "Preparar tudo" deixa de
-  // reembedar o que não mudou. Trocar de modelo cai fora da condição e reindexa.
+  // reembedar o que não mudou. Trocar de modelo cai fora da condição e reindexa:
+  // é isto que faz a troca de provedor refazer a base inteira.
+  const modelo = modeloDeEmbedding(chave.provedor);
   const hashDoConteudo = computeContentHash(pedacos.map((p) => p.content).join("\n---\n"));
   if (
     fonte.content_hash === hashDoConteudo &&
@@ -396,7 +398,7 @@ export async function indexarFonte(
       .eq("id", fonte.active_kb_version_id)
       .eq("organization_id", fonte.organization_id)
       .maybeSingle();
-    if ((versaoAtiva as { embedding_model?: string } | null)?.embedding_model === MODELO_DE_EMBEDDING) {
+    if ((versaoAtiva as { embedding_model?: string } | null)?.embedding_model === modelo) {
       return { tipo: "pulado", motivo: "sem_mudanca" };
     }
   }
@@ -406,6 +408,7 @@ export async function indexarFonte(
     knowledgeSourceId: fonte.id,
     agentId: fonte.agent_id,
     sourceType: tipo,
+    embeddingModel: modelo,
   });
 
   console.warn(
