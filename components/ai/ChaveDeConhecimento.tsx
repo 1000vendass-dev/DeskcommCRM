@@ -78,7 +78,9 @@ interface Props {
 export function ChaveDeConhecimento({ estado, onChaveCadastrada }: Props) {
   const t = useT();
   const [abrindo, setAbrindo] = useState(false);
-  const [provedor, setProvedor] = useState<ProvedorDaChave>("openai");
+  // A base já tem família e a chave dela sumiu: o cadastro começa nela.
+  const semChave = estado.familia_sem_chave;
+  const [provedor, setProvedor] = useState<ProvedorDaChave>(semChave ?? "openai");
   const [rotulo, setRotulo] = useState("");
   const [chave, setChave] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -181,15 +183,33 @@ export function ChaveDeConhecimento({ estado, onChaveCadastrada }: Props) {
         <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning-fg" aria-hidden />
         <div className="space-y-1">
           <h3 className="text-sm font-medium">
-            {t("Falta uma chave de embedding para o agente aprender o seu material")}
+            {semChave === "google"
+              ? t("A base é preparada pelo Google, e a chave do Google não está mais utilizável")
+              : semChave === "openai"
+                ? t("A base é preparada pela OpenAI, e não há mais chave da OpenAI utilizável")
+                : t("Falta uma chave de embedding para o agente aprender o seu material")}
           </h3>
           <p className="text-xs text-text-muted">
-            {t(
-              "O material é preparado pela OpenAI (text-embedding-3-small, também pela OpenRouter) ou pelo Google (gemini-embedding-001). Sem uma dessas chaves, você pode cadastrar o documento, mas ele fica esperando para ser preparado.",
-            )}
+            {semChave
+              ? // Falha aberta na informação: outra chave cadastrada NÃO assume
+                // sozinha — perguntar com outro modelo não acharia nada do que
+                // já foi preparado. Quem troca é a pessoa, e a troca refaz a base.
+                t(
+                  "O agente não consegue consultar o material até isso ser resolvido. Chaves de outro provedor não são usadas sozinhas: o material já preparado só é encontrado com o mesmo provedor. Cadastre a chave de novo ou troque o provedor, o que refaz a base.",
+                )
+              : t(
+                  "O material é preparado pela OpenAI (text-embedding-3-small, também pela OpenRouter) ou pelo Google (gemini-embedding-001). Sem uma dessas chaves, você pode cadastrar o documento, mas ele fica esperando para ser preparado.",
+                )}
           </p>
         </div>
       </div>
+      {semChave ? (
+        <TrocaDeProvedor
+          atual={semChave}
+          destino={estado.pode_trocar_para}
+          onTrocado={onChaveCadastrada}
+        />
+      ) : null}
 
       {abrindo ? (
         <div className="space-y-3">

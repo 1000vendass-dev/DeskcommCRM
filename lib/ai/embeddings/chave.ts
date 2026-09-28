@@ -42,6 +42,28 @@
  *  8. Nada. E "nada" é uma resposta legítima que o chamador precisa saber
  *     mostrar, não um erro para engolir.
  *
+ * ## A escada só percorre os degraus da FAMÍLIA da base
+ *
+ * A família (OpenAI ou Google) decide o modelo, e o modelo decide se a busca
+ * acha alguma coisa. Por isso ela NÃO pode sair da credencial que aparece
+ * primeiro: uma organização só com a chave do Google indexava pelo degrau 7, e
+ * no dia em que alguém cadastrava uma chave da OpenAI o degrau 2 passava a
+ * valer — a pergunta saía com o outro modelo, a busca filtrava por ele e
+ * devolvia zero trechos, sem erro e sem nada na fila (revisão do #1864).
+ *
+ * A família é, nesta ordem (`familiaDaBase`):
+ *  1. **A escolha gravada** em `organizations.settings.base_de_conhecimento.familia`
+ *     — só a troca explícita da tela (`PUT /api/v1/ai/knowledge/provedor`) a
+ *     escreve, e essa troca refaz a base;
+ *  2. **o modelo com que a base FOI indexada** (`embedding_model` da versão
+ *     ativa mais recente) — o que a organização já tem gravado sem ter escolhido;
+ *  3. nenhuma: não há base ainda, e a escada inteira vale. A primeira indexação
+ *     fixa a família pelo item 2.
+ *
+ * Com a família fixada, cadastrar ou remover credencial não a troca. Se a chave
+ * dela sumir, a resposta é `null` — a tela diz qual família ficou sem chave
+ * (`lib/ai/embeddings/estado.ts`), e nunca se cai na outra calado.
+ *
  * A decisão devolve a ORIGEM junto com a chave. Não é enfeite: é o que permite
  * a tela responder *"está usando a chave X **porque**…"* em vez de deixar o dono
  * do negócio adivinhando por que a indexação não anda.
@@ -81,9 +103,62 @@ export function modeloDeEmbedding(provedor: ChaveDeEmbedding["provedor"]): strin
   return provedor === "google" ? MODELO_DE_EMBEDDING_DO_GOOGLE : MODELO_DE_EMBEDDING;
 }
 
-export function provedorDaBase(chave: ChaveDeEmbedding): ProvedorDaBase {
+export function provedorDaBase(chave: Pick<ChaveDeEmbedding, "provedor">): ProvedorDaBase {
   return chave.provedor === "google" ? "google" : "openai";
 }
+
+export interface FamiliaDaBase {
+  familia: ProvedorDaBase;
+  /** `escolha` = gravada pela troca da tela; `indice` = lida do modelo da versão ativa. */
+  origem: "escolha" | "indice";
+}
+
+/**
+ * A família com que a base desta organização é preparada, ou `null` quando
+ * ainda não há base nem escolha (ver o cabeçalho). Leitura com o admin client e
+ * filtro de organização programático.
+ */
+export async function familiaDaBase(organizationId: string): Promise<FamiliaDaBase | null> {
+  try {
+    const admin = createAdminClient();
+    const { data: org } = await admin
+      .from("organizations")
+      .select("settings")
+      .eq("id", organizationId)
+      .maybeSingle();
+    const gravada = (org as { settings?: { base_de_conhecimento?: { familia?: unknown } } } | null)
+      ?.settings?.base_de_conhecimento?.familia;
+    if (gravada === "openai" || gravada === "google")
+      return { familia: gravada, origem: "escolha" };
+
+    const { data: versao } = await admin
+      .from("ai_knowledge_versions")
+      .select("embedding_model")
+      .eq("organization_id", organizationId)
+      .eq("is_active", true)
+      .not("embedding_model", "is", null)
+      .order("activated_at", { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
+    const modelo = (versao as { embedding_model?: unknown } | null)?.embedding_model;
+    if (typeof modelo !== "string") return null;
+    return {
+      familia: modelo === MODELO_DE_EMBEDDING_DO_GOOGLE ? "google" : "openai",
+      origem: "indice",
+    };
+  } catch (err) {
+    // ponytail: falha de leitura vira "sem família" (a escada inteira vale) em
+    // vez de derrubar a indexação; uma versão indexada com a família errada
+    // nesse intervalo é refeita na próxima passada, porque o modelo não bate.
+    logger.warn("[embedding] não consegui ler a família da base", {
+      organization_id: organizationId,
+      motivo: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
+}
+
+const NOME_DA_FAMILIA: Record<ProvedorDaBase, string> = { openai: "OpenAI", google: "Google" };
 
 export type OrigemDaChave =
   | "binding_do_ponto"
@@ -120,22 +195,31 @@ export interface ChaveDeEmbedding {
  * opcional acabaria chamado sem ela justamente no caminho que mais importa,
  * aplicando a configuração de ninguém.
  *
- * `semEscolha` pula o degrau 1: responde "o que valeria se a escolha explícita
- * fosse desfeita" — é o que a tela usa para saber se voltar para a OpenAI é
- * possível antes de oferecer o botão.
+ * `familia` restringe a escada a uma família: omitida, vale a da base
+ * (`familiaDaBase`); `null`, nenhuma restrição. A tela e a troca a passam para
+ * perguntar "a OUTRA família teria chave?" antes de oferecer o botão.
  */
 export async function resolverChaveDeEmbedding(
   organizationId: string,
   ponto: PontoDeEmbedding = "embedding_indexar",
-  opcoes: { semEscolha?: boolean } = {},
+  opcoes: { familia?: ProvedorDaBase | null } = {},
 ): Promise<ChaveDeEmbedding | null> {
   const avisos: string[] = [];
+  const familia =
+    opcoes.familia !== undefined
+      ? opcoes.familia
+      : ((await familiaDaBase(organizationId))?.familia ?? null);
 
-  // 1 · A escolha explícita do painel.
-  const binding = opcoes.semEscolha ? null : await lerBindingDeEmbedding(ponto, organizationId);
+  // 1 · A escolha explícita do painel — se for da família da base.
+  const binding = await lerBindingDeEmbedding(ponto, organizationId);
   if (binding?.credential_id) {
     const credencial = await decifrarCredencial(binding.credential_id, organizationId);
-    if (credencial) {
+    if (credencial && familia !== null && provedorDaBase(credencial) !== familia) {
+      avisos.push(
+        `O painel de Provedores aponta para este ponto uma chave que a base de conhecimento não usa: ` +
+          `a base é preparada com ${NOME_DA_FAMILIA[familia]}. Para mudar, troque o provedor na tela de Conhecimento.`,
+      );
+    } else if (credencial) {
       if (binding.model_id && !/embed/i.test(binding.model_id)) {
         // Falha ABERTA na informação: a chamada segue com o modelo do contrato,
         // e quem configurou fica sabendo que o campo dele não é obedecido.
@@ -149,18 +233,20 @@ export async function resolverChaveDeEmbedding(
         baseUrl:
           credencial.provedor === "google"
             ? null
-            : (binding.base_url ?? (credencial.provedor === "openrouter" ? OPENROUTER_BASE_URL : null)),
+            : (binding.base_url ??
+              (credencial.provedor === "openrouter" ? OPENROUTER_BASE_URL : null)),
         provedor: credencial.provedor,
         viaGateway: false,
         origem: "binding_do_ponto",
         rotulo: credencial.rotulo,
         avisos,
       };
+    } else {
+      avisos.push(
+        "A chave escolhida no painel de Provedores para este ponto não está utilizável " +
+          "(desativada, apagada ou ainda não validada). Seguindo com a próxima chave disponível.",
+      );
     }
-    avisos.push(
-      "A chave escolhida no painel de Provedores para este ponto não está utilizável " +
-        "(desativada, apagada ou ainda não validada). Seguindo com a próxima chave disponível.",
-    );
   }
 
   const daOrganizacao = (
@@ -183,57 +269,61 @@ export async function resolverChaveDeEmbedding(
     };
   };
 
-  // 2 · Credencial OpenAI da organização, sem exigir binding nenhum.
-  const openAiDaOrg = await credencialDaOrganizacao(organizationId, "openai");
-  if (openAiDaOrg) return daOrganizacao(openAiDaOrg);
+  if (familia !== "google") {
+    // 2 · Credencial OpenAI da organização, sem exigir binding nenhum.
+    const openAiDaOrg = await credencialDaOrganizacao(organizationId, "openai");
+    if (openAiDaOrg) return daOrganizacao(openAiDaOrg);
 
-  // 3 · O gateway da instalação. A chave não sai daqui: o SDK a lê do process.env.
-  if (env.AI_GATEWAY_API_KEY) {
-    return {
-      apiKey: null,
-      baseUrl: env.AI_GATEWAY_BASE_URL || null,
-      provedor: "gateway",
-      viaGateway: true,
-      origem: "gateway_da_instalacao",
-      rotulo: null,
-      avisos,
-    };
-  }
+    // 3 · O gateway da instalação. A chave não sai daqui: o SDK a lê do process.env.
+    if (env.AI_GATEWAY_API_KEY) {
+      return {
+        apiKey: null,
+        baseUrl: env.AI_GATEWAY_BASE_URL || null,
+        provedor: "gateway",
+        viaGateway: true,
+        origem: "gateway_da_instalacao",
+        rotulo: null,
+        avisos,
+      };
+    }
 
-  // 4 · Chave OpenAI da instalação.
-  if (env.OPENAI_API_KEY) {
-    return {
-      apiKey: env.OPENAI_API_KEY,
-      baseUrl: null,
-      provedor: "openai",
-      viaGateway: false,
-      origem: "chave_da_instalacao",
-      rotulo: null,
-      avisos,
-    };
-  }
+    // 4 · Chave OpenAI da instalação.
+    if (env.OPENAI_API_KEY) {
+      return {
+        apiKey: env.OPENAI_API_KEY,
+        baseUrl: null,
+        provedor: "openai",
+        viaGateway: false,
+        origem: "chave_da_instalacao",
+        rotulo: null,
+        avisos,
+      };
+    }
 
-  // 5 · Credencial OpenRouter da organização — só depois de toda OpenAI e do
-  // gateway, para a atualização não trocar o fornecedor de quem já indexava.
-  const openRouterDaOrg = await credencialDaOrganizacao(organizationId, "openrouter");
-  if (openRouterDaOrg) return daOrganizacao(openRouterDaOrg);
+    // 5 · Credencial OpenRouter da organização — só depois de toda OpenAI e do
+    // gateway, para a atualização não trocar o fornecedor de quem já indexava.
+    const openRouterDaOrg = await credencialDaOrganizacao(organizationId, "openrouter");
+    if (openRouterDaOrg) return daOrganizacao(openRouterDaOrg);
 
-  // 6 · Chave OpenRouter da instalação.
-  if (env.OPENROUTER_API_KEY) {
-    return {
-      apiKey: env.OPENROUTER_API_KEY,
-      baseUrl: OPENROUTER_BASE_URL,
-      provedor: "openrouter",
-      viaGateway: false,
-      origem: "chave_da_instalacao",
-      rotulo: null,
-      avisos,
-    };
+    // 6 · Chave OpenRouter da instalação.
+    if (env.OPENROUTER_API_KEY) {
+      return {
+        apiKey: env.OPENROUTER_API_KEY,
+        baseUrl: OPENROUTER_BASE_URL,
+        provedor: "openrouter",
+        viaGateway: false,
+        origem: "chave_da_instalacao",
+        rotulo: null,
+        avisos,
+      };
+    }
   }
 
   // 7 · Credencial Google da organização — só quando não há nenhuma via OpenAI.
-  const googleDaOrg = await credencialDaOrganizacao(organizationId, "google");
-  if (googleDaOrg) return daOrganizacao(googleDaOrg);
+  if (familia !== "openai") {
+    const googleDaOrg = await credencialDaOrganizacao(organizationId, "google");
+    if (googleDaOrg) return daOrganizacao(googleDaOrg);
+  }
 
   return null;
 }

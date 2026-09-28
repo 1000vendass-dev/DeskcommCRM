@@ -5,16 +5,16 @@ import { requireSupportWrite } from "@/lib/impersonate/support";
  * Contribuição de @vgamkt (#1130): a base de conhecimento exigia uma chave da
  * OpenAI, e quem só tinha a do Google ficava sem base.
  *
- * A escolha mora onde a escada de `lib/ai/embeddings/chave.ts` já olha primeiro:
- * os dois pontos de embedding em `ai_purpose_bindings`, SEMPRE juntos —
- * indexar com um provedor e consultar com outro é a falha que não dá erro, só
- * resposta sem o seu material.
+ * A escolha mora em `organizations.settings.base_de_conhecimento.familia`, e
+ * este é o ÚNICO lugar que a escreve. É ela que fixa a família dos dois pontos
+ * (indexar e consultar) em `lib/ai/embeddings/chave.ts` — cadastrar ou remover
+ * credencial não a troca; antes, a família saía da credencial que aparecia
+ * primeiro na escada, e uma chave OpenAI cadastrada depois fazia a busca de
+ * uma base do Google devolver zero trechos, calada (revisão do #1864).
  *
- *  * `google` — amarra os dois pontos à chave do Google mais antiga, ativa e
- *    validada. Sem ela, 422: a troca não pode apontar para uma chave que não
- *    serve, senão a escada cai de volta na OpenAI e a tela mente.
- *  * `openai` — desfaz a escolha do Google (apaga só os bindings `google`). Só
- *    vale se, sem ela, a escada acha uma chave OpenAI/OpenRouter/gateway.
+ * A troca só vale se a família pedida TEM chave utilizável agora
+ * (`resolverChaveDeEmbedding` restrito a ela); sem, 422 — gravar uma família
+ * sem chave deixaria a base parada.
  *
  * Trocar REFAZ A BASE: a busca só compara trechos do mesmo modelo, e o indexador
  * reembeda toda fonte cujo modelo mudou. A fila sai neste mesmo pedido
@@ -23,17 +23,16 @@ import { requireSupportWrite } from "@/lib/impersonate/support";
  * Auth: admin — decide para qual fornecedor o texto do material vai. A
  * organização vem da sessão, nunca do corpo. Audita `ai.knowledge_provider_changed`
  * quando a troca acontece; pedir o provedor que já está valendo não é mutação.
+ *
+ * `organizations` só aceita escrita de platform admin pela RLS, então a escrita
+ * é pelo admin client com `.eq("id", orgId)` da sessão, e em MERGE: `settings`
+ * é jsonb compartilhado (precedente: `lib/ai/pontos/padrao-da-organizacao.ts`).
  */
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
 
-import {
-  MODELO_DE_EMBEDDING_DO_GOOGLE,
-  provedorDaBase,
-  resolverChaveDeEmbedding,
-  type PontoDeEmbedding,
-} from "@/lib/ai/embeddings/chave";
+import { familiaDaBase, provedorDaBase, resolverChaveDeEmbedding } from "@/lib/ai/embeddings/chave";
 import { enfileirarTodosOsMateriais } from "@/lib/ai/knowledge/reprepara-tudo";
 import { fail, ok } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
@@ -44,8 +43,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
-
-const PONTOS: PontoDeEmbedding[] = ["embedding_indexar", "embedding_consultar"];
 
 const corpoSchema = z.object({ provedor: z.enum(["openai", "google"]) }).strict();
 
@@ -74,77 +71,62 @@ export async function PUT(req: NextRequest): Promise<Response> {
   }
   const { provedor } = parsed.data;
 
-  const atual = await resolverChaveDeEmbedding(org.orgId, "embedding_indexar");
-  const provedorAnterior = atual ? provedorDaBase(atual) : null;
+  const familia = await familiaDaBase(org.orgId);
+  const semFamilia = familia
+    ? null
+    : await resolverChaveDeEmbedding(org.orgId, "embedding_indexar", { familia: null });
+  const provedorAnterior = familia?.familia ?? (semFamilia ? provedorDaBase(semFamilia) : null);
   if (provedorAnterior === provedor) {
     return ok({ provedor, mudou: false, fila: null }, { requestId });
   }
 
-  const admin = createAdminClient();
-
-  if (provedor === "google") {
-    const { data: credencial } = await admin
-      .from("ai_provider_credentials")
-      .select("id")
-      .eq("organization_id", org.orgId)
-      .eq("provider", "google")
-      .eq("is_active", true)
-      .not("validated_at", "is", null)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    if (!credencial) {
-      return fail(
-        "sem_chave_do_provedor",
-        t("Cadastre e valide uma chave do Google em IA › Credenciais antes de trocar."),
-        422,
-        { requestId },
-      );
-    }
-    const { error } = await admin.from("ai_purpose_bindings").upsert(
-      PONTOS.map((purpose) => ({
-        organization_id: org.orgId,
-        purpose,
-        provider: "google",
-        credential_id: (credencial as { id: string }).id,
-        model_id: MODELO_DE_EMBEDDING_DO_GOOGLE,
-        base_url: null,
-        is_enabled: true,
-      })),
-      { onConflict: "organization_id,purpose" },
+  const destino = await resolverChaveDeEmbedding(org.orgId, "embedding_indexar", {
+    familia: provedor,
+  });
+  if (!destino) {
+    return fail(
+      "sem_chave_do_provedor",
+      provedor === "google"
+        ? t("Cadastre e valide uma chave do Google em IA › Credenciais antes de trocar.")
+        : t(
+            "Cadastre e valide uma chave da OpenAI ou OpenRouter em IA › Credenciais antes de trocar.",
+          ),
+      422,
+      { requestId },
     );
-    if (error) {
-      logger.error("[ai-knowledge-provedor] falha ao gravar a escolha", {
-        error: error.message,
-        requestId,
-      });
-      return fail("internal_error", t("Não foi possível trocar o provedor."), 500, { requestId });
-    }
-  } else {
-    const semEscolha = await resolverChaveDeEmbedding(org.orgId, "embedding_indexar", {
-      semEscolha: true,
+  }
+
+  const admin = createAdminClient();
+  const { data: orgAtual } = await admin
+    .from("organizations")
+    .select("settings")
+    .eq("id", org.orgId)
+    .maybeSingle();
+  const settingsAtuais = ((orgAtual as { settings?: Record<string, unknown> } | null)?.settings ??
+    {}) as Record<string, unknown>;
+  const baseAtual = (settingsAtuais.base_de_conhecimento ?? {}) as Record<string, unknown>;
+  const { data: gravado, error: escritaErr } = orgAtual
+    ? await admin
+        .from("organizations")
+        .update({
+          settings: {
+            ...settingsAtuais,
+            base_de_conhecimento: { ...baseAtual, familia: provedor },
+          },
+        })
+        .eq("id", org.orgId)
+        .select("id")
+        .maybeSingle()
+    : { data: null, error: null };
+  // Leitura vazia não pode virar `settings` novo em branco (apagaria marca, MFA
+  // e o resto), e zero linhas na escrita volta como SUCESSO no PostgREST: sem
+  // esta conferência, a tela diria "trocado" sem nada gravado.
+  if (escritaErr || !gravado) {
+    logger.error("[ai-knowledge-provedor] falha ao gravar a escolha", {
+      error: escritaErr?.message ?? "nenhuma_linha",
+      requestId,
     });
-    if (!semEscolha || provedorDaBase(semEscolha) !== "openai") {
-      return fail(
-        "sem_chave_do_provedor",
-        t("Cadastre e valide uma chave da OpenAI ou OpenRouter em IA › Credenciais antes de trocar."),
-        422,
-        { requestId },
-      );
-    }
-    const { error } = await admin
-      .from("ai_purpose_bindings")
-      .delete()
-      .eq("organization_id", org.orgId)
-      .in("purpose", PONTOS)
-      .eq("provider", "google");
-    if (error) {
-      logger.error("[ai-knowledge-provedor] falha ao desfazer a escolha", {
-        error: error.message,
-        requestId,
-      });
-      return fail("internal_error", t("Não foi possível trocar o provedor."), 500, { requestId });
-    }
+    return fail("internal_error", t("Não foi possível trocar o provedor."), 500, { requestId });
   }
 
   // A troca já valeu; a fila é o que refaz a base. Se ela falhar, o botão
@@ -170,7 +152,8 @@ export async function PUT(req: NextRequest): Promise<Response> {
     action: "ai.knowledge_provider_changed",
     actorUserId: user.id,
     organizationId: org.orgId,
-    resourceType: "ai_purpose_binding",
+    resourceType: "organization",
+    resourceId: org.orgId,
     requestId,
     metadata: { de: provedorAnterior, para: provedor, fila },
   });

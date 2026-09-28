@@ -10,6 +10,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
   EXPLICACAO_DA_ORIGEM,
+  familiaDaBase,
   provedorDaBase,
   resolverChaveDeEmbedding,
   type ProvedorDaBase,
@@ -21,8 +22,14 @@ export interface EstadoDaChave {
   explicacao: string | null;
   chave_em_uso: string | null;
   avisos: string[];
-  /** Quem prepara a base hoje; `null` sem chave. */
+  /** Quem prepara a base: a família gravada ou indexada; sem ela, a da chave. `null` sem nenhuma. */
   provedor: ProvedorDaBase | null;
+  /**
+   * A base tem família e a chave dela sumiu (removida, desativada, inválida).
+   * Outra família com chave NÃO assume sozinha — a tela diz isto e oferece a
+   * troca explícita, que refaz a base.
+   */
+  familia_sem_chave: ProvedorDaBase | null;
   /** Para onde dá para trocar AGORA (há chave utilizável do outro lado); `null` = nenhum. */
   pode_trocar_para: ProvedorDaBase | null;
   credenciais_embedding: Array<{
@@ -40,8 +47,9 @@ export async function montarEstadoDaChave(
   supabase: SupabaseClient,
   organizationId: string,
 ): Promise<EstadoDaChave> {
+  const familia = (await familiaDaBase(organizationId))?.familia ?? null;
   const [chave, { data }] = await Promise.all([
-    resolverChaveDeEmbedding(organizationId),
+    resolverChaveDeEmbedding(organizationId, "embedding_indexar", { familia }),
     supabase
       .from("ai_provider_credentials_safe")
       .select("id, provider, label, api_key_last4, validated_at, validation_error, is_active")
@@ -50,22 +58,16 @@ export async function montarEstadoDaChave(
       .order("created_at", { ascending: true }),
   ]);
   const credenciais = (data ?? []) as EstadoDaChave["credenciais_embedding"];
-  const provedor = chave ? provedorDaBase(chave) : null;
+  const provedor = familia ?? (chave ? provedorDaBase(chave) : null);
 
-  let podeTrocarPara: ProvedorDaBase | null = null;
-  if (provedor === "openai") {
-    const temGoogle = credenciais.some(
-      (c) => c.provider === "google" && c.is_active && c.validated_at !== null,
-    );
-    podeTrocarPara = temGoogle ? "google" : null;
-  } else if (provedor === "google") {
-    // Voltar para a OpenAI = desfazer a escolha. Só vale oferecer se, sem ela,
-    // a escada acha uma chave que NÃO seja a do próprio Google.
-    const semEscolha = await resolverChaveDeEmbedding(organizationId, "embedding_indexar", {
-      semEscolha: true,
-    });
-    podeTrocarPara = semEscolha && provedorDaBase(semEscolha) === "openai" ? "openai" : null;
-  }
+  // A troca só é oferecida quando a OUTRA família tem chave utilizável agora.
+  const outra: ProvedorDaBase | null =
+    provedor === "openai" ? "google" : provedor === "google" ? "openai" : null;
+  const podeTrocarPara =
+    outra &&
+    (await resolverChaveDeEmbedding(organizationId, "embedding_indexar", { familia: outra }))
+      ? outra
+      : null;
 
   return {
     pode_indexar: chave !== null,
@@ -74,6 +76,7 @@ export async function montarEstadoDaChave(
     chave_em_uso: chave?.rotulo ?? null,
     avisos: chave?.avisos ?? [],
     provedor,
+    familia_sem_chave: familia !== null && chave === null ? familia : null,
     pode_trocar_para: podeTrocarPara,
     credenciais_embedding: credenciais,
   };

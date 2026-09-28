@@ -93,6 +93,7 @@ const CHAVE_OK: EstadoDaChave = {
   chave_em_uso: "Chave principal",
   avisos: [],
   provedor: "openai",
+  familia_sem_chave: null,
   pode_trocar_para: null,
   credenciais_embedding: [],
 };
@@ -402,6 +403,33 @@ describe("ChaveDeConhecimento — quem prepara a base", () => {
     expect(init?.method).toBe("PUT");
     expect(JSON.parse(String(init?.body))).toEqual({ provedor: "google" });
     await waitFor(() => expect(recarregar).toHaveBeenCalled());
+  });
+
+  // Revisão do #1864: a chave da família da base sumiu. Outra chave cadastrada
+  // não assume calada — a tela diz qual família ficou sem chave e oferece a
+  // troca explícita, que refaz a base.
+  it("a chave da família da base sumiu: a tela diz qual, e a troca é explícita", () => {
+    render(
+      <ChaveDeConhecimento
+        estado={{
+          ...CHAVE_OK,
+          pode_indexar: false,
+          chave_em_uso: null,
+          provedor: "google",
+          familia_sem_chave: "google",
+          pode_trocar_para: "openai",
+        }}
+        onChaveCadastrada={() => {}}
+      />,
+    );
+    expect(screen.getByTestId("conhecimento-sem-chave")).toHaveTextContent(
+      "A base é preparada pelo Google, e a chave do Google não está mais utilizável",
+    );
+    expect(screen.getByTestId("conhecimento-trocar-provedor")).toHaveTextContent(
+      "Trocar para a OpenAI",
+    );
+    fireEvent.click(screen.getByTestId("conhecimento-cadastrar-chave"));
+    expect(screen.getByTestId("conhecimento-provedor-google")).toBeChecked();
   });
 
   it("sem chave do Google, não oferece a troca — diz onde cadastrar", () => {
