@@ -19,10 +19,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/app/api/v1/leads/_handler", async (original) => ({
   ...(await original<typeof import("@/app/api/v1/leads/_handler")>()),
   updateLeadHandler: vi.fn(),
+  getLeadHandler: vi.fn(),
 }));
 vi.mock("@/lib/mcp/audit", () => ({ auditMcpToolCall: vi.fn().mockResolvedValue(undefined) }));
 
-const { updateLeadHandler } = await import("@/app/api/v1/leads/_handler");
+const { updateLeadHandler, getLeadHandler } = await import("@/app/api/v1/leads/_handler");
 const { auditMcpToolCall } = await import("@/lib/mcp/audit");
 const { pickToolsFromMcp } = await import("@/lib/ai/runtime/tools");
 
@@ -57,7 +58,13 @@ function banco(doContato: Negocio[], opts: { erro?: boolean } = {}) {
           error: null,
         }),
         then: (ok: (r: unknown) => unknown) =>
-          ok(opts.erro ? { data: null, error: { message: "timeout" } } : { data: doContato, error: null }),
+          // Responde só à consulta filtrada por ESTE contato E esta organização:
+          // sem os dois filtros, a conferência leria os negócios de outro cliente.
+          ok(
+            opts.erro
+              ? { data: null, error: { message: "timeout" } }
+              : { data: filtros.contact_id === CONTATO && filtros.organization_id === ORG ? doContato : [], error: null },
+          ),
       };
       return q;
     },
@@ -137,6 +144,24 @@ describe("a escrita do agente mira o negócio do contato da conversa", () => {
     const r = await escrever(banco([{ id: DA_CONVERSA, status: "open" }], { erro: true }), DE_OUTRO_CLIENTE);
     expect(updateLeadHandler).not.toHaveBeenCalled();
     expect(r).toMatchObject({ permitido: false, motivo: "indisponivel" });
+  });
+
+  it("LEITURA com id de outro cliente segue como veio: a conferência é só de escrita", async () => {
+    vi.mocked(getLeadHandler).mockReset().mockRejectedValue(new Error("not_found"));
+    const ator = { type: "ai_agent", id: "ag-1", role: "ai_operator" };
+    const supabase = banco([{ id: DA_CONVERSA, status: "open" }]);
+    const tools = pickToolsFromMcp({
+      toolIds: ["crm_get_lead"],
+      auth: { organizationId: ORG, role: "ai_operator", scopes: ["mcp:read", "mcp:write"], actor: ator, apiTokenId: "tok-1" },
+      ctx: { organizationId: ORG, role: "ai_operator", actor: ator, apiTokenId: "tok-1", requestId: "req-1", supabase },
+      supabase,
+      pipelineIds: [FUNIL],
+      handoffToolEnabled: false,
+      handoffSignal: { triggered: false },
+      contatoDoTurno: CONTATO,
+    } as never);
+    await tools.crm_get_lead!.execute!({ lead_id: DE_OUTRO_CLIENTE }, { toolCallId: "c1", messages: [] } as never);
+    expect(vi.mocked(getLeadHandler).mock.calls.at(-1)?.[2]).toBe(DE_OUTRO_CLIENTE);
   });
 
   it("sem contato do turno (Operador, rota, automação), o id segue como veio", async () => {
