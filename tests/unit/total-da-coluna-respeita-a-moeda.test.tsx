@@ -210,22 +210,24 @@ describe("total da coluna do funil", () => {
   });
 
   it("⭐ o ponderado com duas moedas separa igual, na mesma ordem do total", () => {
-    // A primeira (EUR, mais negócios) NÃO é a primeira no alfabeto: sem a
-    // mesma `primeira` do total, o ponderado sairia com o real na frente e
-    // quem lê casaria as parcelas pela posição errada.
+    // A primeira (EUR, mais negócios) NÃO é a primeira no alfabeto nem a de
+    // maior soma: um ponderado que ordenasse sozinho, pelo alfabeto ou pela
+    // própria soma, sairia com o real na frente e quem lê casaria as parcelas
+    // pela posição errada.
     montar(
       [
-        lead({ id: "w1", currency: "BRL", value_cents: 100_000 }),
-        lead({ id: "w2", currency: "EUR", value_cents: 300_000 }),
-        lead({ id: "w3", currency: "EUR", value_cents: 200_000 }),
+        lead({ id: "w1", currency: "EUR", value_cents: 10_000 }),
+        lead({ id: "w2", currency: "EUR", value_cents: 10_000 }),
+        lead({ id: "w3", currency: "EUR", value_cents: 10_000 }),
+        lead({ id: "w4", currency: "BRL", value_cents: 900_000 }),
       ],
       { ...etapa, win_probability: 50 } as Stage,
     );
 
     const ponderado = screen.getByText((texto) => semNbsp(texto).includes("ponderado"));
-    expect(semNbsp(ponderado.textContent ?? "")).toBe("· ponderado 2500,00 € + R$ 500,00");
+    expect(semNbsp(ponderado.textContent ?? "")).toBe("· ponderado 150,00 € + R$ 4.500,00");
     expect(semNbsp(ponderado.parentElement?.textContent ?? "")).toBe(
-      "5000,00 € + R$ 1.000,00· ponderado 2500,00 € + R$ 500,00",
+      "300,00 € + R$ 9.000,00· ponderado 150,00 € + R$ 4.500,00",
     );
   });
 
