@@ -22,13 +22,15 @@ describe("calcularTaxaDeAceite", () => {
 });
 
 describe("organizacoesComPropostas", () => {
+  const orgs = [
+    { id: "a", settings: { proposals: { enabled: true } } },
+    { id: "b", settings: { proposals: { enabled: false } } },
+    { id: "c", settings: null },
+  ];
   it("só as organizações com a capacidade ligada entram na rodada", () => {
-    expect(
-      organizacoesComPropostas([
-        { id: "a", settings: { proposals: { enabled: true } } },
-        { id: "b", settings: { proposals: { enabled: false } } },
-        { id: "c", settings: null },
-      ]),
-    ).toEqual(["a"]);
+    expect(organizacoesComPropostas(orgs, ["propostas"])).toEqual(["a"]);
+  });
+  it("com o módulo desligado na instalação, nenhuma entra (doc 79)", () => {
+    expect(organizacoesComPropostas(orgs, [])).toEqual([]);
   });
 });

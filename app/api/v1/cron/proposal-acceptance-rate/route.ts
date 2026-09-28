@@ -5,6 +5,7 @@ import { ok, fail } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { autorizaCron } from "@/lib/auth/cron-auth";
 import { logger } from "@/lib/logger";
+import { modulosLigados, type ModuloOpcional } from "@/lib/instalacao/modulos";
 import { capacidadesLigadas } from "@/lib/organizacao/capacidades";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -22,8 +23,11 @@ export function calcularTaxaDeAceite(propostas: readonly { status: string }[]): 
 export interface TaxaDeAceiteResult { organizacoes_avisadas: number }
 
 /** Só as organizações que ligaram Propostas entram na rodada do laço de retorno. */
-export function organizacoesComPropostas(orgs: { id: string; settings: unknown }[]): string[] {
-  return orgs.filter((o) => capacidadesLigadas(o.settings).includes("propostas")).map((o) => o.id);
+export function organizacoesComPropostas(
+  orgs: { id: string; settings: unknown }[],
+  modulos: readonly ModuloOpcional[],
+): string[] {
+  return orgs.filter((o) => capacidadesLigadas(o.settings, modulos).includes("propostas")).map((o) => o.id);
 }
 
 async function rodar(admin: ReturnType<typeof createAdminClient>, requestId: string): Promise<TaxaDeAceiteResult> {
@@ -32,7 +36,7 @@ async function rodar(admin: ReturnType<typeof createAdminClient>, requestId: str
   if (orgsErr) throw new Error(`query_orgs_failed: ${orgsErr.message}`);
 
   let avisadas = 0;
-  for (const orgId of organizacoesComPropostas(orgs ?? [])) {
+  for (const orgId of organizacoesComPropostas(orgs ?? [], await modulosLigados(admin))) {
     const org = { id: orgId };
     const { data: propostas, error: propErr } = await admin
       .from("crm_proposals")

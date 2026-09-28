@@ -92,6 +92,10 @@ function montarMundoDeFerramenta(opts?: MundoOpts) {
 
   const supabase: any = {
     from: vi.fn(function (this: any, table: string) {
+      // Doc 79: a capacidade da empresa só vale com o módulo da INSTALAÇÃO ligado.
+      if (table === "platform_config") {
+        return { select: () => ({ in: async () => ({ data: [{ chave: "MODULO_PROPOSTAS", valor: "ligado" }], error: null }) }) };
+      }
       if (table === "organizations") {
         const resposta = { data: { settings, timezone: opts?.fusoDaOrganizacao ?? null, currency: opts?.moedaDaOrganizacao ?? "BRL" }, error: null };
         return {

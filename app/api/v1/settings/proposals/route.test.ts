@@ -5,12 +5,14 @@ import { requireRole } from "@/lib/auth/require-role";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { moduloLigado } from "@/lib/instalacao/modulos";
 
 vi.mock("@/lib/auth/require-role", () => ({ requireRole: vi.fn() }));
 vi.mock("@/lib/impersonate/support", () => ({ requireSupportWrite: vi.fn(async () => null) }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ audit: vi.fn(async () => undefined) }));
+vi.mock("@/lib/instalacao/modulos", () => ({ moduloLigado: vi.fn(async () => true) }));
 
 const ORG_ID = "22222222-2222-4222-8222-222222222222";
 const USER_ID = "11111111-1111-4111-8111-111111111111";
@@ -108,5 +110,18 @@ describe("PATCH /api/v1/settings/proposals", () => {
     const res = await mundo.PATCH({ enabled: true, default_valid_days: 15, default_conditions: null, followup_dias: -1 });
     expect(res.status).toBe(422);
     expect(mundo.gravado).toBeNull();
+  });
+});
+
+describe("módulo Propostas desligado na INSTALAÇÃO (doc 79)", () => {
+  it("⭐ GET e PATCH: 404 — nenhuma empresa vê nem liga, e nada é gravado", async () => {
+    vi.mocked(moduloLigado).mockResolvedValue(false);
+    const mundo = montarMundo({ enabled: false, default_valid_days: 15, default_conditions: null });
+    expect((await mundo.GET()).status).toBe(404);
+    const res = await mundo.PATCH({ enabled: true, default_valid_days: 15, default_conditions: null });
+    expect(res.status).toBe(404);
+    expect(mundo.gravado).toBeNull();
+    expect(moduloLigado).toHaveBeenCalledWith(expect.anything(), "propostas");
+    vi.mocked(moduloLigado).mockResolvedValue(true);
   });
 });

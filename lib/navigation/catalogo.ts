@@ -345,6 +345,9 @@ export const NAV_CATALOG = [
     group: "organizacao",
     section: "Sua empresa",
     minRole: "manager",
+    // Doc 79: é aqui que a EMPRESA liga — então a porta depende só da chave da
+    // INSTALAÇÃO (a capacidade da empresa ainda está desligada quando se chega).
+    modulo: "propostas",
     // SEM `sidebar`: mora atrás de "Configurações", como as demais telas de
     // settings/tenant que não são de acompanhamento diário.
   },

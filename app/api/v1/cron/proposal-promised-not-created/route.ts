@@ -10,6 +10,7 @@ import { ok, fail } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { autorizaCron } from "@/lib/auth/cron-auth";
 import { logger } from "@/lib/logger";
+import { modulosLigados } from "@/lib/instalacao/modulos";
 import { capacidadesLigadas } from "@/lib/organizacao/capacidades";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { TaskSourceKind } from "@/lib/tarefas/vocabulario-de-origem";
@@ -62,8 +63,9 @@ async function rodar(admin: ReturnType<typeof createAdminClient>, requestId: str
 
   const { data: orgs, error: orgsErr } = await admin.from("organizations").select("id, settings");
   if (orgsErr) throw new Error(`query_orgs_failed: ${orgsErr.message}`);
+  const modulos = await modulosLigados(admin);
   const orgsLigadas = new Set(
-    (orgs ?? []).filter((o) => capacidadesLigadas(o.settings).includes("propostas")).map((o) => o.id),
+    (orgs ?? []).filter((o) => capacidadesLigadas(o.settings, modulos).includes("propostas")).map((o) => o.id),
   );
 
   const achadas = encontrarPromessasSemProposta(

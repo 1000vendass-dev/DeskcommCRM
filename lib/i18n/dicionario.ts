@@ -13071,6 +13071,7 @@ export const DICIONARIO: Traducoes = {
   "Respostas dos roteiros de atendimento": { es: "Respuestas de los guiones de atención" },
   "não respondido": { es: "no respondido" },
   "Ligado, cada empresa pode montar roteiros de perguntas que a IA conduz durante a conversa (nome, CPF, interesse…), e as respostas aparecem na ficha do cliente. Desligado, a tela, o menu e o roteiro no atendimento da IA somem.": { es: "Activado, cada empresa puede armar guiones de preguntas que la IA conduce durante la conversación (nombre, CPF, interés…), y las respuestas aparecen en la ficha del cliente. Desactivado, la pantalla, el menú y el guion en la atención de la IA desaparecen." },
+  "Ligado, cada empresa pode ligar em Configurações › Propostas o módulo de proposta comercial: a IA levanta o que o cliente precisa, monta a proposta pelos modelos da empresa e o PDF sai pelo WhatsApp. Desligado, nenhuma empresa vê a tela, o menu nem as ferramentas do agente.": { es: "Activado, cada empresa puede activar en Configuración › Propuestas el módulo de propuesta comercial: la IA releva lo que el cliente necesita, arma la propuesta con las plantillas de la empresa y el PDF sale por WhatsApp. Desactivado, ninguna empresa ve la pantalla, el menú ni las herramientas del agente." },
   "Recurso não encontrado.": { es: "Recurso no encontrado." },
   // ─── C-076: Comandos pelo celular (#on/#off) ───
   "Comandos pelo celular": { es: "Comandos desde el celular" },

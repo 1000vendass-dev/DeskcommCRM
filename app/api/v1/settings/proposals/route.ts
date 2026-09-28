@@ -9,6 +9,7 @@ import { requireSupportWrite } from "@/lib/impersonate/support";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { traduzir } from "@/lib/i18n/dicionario";
+import { moduloLigado } from "@/lib/instalacao/modulos";
 
 export const dynamic = "force-dynamic";
 const patchSchema = z.object({
@@ -22,10 +23,23 @@ const patchSchema = z.object({
   avisar_no_whatsapp: z.boolean().optional(),
 });
 
+/**
+ * Doc 79: com o módulo desligado na INSTALAÇÃO, esta rota não existe — nenhuma
+ * empresa vê nem liga Propostas. 404, o mesmo de `seModuloDesligado` do banco
+ * externo. Vem depois do papel (403 antes de 404: não diz a quem não pode o
+ * que está instalado).
+ */
+async function seModuloDesligado(requestId: string): Promise<Response | null> {
+  if (await moduloLigado(createAdminClient(), "propostas")) return null;
+  return fail("not_found", "Not found.", 404, { requestId });
+}
+
 export async function GET(): Promise<Response> {
   const requestId = randomUUID();
   const authz = await requireRole("viewer", { requestId, resource: "organizations" });
   if (!authz.ok) return authz.response;
+  const desligado = await seModuloDesligado(requestId);
+  if (desligado) return desligado;
   const supabase = await createClient();
   const { data } = await supabase.from("organizations").select("settings").eq("id", authz.org.orgId).single();
   const propostasGravadas = (data?.settings as Record<string, unknown> | null)?.proposals as Record<string, unknown> | null;
@@ -47,6 +61,8 @@ export async function PATCH(req: NextRequest): Promise<Response> {
   const requestId = randomUUID();
   const authz = await requireRole("manager", { requestId, resource: "organizations" });
   if (!authz.ok) return authz.response;
+  const desligado = await seModuloDesligado(requestId);
+  if (desligado) return desligado;
   const t = (texto: string) => traduzir(texto, authz.user.idioma);
   const parsed = patchSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return fail("validation_failed", t("Campos inválidos."), 422, { requestId });
