@@ -8,6 +8,24 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
 
 ## [Não lançado]
 
+## [1.58.1] — 2026-09-28
+
+### Corrigido
+
+- **A atualização não acusa mais regra de isolamento que sempre esteve no banco** No Ubuntu 26.04 com o idioma do sistema em `en_US.UTF-8` ou `pt_BR.UTF-8` (outras distribuições e o `C.UTF-8` não são afetados), a conferência de regras de isolamento do `update.sh` podia acusar como ausentes regras que estavam no banco, e a atualização parava no meio com a tela de manutenção de pé, mandando procurar uma regra que nunca faltou. Agora a ordenação e a comparação usam ordem de bytes, e o resultado é o mesmo em qualquer idioma. Instalação que nunca passou por esse aviso não muda em nada.
+
+  Se a sua atualização já parou nesse aviso, o `update.sh` que está no disco é o antigo, e é ele que roda a conferência na atualização que traz este conserto, tanto no terminal quanto no botão "Atualizar". Ela pode parar mais uma vez no mesmo aviso. Para sair numa passada só, rode uma vez na pasta do CRM, trocando `vX.Y.Z` pelo número desta versão:
+
+  ```bash
+  git fetch --tags origin
+  git checkout vX.Y.Z
+  bash hostgator-setup-kit/update.sh --to vX.Y.Z --force
+  ```
+
+  Depois disso as atualizações seguintes voltam a rodar sozinhas.
+
+  Contribuição de @gideony (#1837).
+
 ## [1.58.0] — 2026-09-28
 
 ### Adicionado
@@ -8984,7 +9002,8 @@ Primeira versão marcada do DeskcommCRM. O projeto vinha sendo desenvolvido publ
 
 - **Node 22 é obrigatório para desenvolvimento.** A suíte de invariantes instancia o cliente do Supabase, que exige o `WebSocket` global — nativo apenas a partir do Node 22. Isso não afeta quem apenas hospeda: a VPS roda a imagem pronta.
 
-[Não lançado]: https://github.com/melgarafael/DeskcommCRM/compare/v1.58.0...HEAD
+[Não lançado]: https://github.com/melgarafael/DeskcommCRM/compare/v1.58.1...HEAD
+[1.58.1]: https://github.com/melgarafael/DeskcommCRM/compare/v1.58.0...v1.58.1
 [1.58.0]: https://github.com/melgarafael/DeskcommCRM/compare/v1.57.0...v1.58.0
 [1.57.0]: https://github.com/melgarafael/DeskcommCRM/compare/v1.56.1...v1.57.0
 [1.56.1]: https://github.com/melgarafael/DeskcommCRM/compare/v1.56.0...v1.56.1
