@@ -31,8 +31,9 @@ import {
  *    pública, lida de `env.NEXT_PUBLIC_SUPABASE_URL` em `lib/supabase/server.ts`,
  *    `lib/supabase/admin.ts` e `proxy.ts`; é isso que a variável nova precisa
  *    reproduzir, não uma terceira forma de resolver.
- * 2. PRESENTE → o client SSR aponta para a URL nova, e a URL nova NUNCA chega ao
- *    navegador.
+ * 2. PRESENTE → o TRANSPORTE do client SSR vai para a URL nova, a BASE dele
+ *    continua pública (é dela que o SDK monta os links que saem para terceiros —
+ *    PR #1786), e a URL nova NUNCA chega ao navegador.
  *
  * Este arquivo mede os dois, e a segunda metade é o motivo da variável existir:
  * um teste que só verificasse "a URL nova funciona" passaria com a variável
@@ -118,34 +119,54 @@ describe("urlDoSupabaseNoServidor — PRESENTE aponta o servidor para a URL nova
     expect(urlDoSupabaseNoServidor(PRIVADA, PUBLICA)).toBe(PRIVADA);
   });
 
-  it("presente: o client de servidor aponta para a URL de servidor", async () => {
+  it("presente: o client de servidor pede à URL de servidor e fica na pública", async () => {
     vi.doMock("next/headers", () => ({
       cookies: async () => ({ getAll: () => [], set: () => {} }),
     }));
     vi.doMock("@/lib/env", () => mockDoEnv({ SUPABASE_SERVER_URL: PRIVADA }));
 
+    const alvos: string[] = [];
+    vi.stubGlobal("fetch", (entrada: string | URL | Request) => {
+      alvos.push(String(entrada));
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    });
+
     const { createClient } = await import("@/lib/supabase/server");
     const client = await createClient();
 
-    // `supabaseUrl` é o que o SDK realmente usa para montar cada chamada —
-    // é a base observável do que o servidor vai pedir.
-    expect((client as unknown as { supabaseUrl: string }).supabaseUrl).toBe(PRIVADA);
+    // A BASE é a pública: é dela que o SDK monta os links que este cliente
+    // entrega a terceiros (signedUrl, `data.url`) — o defeito do PR #1786.
+    expect((client as unknown as { supabaseUrl: string }).supabaseUrl).toBe(PUBLICA);
+    // O TRANSPORTE continua sendo o de servidor: a requisição sai pelo caminho
+    // curto, como antes. Ver `lib/supabase/fetch-do-servidor.ts`.
+    await client.storage.from("b").createSignedUrl("p.png", 60);
+    expect(alvos[0]).toBe(`${PRIVADA}/storage/v1/object/sign/b/p.png`);
   });
 
-  it("presente: o client admin aponta para a URL de servidor", async () => {
+  it("presente: o client admin pede à URL de servidor e fica na pública", async () => {
     vi.doMock("@/lib/env", () => mockDoEnv({ SUPABASE_SERVER_URL: PRIVADA }));
+
+    const alvos: string[] = [];
+    vi.stubGlobal("fetch", (entrada: string | URL | Request) => {
+      alvos.push(String(entrada));
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    });
 
     const { createAdminClient } = await import("@/lib/supabase/admin");
     const client = createAdminClient();
 
-    expect((client as unknown as { supabaseUrl: string }).supabaseUrl).toBe(PRIVADA);
+    expect((client as unknown as { supabaseUrl: string }).supabaseUrl).toBe(PUBLICA);
+    await client.storage.from("b").createSignedUrl("p.png", 60);
+    expect(alvos[0]).toBe(`${PRIVADA}/storage/v1/object/sign/b/p.png`);
   });
 
   it("presente: o proxy valida a sessão contra a URL de servidor", async () => {
-    // O `proxy` (Edge) é quem valida o JWT de TODA requisição: se ele continuar
-    // na URL pública com o REST não publicado, toda navegação de uma instalação
-    // com Kong privado cai para o login.
+    // O `proxy` (Edge) é quem valida o JWT de TODA requisição: se o `getUser`
+    // dele não alcançar o Kong, toda navegação de uma instalação com Kong
+    // privado cai para o login. A BASE continua pública (#1786) — o que leva a
+    // requisição ao endereço de servidor é o `global.fetch` que ele passa.
     const vistas: string[] = [];
+    const desvios: ((entrada: string) => Promise<Response>)[] = [];
     vi.doMock("@/lib/env", () => mockDoEnv({ SUPABASE_SERVER_URL: PRIVADA }));
     vi.doMock("@supabase/ssr", async () => {
       const real = await vi.importActual<typeof Ssr>("@supabase/ssr");
@@ -153,6 +174,8 @@ describe("urlDoSupabaseNoServidor — PRESENTE aponta o servidor para a URL nova
         ...real,
         createServerClient: (url: string, _key: string, _opts: unknown) => {
           vistas.push(url);
+          const opcoes = _opts as { global?: { fetch?: (entrada: string) => Promise<Response> } };
+          if (opcoes.global?.fetch) desvios.push(opcoes.global.fetch);
           return {
             auth: {
               getUser: async () => ({ data: { user: { id: "u1" } } }),
@@ -167,7 +190,16 @@ describe("urlDoSupabaseNoServidor — PRESENTE aponta o servidor para a URL nova
     const { NextRequest } = await import("next/server");
     await proxy(new NextRequest("https://crm.exemplo.com.br/app"));
 
-    expect(vistas).toEqual([PRIVADA]);
+    expect(vistas).toEqual([PUBLICA]);
+
+    const alvos: string[] = [];
+    vi.stubGlobal("fetch", (entrada: string | URL | Request) => {
+      alvos.push(String(entrada));
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    });
+    const desviar = desvios[0] as (entrada: string) => Promise<Response>;
+    await desviar(`${PUBLICA}/auth/v1/user`);
+    expect(alvos).toEqual([`${PRIVADA}/auth/v1/user`]);
   });
 
   it("presente: o health check pergunta ao endereço do servidor", async () => {

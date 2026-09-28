@@ -9,6 +9,7 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookieSecure } from "@/lib/supabase/cookie-secure";
 import { cookies } from "next/headers";
 import { env } from "@/lib/env";
+import { fetchDoServidor } from "@/lib/supabase/fetch-do-servidor";
 import { urlDoSupabaseNoServidor } from "@/lib/supabase/url-do-servidor";
 
 /**
@@ -37,9 +38,20 @@ async function clienteDeServidor(sameSite: "strict" | "lax") {
   const cookieStore = await cookies();
 
   return createServerClient(
-    urlDoSupabaseNoServidor(env.SUPABASE_SERVER_URL, env.NEXT_PUBLIC_SUPABASE_URL),
+    // #1082: a BASE fica na URL pública, porque é dela que o SDK monta os links
+    // que este cliente entrega a terceiros — `signInWithOAuth` → `data.url`
+    // (login com Google) e o storage → `signedUrl` (mídia, avatar, PDF da LGPD).
+    // O endereço interno entra SÓ no transporte, no `global.fetch` abaixo: a
+    // requisição vai pelo caminho curto, o link sai público.
+    env.NEXT_PUBLIC_SUPABASE_URL,
     env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
+      global: {
+        fetch: fetchDoServidor(
+          urlDoSupabaseNoServidor(env.SUPABASE_SERVER_URL, env.NEXT_PUBLIC_SUPABASE_URL),
+          env.NEXT_PUBLIC_SUPABASE_URL,
+        ),
+      },
       cookies: {
         getAll() {
           return cookieStore.getAll();
