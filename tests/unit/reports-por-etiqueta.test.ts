@@ -44,18 +44,27 @@ interface Conversa {
   tags: string[];
   status: string;
   created_at: string;
+  service_started_at?: string | null;
+  service_closed_at?: string | null;
   awaiting_since: string | null;
   last_outbound_at: string | null;
 }
 
-type Filtro = { col: string; op: "eq" | "gte" | "lt"; valor: unknown };
+type Filtro = { col: string; op: "eq" | "gte" | "lt" | "is"; valor: unknown };
 
 let tabela: Conversa[];
-let leituras: Array<{ filtros: Filtro[]; ordens: string[]; de: number; ate: number }>;
+let leituras: Array<{
+  filtros: Filtro[];
+  alternativas: Filtro[][];
+  ordens: string[];
+  de: number;
+  ate: number;
+}>;
 let chamadasDeRpc: Array<{ nome: string; p_org: string | undefined }>;
 
 /** Compara como o Postgres: instante, quando a coluna é data; senão texto. */
 function casada(valor: unknown, alvo: unknown, op: Filtro["op"]): boolean {
+  if (op === "is") return (valor ?? null) === alvo;
   const a = Date.parse(String(valor));
   const b = Date.parse(String(alvo));
   const ehData = !Number.isNaN(a) && !Number.isNaN(b);
@@ -68,6 +77,24 @@ function casada(valor: unknown, alvo: unknown, op: Filtro["op"]): boolean {
   if (op === "gte") return String(valor) >= String(alvo);
   return String(valor) < String(alvo);
 }
+
+/**
+ * `.or("and(a.gte.X,a.lt.Y),and(a.is.null,b.gte.X)")` do PostgREST: cada `and(…)`
+ * é uma alternativa, e o valor pode ter `.` (o `.000Z` do ISO) — por isso só os
+ * dois primeiros pontos separam coluna, operador e valor.
+ */
+function alternativasDe(expr: string): Filtro[][] {
+  return [...expr.matchAll(/and\(([^)]*)\)/g)].map(([, dentro]) =>
+    dentro!.split(",").map((termo) => {
+      const [col, op, ...resto] = termo.split(".");
+      const bruto = resto.join(".");
+      return { col: col!, op: op as Filtro["op"], valor: bruto === "null" ? null : bruto };
+    }),
+  );
+}
+
+const linhaCasa = (linha: Conversa, filtros: Filtro[]) =>
+  filtros.every((f) => casada(linha[f.col as keyof Conversa], f.valor, f.op));
 
 function clientFalso() {
   return {
@@ -86,6 +113,7 @@ function clientFalso() {
       expect(nome).toBe("conversations");
       const filtros: Filtro[] = [];
       const ordens: string[] = [];
+      let alternativas: Filtro[][] = [];
       let de = 0;
       let ate = Number.MAX_SAFE_INTEGER;
       const cadeia = {
@@ -104,6 +132,10 @@ function clientFalso() {
           filtros.push({ col, op: "lt", valor });
           return cadeia;
         },
+        or(expr: string) {
+          alternativas = alternativasDe(expr);
+          return cadeia;
+        },
         order(col: string) {
           ordens.push(col);
           return cadeia;
@@ -114,8 +146,10 @@ function clientFalso() {
           return cadeia;
         },
         then(resolver: (v: unknown) => unknown): Promise<unknown> {
-          const alvo = tabela.filter((linha) =>
-            filtros.every((f) => casada(linha[f.col as keyof Conversa], f.valor, f.op)),
+          const alvo = tabela.filter(
+            (linha) =>
+              linhaCasa(linha, filtros) &&
+              (alternativas.length === 0 || alternativas.some((alt) => linhaCasa(linha, alt))),
           );
           // ORDER BY com a prioridade da CHAMADA (a PRIMEIRA coluna manda), como
           // o PostgREST faz com os `.order()` encadeados — e descendo, que é o
@@ -124,15 +158,15 @@ function clientFalso() {
           const ordenado = [...alvo].sort((a, b) => {
             for (const coluna of ordens) {
               const col = coluna as keyof Conversa;
-              const x = a[col];
-              const y = b[col];
+              const x = a[col] ?? null;
+              const y = b[col] ?? null;
               if (x === y) continue;
               return String(x) < String(y) ? 1 : -1;
             }
             return 0;
           });
           const pagina = ordenado.slice(de, Math.min(ate + 1, ordenado.length));
-          leituras.push({ filtros: [...filtros], ordens: [...ordens], de, ate });
+          leituras.push({ filtros: [...filtros], alternativas, ordens: [...ordens], de, ate });
           return Promise.resolve(resolver({ data: pagina, error: null, count: alvo.length }));
         },
       };
@@ -187,6 +221,7 @@ describe("1) etiqueta sem conversa no período devolve 0 — e não some da list
         tags: ["dúvida"],
         status: "open",
         created_at: "2026-09-10T12:00:00Z",
+        service_started_at: "2026-09-10T12:00:00Z",
         awaiting_since: "2026-09-10T12:00:00Z",
         last_outbound_at: null,
       },
@@ -196,6 +231,7 @@ describe("1) etiqueta sem conversa no período devolve 0 — e não some da list
         tags: ["dúvida", "urgente"],
         status: "closed",
         created_at: "2026-09-12T09:00:00Z",
+        service_started_at: "2026-09-12T09:00:00Z",
         // Respondeu 30 min depois da mensagem do cliente.
         awaiting_since: "2026-09-12T09:00:00Z",
         last_outbound_at: "2026-09-12T09:30:00Z",
@@ -207,6 +243,7 @@ describe("1) etiqueta sem conversa no período devolve 0 — e não some da list
         tags: ["reclamação"],
         status: "closed",
         created_at: "2026-08-01T10:00:00Z",
+        service_started_at: "2026-08-01T10:00:00Z",
         awaiting_since: "2026-08-01T10:00:00Z",
         last_outbound_at: "2026-08-01T10:05:00Z",
       },
@@ -280,6 +317,7 @@ describe("2) período vazio devolve lista vazia", () => {
         tags: ["dúvida"],
         status: "closed",
         created_at: "2026-08-01T10:00:00Z",
+        service_started_at: "2026-08-01T10:00:00Z",
         awaiting_since: "2026-08-01T10:00:00Z",
         last_outbound_at: "2026-08-01T10:05:00Z",
       },
@@ -323,6 +361,7 @@ describe("3) a rota não vaza conversa de outra organização", () => {
         tags: ["dúvida"],
         status: "open",
         created_at: "2026-09-10T12:00:00Z",
+        service_started_at: "2026-09-10T12:00:00Z",
         awaiting_since: "2026-09-10T12:00:00Z",
         last_outbound_at: null,
       },
@@ -332,6 +371,7 @@ describe("3) a rota não vaza conversa de outra organização", () => {
         tags: ["sigilosa"],
         status: "open",
         created_at: "2026-09-11T12:00:00Z",
+        service_started_at: "2026-09-11T12:00:00Z",
         awaiting_since: "2026-09-11T12:00:00Z",
         last_outbound_at: null,
       },
@@ -341,6 +381,7 @@ describe("3) a rota não vaza conversa de outra organização", () => {
         tags: ["dúvida"],
         status: "open",
         created_at: "2026-09-13T12:00:00Z",
+        service_started_at: "2026-09-13T12:00:00Z",
         awaiting_since: "2026-09-13T12:00:00Z",
         last_outbound_at: null,
       },
@@ -381,6 +422,7 @@ describe("a janela é do fuso de quem lê, e o pedido é validado", () => {
         tags: ["dúvida"],
         status: "open",
         created_at: "2026-09-10T12:00:00Z",
+        service_started_at: "2026-09-10T12:00:00Z",
         awaiting_since: "2026-09-10T12:00:00Z",
         last_outbound_at: null,
       },
@@ -389,10 +431,12 @@ describe("a janela é do fuso de quem lê, e o pedido é validado", () => {
 
   it("⭐ com `tz` a janela anda — é a prova de que o fuso é honrado", async () => {
     await relatorio("?de=2026-09-01&ate=2026-09-30&tz=UTC");
-    const utc = leituras[0]!.filtros.find((f) => f.col === "created_at" && f.op === "gte")!;
+    const inicioDe = (i: number) =>
+      leituras[i]!.alternativas[0]!.find((f) => f.col === "service_started_at" && f.op === "gte")!;
+    const utc = inicioDe(0);
 
     await relatorio("?de=2026-09-01&ate=2026-09-30&tz=America/Sao_Paulo");
-    const brasil = leituras[1]!.filtros.find((f) => f.col === "created_at" && f.op === "gte")!;
+    const brasil = inicioDe(1);
 
     // São Paulo é UTC−3: o mesmo dia começa 3 horas depois em UTC.
     expect(Date.parse(String(brasil.valor)) - Date.parse(String(utc.valor))).toBe(3 * 3600_000);
@@ -413,6 +457,11 @@ describe("a janela é do fuso de quem lê, e o pedido é validado", () => {
     ["?de=2026-01-01&ate=2026-09-30", 422, "no máximo 90"],
     ["?de=01/09/2026&ate=2026-09-30", 422, "Query inválida."],
     ["?tz=Marte/Cratera", 422, "Query inválida."],
+    // Formato certo, calendário impossível: o regex deixava passar, `diasDeJanela`
+    // dava NaN, o teto de 90 não disparava e a janela ia até 2034.
+    ["?de=2026-09-01&ate=2026-99-99", 422, "Data final inválida."],
+    // …e aqui `inicioDoDia` lançava RangeError: 500 em vez de 422.
+    ["?de=2026-13-01&ate=2026-13-05", 422, "Data inicial inválida."],
   ])("%s é recusado (%i)", async (query, status, trecho) => {
     const r = await relatorio(query);
 
@@ -445,6 +494,7 @@ describe("a leitura não soma página parcial como se fosse o total", () => {
       tags: ["dúvida"],
       status: "open",
       created_at: `2026-09-${String((i % 28) + 1).padStart(2, "0")}T10:00:00Z`,
+      service_started_at: `2026-09-${String((i % 28) + 1).padStart(2, "0")}T10:00:00Z`,
       awaiting_since: "2026-09-01T10:00:00Z",
       last_outbound_at: null,
     }));
@@ -458,5 +508,98 @@ describe("a leitura não soma página parcial como se fosse o total", () => {
       leituras.every((l) => l.de >= 0 && l.ate - l.de + 1 <= 1000),
       "pediu além do teto que o servidor devolve",
     ).toBe(true);
+  });
+});
+
+describe("a régua de volume é o ATENDIMENTO, e a espera não cresce depois de encerrada", () => {
+  it("⭐ o cliente que volta conta no período em que voltou, não no da primeira conversa", async () => {
+    // Um fio por contato: ele falou em junho, voltou em setembro — o mesmo fio
+    // reaberto, com `service_started_at` novo e o `created_at` de junho.
+    tabela = [
+      {
+        id: "volta",
+        organization_id: ORG,
+        tags: ["reclamação"],
+        status: "open",
+        created_at: "2026-06-01T10:00:00Z",
+        service_started_at: "2026-09-10T10:00:00Z",
+        awaiting_since: "2026-09-10T10:00:00Z",
+        last_outbound_at: "2026-09-10T10:10:00Z",
+      },
+    ];
+
+    const setembro = await relatorio("?de=2026-09-01&ate=2026-09-30");
+    const junho = await relatorio("?de=2026-06-01&ate=2026-06-30");
+
+    expect(
+      linhaDe(setembro.data, "reclamação")!.conversas,
+      "o atendimento de setembro de um contato antigo sumiu do volume de setembro",
+    ).toBe(1);
+    // Junho não tem atendimento nenhum: é período vazio, não "1 de junho".
+    expect(junho.data.total_etiquetagens).toBe(0);
+  });
+
+  it("fio sem atendimento carimbado (grupo) cai em created_at, não some", async () => {
+    tabela = [
+      {
+        id: "grupo",
+        organization_id: ORG,
+        tags: ["evento"],
+        status: "open",
+        created_at: "2026-09-05T10:00:00Z",
+        service_started_at: null,
+        awaiting_since: null,
+        last_outbound_at: null,
+      },
+    ];
+
+    const { data } = await relatorio("?de=2026-09-01&ate=2026-09-30");
+
+    expect(linhaDe(data, "evento")!.conversas).toBe(1);
+  });
+
+  it("⭐ encerrada com o 'obrigado' sem resposta termina a espera no encerramento", async () => {
+    tabela = [
+      {
+        id: "fechada",
+        organization_id: ORG,
+        tags: ["dúvida"],
+        status: "closed",
+        created_at: "2026-09-12T08:00:00Z",
+        service_started_at: "2026-09-12T08:00:00Z",
+        last_outbound_at: "2026-09-12T09:00:00Z",
+        // O cliente escreveu depois da nossa última resposta, e fecharam 1h depois.
+        awaiting_since: "2026-09-12T09:05:00Z",
+        service_closed_at: "2026-09-12T10:05:00Z",
+      },
+      {
+        id: "fechada-sem-carimbo",
+        organization_id: ORG,
+        tags: ["dúvida"],
+        status: "closed",
+        created_at: "2026-09-13T08:00:00Z",
+        service_started_at: "2026-09-13T08:00:00Z",
+        last_outbound_at: null,
+        awaiting_since: "2026-09-13T08:00:00Z",
+        service_closed_at: null,
+      },
+    ];
+
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date("2026-10-01T12:00:00Z"));
+      const hoje = await relatorio("?de=2026-09-01&ate=2026-09-30");
+      vi.setSystemTime(new Date("2026-10-02T12:00:00Z"));
+      const amanha = await relatorio("?de=2026-09-01&ate=2026-09-30");
+
+      // 3600 s, só a encerrada com carimbo: a sem carimbo é "não medido".
+      expect(linhaDe(hoje.data, "dúvida")!.espera_media_segundos).toBe(3600);
+      expect(
+        linhaDe(amanha.data, "dúvida")!.espera_media_segundos,
+        "a espera de uma conversa já encerrada cresceu com o relógio",
+      ).toBe(3600);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -32,15 +32,22 @@
  * Etiqueta em uso SEM conversa no período continua na lista, com `0` — sumir da
  * lista seria o mesmo defeito com outra roupa.
  *
- * ## A espera: a régua da Fila, e o que ela NÃO é
+ * ## A espera: a coluna da Fila, e o que ela mede de fato
  *
- * `espera_media_segundos` é o tempo que o cliente esperou (ou está esperando) a
- * NOSSA resposta: de `awaiting_since` — a mensagem dele mais antiga sem resposta,
- * a mesma coluna que ordena a Fila e o `avg_wait_seconds` do painel (#990,
- * migration 0267) — até `last_outbound_at`, quando já respondemos, ou até `agora`
- * quando a bola ainda está com a equipe. Conversa sem `awaiting_since` não entra
- * na média: `null` é "não medido", e não `0` (a doutrina do `/metrics/atrito`
- * proíbe zero onde o certo é —).
+ * `espera_media_segundos` parte de `awaiting_since`, a coluna que ordena a Fila
+ * (#990, migration 0267). Ela tem DOIS sentidos, e a média herda os dois:
+ * - com a bola na equipe, é a mensagem do cliente mais antiga sem resposta, e a
+ *   espera corre até `agora` — só aqui a régua coincide com o `avg_wait_seconds`
+ *   do painel, que olha quem está na fila;
+ * - depois de uma resposta, a coluna vira `last_inbound_at`
+ *   (`fn_mark_conversation_message` e `messages/_handler.ts`), e a espera mede da
+ *   ÚLTIMA mensagem do cliente até a nossa última resposta — não da primeira.
+ * Conversa ENCERRADA com mensagem do cliente sem resposta termina a espera em
+ * `service_closed_at`, nunca em `agora`: encerrar não mexe em `awaiting_since`, e
+ * contar até `agora` faria o relatório de um mês passado crescer a cada recarga.
+ * Sem `awaiting_since` (ou encerrada sem carimbo de encerramento) a conversa não
+ * entra na média: `null` é "não medido", e não `0` (a doutrina do
+ * `/metrics/atrito` proíbe zero onde o certo é —).
  *
  * **Isto NÃO é `first_human_out − first_in`**, a "1ª resposta" de
  * `fn_attendant_metrics`. Essa exige ler `messages` e paginar a tabela inteira do
@@ -97,8 +104,10 @@ const PAGINAS_MAXIMAS = 10;
 const MAXIMO_DE_TAGS_PEDIDAS = 100;
 
 const querySchema = z.object({
-  de: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inicial inválida.").optional(),
-  ate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data final inválida.").optional(),
+  // `iso.date` confere o CALENDÁRIO, não só o formato: `2026-99-99` passava no
+  // regex, dava `NaN` dias, furava o teto de 90 e virava janela até 2034.
+  de: z.iso.date({ message: "Data inicial inválida." }).optional(),
+  ate: z.iso.date({ message: "Data final inválida." }).optional(),
   /**
    * Fuso de quem lê. A janela é DIÁRIA no fuso do leitor, e sem o fuso ela é
    * diária em UTC: `?de=2026-09-01&tz=America/Sao_Paulo` começa à meia-noite de
@@ -117,6 +126,8 @@ interface ConversaBruta {
   tags: string[] | null;
   status: string;
   created_at: string;
+  service_started_at: string | null;
+  service_closed_at: string | null;
   awaiting_since: string | null;
   last_outbound_at: string | null;
 }
@@ -214,13 +225,24 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   // ─── AS CONVERSAS DO PERÍODO ───────────────────────────────────────────────
   //
-  // `created_at` = quando a conversa CHEGOU, que é a pergunta da issue ("qual
-  // assunto chegou, quanto esperou, como terminou"). Ordenado DESC: se a
-  // leitura for cortada, sobra o período mais RECENTE — um relatório que não
-  // completa o corte prefere mentir sobre o passado distante do que sobre a
-  // semana que o gestor está olhando.
+  // A régua é "o ATENDIMENTO começou no período" (`service_started_at`), não
+  // `created_at`: a conversa é um fio único por contato e sessão de canal
+  // (`uniq_conversations_1to1_per_contact_session`), e quem volta reabre o MESMO
+  // fio com `service_started_at` novo e o `created_at` de quando falou pela
+  // primeira vez — por `created_at`, a reclamação de setembro de quem conversa
+  // desde junho sumiria de setembro. Fio sem atendimento carimbado (grupo, ou
+  // conversa que ainda não recebeu mensagem do cliente) cai em `created_at`.
+  // Limites declarados: o fio guarda só o ÚLTIMO começo, então um atendimento
+  // anterior de um fio reaberto depois do período conta no período da
+  // reabertura; e as etiquetas acumulam no fio, não por atendimento.
+  // Ordenado DESC: se a leitura for cortada, sobra o período mais RECENTE — um
+  // relatório que não completa o corte prefere mentir sobre o passado distante
+  // do que sobre a semana que o gestor está olhando.
   const COLUNAS =
-    "id, organization_id, tags, status, created_at, awaiting_since, last_outbound_at";
+    "id, organization_id, tags, status, created_at, service_started_at, service_closed_at, awaiting_since, last_outbound_at";
+  const naJanela =
+    `and(service_started_at.gte.${janela.de},service_started_at.lt.${janela.ate}),` +
+    `and(service_started_at.is.null,created_at.gte.${janela.de},created_at.lt.${janela.ate})`;
   const conversas: ConversaBruta[] = [];
   let totalNoBanco: number | null = null;
   let paginaCheia = false;
@@ -231,8 +253,8 @@ export async function GET(req: NextRequest): Promise<Response> {
       .from("conversations")
       .select(COLUNAS, { count: "exact" })
       .eq("organization_id", activeOrg.orgId)
-      .gte("created_at", janela.de)
-      .lt("created_at", janela.ate)
+      .or(naJanela)
+      .order("service_started_at", { ascending: false })
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .range(inicio, inicio + TAMANHO_DA_PAGINA - 1);
@@ -342,18 +364,26 @@ function agregar(conversas: ConversaBruta[], agora: number): Map<string, Conta> 
 }
 
 /**
- * O que o cliente esperou da nossa resposta: de `awaiting_since` (a mensagem
- * dele mais antiga sem resposta) até `last_outbound_at` quando já respondemos
- * DEPOIS dela, ou até `agora` quando a bola ainda está com a equipe. Sem
- * `awaiting_since` não há régua — `null`, não zero.
+ * De `awaiting_since` até `last_outbound_at` quando respondemos depois dela.
+ * Sem resposta depois: aberta conta até `agora`; ENCERRADA termina em
+ * `service_closed_at` — ou `null` sem ele, nunca `agora`, que faria um período
+ * passado mudar a cada recarga. Sem `awaiting_since` não há régua — `null`, não
+ * zero. O que `awaiting_since` significa em cada caso está no cabeçalho.
  */
 function esperaMs(conversa: ConversaBruta, agora: number): number | null {
-  if (!conversa.awaiting_since) return null;
-  const inicio = Date.parse(conversa.awaiting_since);
-  if (Number.isNaN(inicio)) return null;
-  const fim = conversa.last_outbound_at ? Date.parse(conversa.last_outbound_at) : Number.NaN;
-  const termino = Number.isNaN(fim) || fim < inicio ? agora : fim;
-  return Math.max(0, termino - inicio);
+  const inicio = instante(conversa.awaiting_since);
+  if (inicio === null) return null;
+  const fim = instante(conversa.last_outbound_at);
+  if (fim !== null && fim >= inicio) return fim - inicio;
+  if (!STATUS_ENCERRADOS.has(conversa.status)) return Math.max(0, agora - inicio);
+  const encerrada = instante(conversa.service_closed_at);
+  return encerrada !== null && encerrada >= inicio ? encerrada - inicio : null;
+}
+
+function instante(texto: string | null): number | null {
+  if (!texto) return null;
+  const ms = Date.parse(texto);
+  return Number.isNaN(ms) ? null : ms;
 }
 
 function fatiaDe(quantidade: number, total: number): number {
