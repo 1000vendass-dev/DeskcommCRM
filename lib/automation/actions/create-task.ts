@@ -48,11 +48,15 @@ async function execute(ctx: ActionCtx, config: Record<string, unknown>): Promise
   if (!resultado.ok) {
     // `sem_dono`/`titulo_vazio` são recusa de CONFIGURAÇÃO e não falha de
     // infra: dizer "failed" com mensagem de rede ensinaria o operador a
-    // reenviar uma regra que nunca vai funcionar como está.
+    // reenviar uma regra que nunca vai funcionar como está. Já `falha` é o
+    // INSERT que não entrou: isso é infra, e "skipped" esconderia o erro.
+    if (resultado.codigo === "falha") {
+      return { type: "create_task", status: "failed", error: resultado.erro ?? "falha" };
+    }
     return {
       type: "create_task",
       status: "skipped",
-      detail: { reason: resultado.codigo, ...(resultado.erro ? { erro: resultado.erro } : {}) },
+      detail: { reason: resultado.codigo },
     };
   }
 
