@@ -2,7 +2,7 @@
  * POST /api/v1/honorarios/parcelas/[id]/pagar — DIRC "integrar": cria um `financial_entries`
  * do caixa núcleo e liga por `financial_entry_id`, nunca uma tabela de "pagamento" própria.
  *
- * Tudo passa por `fn_honorarios_parcela_pagar` (migration 0446, RPC) — uma função com
+ * Tudo passa por `fn_honorarios_parcela_pagar` (migration 0480, RPC) — uma função com
  * `for update`, não três chamadas separadas do PostgREST. É essa função que garante que
  * pagar a mesma parcela duas vezes (dois cliques, um retry) nunca lança duas vezes no caixa;
  * aqui o fake só prova que a ROTA lê a resposta da RPC certo, incluindo o "já paga" que vem

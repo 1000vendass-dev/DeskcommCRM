@@ -10,7 +10,7 @@
  * PostgREST: ler status, inserir o lançamento e atualizar a parcela em requests distintos
  * deixava uma janela onde dois cliques (ou um retry) na mesma parcela liam "pendente" nos
  * dois e cada um lançava o SEU financial_entries — pagamento em dobro no caixa.
- * `fn_honorarios_parcela_pagar` (migration 0446) faz os três passos numa função com
+ * `fn_honorarios_parcela_pagar` (migration 0480) faz os três passos numa função com
  * `for update`, o mesmo desenho de `fn_finalizar_comanda`.
  */
 import { randomUUID } from "node:crypto";

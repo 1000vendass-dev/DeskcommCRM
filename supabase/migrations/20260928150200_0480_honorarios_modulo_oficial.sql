@@ -1,4 +1,4 @@
--- 0446 — Honorários: primeiro módulo oficial a usar o mecanismo da ADR-0002.
+-- 0480 — Honorários: primeiro módulo oficial a usar o mecanismo da ADR-0002.
 --
 -- Lei: docs/adr/0002-tabelas-de-modulo-num-banco-so.md. Onda 1 (D4/D5, migration 0325) e onda 2
 -- (D3/D6, migration 0340) já entregaram o harness — registro `modulos_instalados`,
@@ -26,13 +26,14 @@
 -- migrations item 9: o grant a PUBLIC que o Postgres dá ao criar a função, e o grant direto do
 -- `alter default privileges ... to anon` do baseline).
 --
--- ── D5: RLS por PAPEL, não a policy ampla automática ─────────────────────────────────────────
+-- ── D5: RLS por OPERAÇÃO, não a policy ampla automática ──────────────────────────────────────
 -- `fn_proteger_modulo_provisionado()` (chamada no fim) só liga RLS + a policy ampla
 -- `tenant_isolation_<t>_all` em tabela que nasce com RLS DESLIGADA — e é exatamente o estado das
--- duas tabelas deste módulo ao saírem do `create table`. Como honorários quer escrita restrita a
--- `manager`+ (mesmo padrão do caixa núcleo: "dinheiro não é coisa que `agent` configure"), a
--- função liga a RLS ELA MESMA, com a policy por papel, ANTES de chamar a rotina automática — a
--- partir daí ela não enxerga mais estas tabelas (RLS já ligada), e a policy por papel é a que vale.
+-- duas tabelas deste módulo ao saírem do `create table`. Honorários quer leitura para a
+-- organização e escrita restrita a `manager`+ (mesmo padrão do caixa núcleo: "dinheiro não é
+-- coisa que `agent` configure"), então a função liga a RLS ELA MESMA, com uma policy por
+-- operação (molde da 0464), ANTES de chamar a rotina automática — a partir daí ela não enxerga
+-- mais estas tabelas (RLS já ligada). Parcela paga não se apaga nem se reescreve pela sessão.
 --
 -- ── LGPD (D8) ─────────────────────────────────────────────────────────────────────────────────
 -- Nenhuma coluna de `honorarios_contratos`/`honorarios_parcelas` é texto livre sobre a pessoa —
@@ -115,37 +116,107 @@ begin
   create index if not exists honorarios_parcelas_vencimento_idx
     on public.honorarios_parcelas (organization_id, vencimento) where status = 'pendente';
 
-  -- ── RLS por PAPEL (D5, ligada aqui e não pela rotina automática) ───────────
-  -- Leitura para quem é da organização; escrita para manager+ — mesmo padrão do
-  -- caixa núcleo (financial_accounts/payment_methods/account_plans, migration
-  -- 0350): dinheiro não é coisa que `agent` configure.
-  execute format('alter table public.%I enable row level security', 'honorarios_contratos');
-  execute format('drop policy if exists tenant_isolation_%I_all on public.%I', 'honorarios_contratos', 'honorarios_contratos');
-  execute format($p$
-    create policy tenant_isolation_%I_all on public.%I
-      for all
-      using (organization_id in (select public.fn_user_org_ids()) or public.fn_is_platform_admin())
-      with check (
-        public.fn_is_platform_admin()
-        or (organization_id in (select public.fn_user_org_ids())
-            and public.fn_role_at_least(organization_id, 'manager'))
-      )
-  $p$, 'honorarios_contratos', 'honorarios_contratos');
-  execute format('revoke all on public.%I from anon', 'honorarios_contratos');
+  -- ── RLS POR OPERAÇÃO (D5, ligada aqui e não pela rotina automática) ────────
+  -- Molde da 0464 (propostas): uma policy por operação, espelhando as ROTAS,
+  -- porque o PostgREST é porta tão aberta quanto elas (o JWT da sessão fala com
+  -- ele direto; ver 0150) e o baseline dá GRANT ALL a `authenticated`.
+  --   SELECT  qualquer papel da organização (GET /honorarios/... é `viewer`);
+  --   INSERT  `manager` (POST de contrato e de parcela é `manager`);
+  --   UPDATE  `manager` — nenhuma rota edita, e dinheiro não é coisa que
+  --           `agent` configure (mesmo piso do caixa núcleo, migration 0350);
+  --   DELETE  `manager`, e PARCELA PAGA NÃO SE APAGA: nem ela, nem o contrato
+  --           que a tem (o `on delete cascade` levaria a parcela junto, e a
+  --           cascata de FK não passa por RLS).
+  -- A policy anterior era UMA só, `for all`, com USING = membro e WITH CHECK =
+  -- manager+. DELETE só avalia o USING: `viewer` e `agent` apagavam contrato
+  -- (com as parcelas) ou parcela paga (revisão do #1578).
+  --
+  -- Parcela paga é imutável pela sessão, e a sessão não marca parcela como
+  -- paga: `pago` com `financial_entry_id` só nasce em fn_honorarios_parcela_pagar
+  -- (definer, dona da tabela, não passa por aqui), que lança o caixa junto.
+  -- Deixar a sessão escrever `status`/`financial_entry_id` à mão desfaria esse
+  -- par: "pago" sem lançamento, ou "pendente" de novo para pagar duas vezes.
+  -- A parcela só aponta para contrato da própria organização (a FK só confere
+  -- que o contrato existe).
+  alter table public.honorarios_contratos enable row level security;
+  drop policy if exists tenant_isolation_honorarios_contratos_all on public.honorarios_contratos;
 
-  execute format('alter table public.%I enable row level security', 'honorarios_parcelas');
-  execute format('drop policy if exists tenant_isolation_%I_all on public.%I', 'honorarios_parcelas', 'honorarios_parcelas');
-  execute format($p$
-    create policy tenant_isolation_%I_all on public.%I
-      for all
-      using (organization_id in (select public.fn_user_org_ids()) or public.fn_is_platform_admin())
-      with check (
-        public.fn_is_platform_admin()
-        or (organization_id in (select public.fn_user_org_ids())
-            and public.fn_role_at_least(organization_id, 'manager'))
-      )
-  $p$, 'honorarios_parcelas', 'honorarios_parcelas');
-  execute format('revoke all on public.%I from anon', 'honorarios_parcelas');
+  drop policy if exists honorarios_contratos_select on public.honorarios_contratos;
+  create policy honorarios_contratos_select on public.honorarios_contratos
+    for select using (
+      organization_id in (select public.fn_user_org_ids()) or public.fn_is_platform_admin()
+    );
+
+  drop policy if exists honorarios_contratos_insert on public.honorarios_contratos;
+  create policy honorarios_contratos_insert on public.honorarios_contratos
+    for insert
+    with check (public.fn_is_platform_admin()
+                or (organization_id in (select public.fn_user_org_ids())
+                    and public.fn_role_at_least(organization_id, 'manager')));
+
+  drop policy if exists honorarios_contratos_update on public.honorarios_contratos;
+  create policy honorarios_contratos_update on public.honorarios_contratos
+    for update
+    using (public.fn_is_platform_admin()
+           or (organization_id in (select public.fn_user_org_ids())
+               and public.fn_role_at_least(organization_id, 'manager')))
+    with check (public.fn_is_platform_admin()
+                or (organization_id in (select public.fn_user_org_ids())
+                    and public.fn_role_at_least(organization_id, 'manager')));
+
+  drop policy if exists honorarios_contratos_delete on public.honorarios_contratos;
+  create policy honorarios_contratos_delete on public.honorarios_contratos
+    for delete
+    using ((public.fn_is_platform_admin()
+            or (organization_id in (select public.fn_user_org_ids())
+                and public.fn_role_at_least(organization_id, 'manager')))
+           and not exists (select 1 from public.honorarios_parcelas p
+                            where p.contrato_id = honorarios_contratos.id and p.status = 'pago'));
+  revoke all on public.honorarios_contratos from anon;
+
+  alter table public.honorarios_parcelas enable row level security;
+  drop policy if exists tenant_isolation_honorarios_parcelas_all on public.honorarios_parcelas;
+
+  drop policy if exists honorarios_parcelas_select on public.honorarios_parcelas;
+  create policy honorarios_parcelas_select on public.honorarios_parcelas
+    for select using (
+      organization_id in (select public.fn_user_org_ids()) or public.fn_is_platform_admin()
+    );
+
+  drop policy if exists honorarios_parcelas_insert on public.honorarios_parcelas;
+  create policy honorarios_parcelas_insert on public.honorarios_parcelas
+    for insert
+    with check ((public.fn_is_platform_admin()
+                 or (organization_id in (select public.fn_user_org_ids())
+                     and public.fn_role_at_least(organization_id, 'manager')))
+                and status <> 'pago' and financial_entry_id is null
+                and exists (select 1 from public.honorarios_contratos c
+                             where c.id = contrato_id
+                               and c.organization_id = honorarios_parcelas.organization_id));
+
+  drop policy if exists honorarios_parcelas_update on public.honorarios_parcelas;
+  create policy honorarios_parcelas_update on public.honorarios_parcelas
+    for update
+    using ((public.fn_is_platform_admin()
+            or (organization_id in (select public.fn_user_org_ids())
+                and public.fn_role_at_least(organization_id, 'manager')))
+           and status <> 'pago')
+    with check ((public.fn_is_platform_admin()
+                 or (organization_id in (select public.fn_user_org_ids())
+                     and public.fn_role_at_least(organization_id, 'manager')))
+                and status <> 'pago' and financial_entry_id is null
+                and exists (select 1 from public.honorarios_contratos c
+                             where c.id = contrato_id
+                               and c.organization_id = honorarios_parcelas.organization_id));
+
+  drop policy if exists honorarios_parcelas_delete on public.honorarios_parcelas;
+  create policy honorarios_parcelas_delete on public.honorarios_parcelas
+    for delete
+    using ((public.fn_is_platform_admin()
+            or (organization_id in (select public.fn_user_org_ids())
+                and public.fn_role_at_least(organization_id, 'manager')))
+           and status <> 'pago');
+  revoke all on public.honorarios_parcelas from anon;
 
   comment on table public.honorarios_contratos is
     'Modelo de cobrança do caso (fixo/êxito/misto). Financeiro real (contas, lançamentos) é o caixa núcleo — este módulo só descreve o contrato.';

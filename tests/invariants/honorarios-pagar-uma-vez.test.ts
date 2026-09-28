@@ -6,7 +6,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { lastLine, sql } from "./gov-helpers";
 
 /**
- * HONORÁRIOS — UMA PARCELA ENTRA NO CAIXA UMA VEZ SÓ (#1578, migration 0446).
+ * HONORÁRIOS — UMA PARCELA ENTRA NO CAIXA UMA VEZ SÓ (#1578, migration 0480).
  *
  * `fn_honorarios_parcela_pagar` é o único caminho de pagamento: lê a parcela com
  * `for update`, lança o `financial_entries` e marca a parcela como paga, na mesma

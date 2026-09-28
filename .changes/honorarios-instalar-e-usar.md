@@ -15,6 +15,8 @@ instala não carrega tabela nenhuma, não vê porta no menu e o agente não ganh
 **Usar.** A tela **Análise › Honorários** registra o contrato e as parcelas. Pagar uma parcela lança
 o valor no caixa da empresa, na conta escolhida, junto com o resto do dinheiro que entra. Um clique
 duplo em "Pagar" lança uma vez só, e a conta tem de ser da própria empresa.
+Toda a equipe vê os contratos; criar, alterar e apagar é de gerente ou administrador, e uma
+parcela paga não se apaga, nem o contrato que a tem.
 
 **A IA.** O assistente ganha "Ver o contrato de honorários" e "Ver as parcelas", para confirmar o
 modelo de cobrança e o status de pagamento em vez de estimar um número.

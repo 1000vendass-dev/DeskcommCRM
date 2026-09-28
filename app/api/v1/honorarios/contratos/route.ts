@@ -5,7 +5,7 @@
  * instala `honorarios` em `/admin/modulos`. Enquanto não instalado, o Postgres devolve 42P01
  * (tabela inexistente) — traduzido aqui para uma mensagem clara, nunca um 500 cru.
  *
- * ⚠️ CLIENT DE SESSÃO. A RLS da migration 0446 já exige `manager`+ para escrever; a rota cobra
+ * ⚠️ CLIENT DE SESSÃO. A RLS da migration 0480 já exige `manager`+ para escrever; a rota cobra
  * o mesmo degrau por clareza de mensagem, não como segunda régua de autoridade.
  */
 import { randomUUID } from "node:crypto";
