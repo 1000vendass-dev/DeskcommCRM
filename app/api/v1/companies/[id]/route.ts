@@ -1,6 +1,7 @@
 import { type NextRequest } from "next/server";
 
 import { requireRole } from "@/lib/auth/require-role";
+import { requireSupportWrite } from "@/lib/impersonate/support";
 import {
   getCompanyHandler,
   patchCompanyHandler,
@@ -39,6 +40,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx): Promise<Response
   const requestId = requestIdOf(req);
   const desligado = await seModuloB2bDesligado(requestId);
   if (desligado) return desligado;
+  const supportDenied = await requireSupportWrite();
+  if (supportDenied) return supportDenied;
   const authz = await requireRole("agent", { requestId, resource: "companies" });
   if (!authz.ok) return authz.response;
   const { id } = await params;

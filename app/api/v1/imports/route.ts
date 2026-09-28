@@ -1,6 +1,7 @@
 import { type NextRequest } from "next/server";
 
 import { requireRole } from "@/lib/auth/require-role";
+import { requireSupportWrite } from "@/lib/impersonate/support";
 import { audit } from "@/lib/audit";
 import { processCompaniesPeopleImport } from "@/lib/crm-b2b/import-process";
 import { importColumnMappingSchema } from "@/lib/crm-b2b/schemas";
@@ -57,6 +58,8 @@ export async function POST(req: NextRequest): Promise<Response> {
   const requestId = requestIdOf(req);
   const desligado = await seModuloB2bDesligado(requestId);
   if (desligado) return desligado;
+  const supportDenied = await requireSupportWrite();
+  if (supportDenied) return supportDenied;
   const authz = await requireRole("manager", { requestId, resource: "imports" });
   if (!authz.ok) return authz.response;
 
