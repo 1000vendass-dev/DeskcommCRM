@@ -17,11 +17,12 @@
  *      por isso que `whitespace-pre-wrap` sem `wrap-anywhere` deixa um fato
  *      de "Memória do contato" com uma URL de 200 caracteres largar a coluna.
  *
- *   2. **GRID**: o `1fr` do inbox é `minmax(auto, 1fr)`, e o `auto` é o
- *      min-content do item. Sem `min-w-0` o item não encolhe abaixo do texto,
- *      e a TERCEIRA coluna (`xl:grid-cols-[272px_1fr_296px]`) é a última do
- *      grid: o que estoura nela estoura a página inteira, não um vizinho. A
- *      coluna da conversa ganhou `min-w-0` no `f7b1ef4`; a do CRM não ganhou.
+ *   2. **GRID**: a coluna do CRM é uma trilha FIXA
+ *      (`xl:grid-cols-[272px_1fr_296px]`, 320px no 2xl), e o `<aside>` do
+ *      painel tem `overflow-y-auto`: o fato sem quebra abria rolagem
+ *      horizontal DENTRO do painel, não na página. O `min-w-0` no wrapper da
+ *      coluna é defesa uniforme com a coluna da conversa (`f7b1ef4`), não a
+ *      causa do defeito.
  *
  * Régua 3 é a que captura o defeito reportado pelo autor do #1802: ele aponta
  * o container da MENSAGEM, que é o elemento mais largo visivelmente — mas o
@@ -113,8 +114,8 @@ describe("inbox — texto longo não empurra a coluna (#1802)", () => {
     // Coluna da conversa — protegida pelo f7b1ef4, é a que o #1802 aponta.
     expect(fonte).toMatch(/h-full min-h-0 min-w-0 flex-col md:flex/);
 
-    // Coluna do CRM, a ÚLTIMA do grid: sem min-w-0 o que estoura nela vira
-    // scroll horizontal da página inteira (não de um vizinho).
+    // Coluna do CRM, trilha fixa do grid: min-w-0 como defesa uniforme com a
+    // coluna da conversa (o transbordo do fato ficava dentro do painel).
     // O wrapper da coluna é o único <div> com `xl:block` no arquivo: é ele que
     // o grid conta como item da terceira track. (O outro render do painel é o
     // Sheet do celular, que não participa do grid.)
