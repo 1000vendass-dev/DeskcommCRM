@@ -39,7 +39,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { logger } from "@/lib/logger";
 
-export const MODULOS_OPCIONAIS = ["banco_externo", "fluxos_atendimento"] as const;
+export const MODULOS_OPCIONAIS = ["banco_externo", "fluxos_atendimento", "propostas"] as const;
 export type ModuloOpcional = (typeof MODULOS_OPCIONAIS)[number];
 
 /** A linha de cada módulo em `platform_config`. O formato é o da CHECK da 0341. */
@@ -49,6 +49,11 @@ export const CHAVE_DO_MODULO: Record<ModuloOpcional, string> = {
   // a conduzir um roteiro de perguntas no turno — quem não liga não carrega o
   // caminho novo (`lib/agent-engine/agent/roteiro-no-turno.ts`).
   fluxos_atendimento: "MODULO_FLUXOS_DE_ATENDIMENTO",
+  // Doc 79 (b): a proposta comercial do #1832 tem DUAS chaves — esta, de quem
+  // administra o servidor (quem revende decide se oferece), e a de cada
+  // empresa em Configurações › Propostas. Desligada aqui, nenhuma empresa vê
+  // nem liga (`lib/organizacao/capacidades.ts` exige as duas).
+  propostas: "MODULO_PROPOSTAS",
 };
 
 const LIGADO = "ligado";

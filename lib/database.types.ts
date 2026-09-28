@@ -1479,6 +1479,7 @@ export type Database = {
           followup: Json
           handoff_keywords: string[]
           handoff_tool_enabled: boolean
+          proposal_ai_draft_enabled: boolean
           history_message_window: number
           history_token_window: number
           id: string
@@ -1516,6 +1517,7 @@ export type Database = {
           followup?: Json
           handoff_keywords?: string[]
           handoff_tool_enabled?: boolean
+          proposal_ai_draft_enabled?: boolean
           history_message_window?: number
           history_token_window?: number
           id?: string
@@ -1553,6 +1555,7 @@ export type Database = {
           followup?: Json
           handoff_keywords?: string[]
           handoff_tool_enabled?: boolean
+          proposal_ai_draft_enabled?: boolean
           history_message_window?: number
           history_token_window?: number
           id?: string
@@ -4872,6 +4875,282 @@ export type Database = {
           },
         ]
       }
+      crm_proposal_counters: {
+        Row: {
+          ano: number
+          organization_id: string
+          ultimo_numero: number
+        }
+        Insert: {
+          ano: number
+          organization_id: string
+          ultimo_numero?: number
+        }
+        Update: {
+          ano?: number
+          organization_id?: string
+          ultimo_numero?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_proposal_counters_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_proposal_items: {
+        Row: {
+          created_at: string
+          desconto_cents: number
+          descricao: string
+          id: string
+          organization_id: string
+          position: number
+          preco_unitario_cents: number | null
+          product_id: string | null
+          proposal_id: string
+          quantidade: number
+        }
+        Insert: {
+          created_at?: string
+          desconto_cents?: number
+          descricao: string
+          id?: string
+          organization_id: string
+          position: number
+          preco_unitario_cents?: number | null
+          product_id?: string | null
+          proposal_id: string
+          quantidade?: number
+        }
+        Update: {
+          created_at?: string
+          desconto_cents?: number
+          descricao?: string
+          id?: string
+          organization_id?: string
+          position?: number
+          preco_unitario_cents?: number | null
+          product_id?: string | null
+          proposal_id?: string
+          quantidade?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_proposal_items_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_proposal_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_proposal_items_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "crm_proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_proposals: {
+        Row: {
+          ano: number | null
+          briefing_json: Json | null
+          condicoes: string | null
+          contact_id: string | null
+          conversation_id: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by_user_id: string | null
+          decision_reason: string | null
+          destinatario_nome: string | null
+          drafted_by_agent_id: string | null
+          id: string
+          lead_id: string | null
+          message_id: string | null
+          moeda: string
+          numero: number | null
+          organization_id: string
+          pagamento: string | null
+          pdf_path: string | null
+          prazo_dias_uteis: number | null
+          pricing_status: string
+          rendered_snapshot: Json | null
+          resumo_comercial: string | null
+          retorno_id: string | null
+          revision: number
+          secoes_editadas: Json | null
+          sent_at: string | null
+          sent_by_user_id: string | null
+          status: string
+          substitui_id: string | null
+          template_slug: string | null
+          template_slug_sugerido: string | null
+          template_snapshot: Json | null
+          template_version: number | null
+          titulo: string
+          total_cents: number
+          ultima_falha_envio: string | null
+          updated_at: string
+          valid_until: string | null
+          versao: number
+          version_reason: string | null
+        }
+        Insert: {
+          ano?: number | null
+          briefing_json?: Json | null
+          condicoes?: string | null
+          contact_id?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by_user_id?: string | null
+          decision_reason?: string | null
+          destinatario_nome?: string | null
+          drafted_by_agent_id?: string | null
+          id?: string
+          lead_id?: string | null
+          message_id?: string | null
+          moeda?: string
+          numero?: number | null
+          organization_id: string
+          pagamento?: string | null
+          pdf_path?: string | null
+          prazo_dias_uteis?: number | null
+          pricing_status?: string
+          rendered_snapshot?: Json | null
+          resumo_comercial?: string | null
+          retorno_id?: string | null
+          revision?: number
+          secoes_editadas?: Json | null
+          sent_at?: string | null
+          sent_by_user_id?: string | null
+          status?: string
+          substitui_id?: string | null
+          template_slug?: string | null
+          template_slug_sugerido?: string | null
+          template_snapshot?: Json | null
+          template_version?: number | null
+          titulo: string
+          total_cents?: number
+          ultima_falha_envio?: string | null
+          updated_at?: string
+          valid_until?: string | null
+          versao?: number
+          version_reason?: string | null
+        }
+        Update: {
+          ano?: number | null
+          briefing_json?: Json | null
+          condicoes?: string | null
+          contact_id?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by_user_id?: string | null
+          decision_reason?: string | null
+          destinatario_nome?: string | null
+          drafted_by_agent_id?: string | null
+          id?: string
+          lead_id?: string | null
+          message_id?: string | null
+          moeda?: string
+          numero?: number | null
+          organization_id?: string
+          pagamento?: string | null
+          pdf_path?: string | null
+          prazo_dias_uteis?: number | null
+          pricing_status?: string
+          rendered_snapshot?: Json | null
+          resumo_comercial?: string | null
+          retorno_id?: string | null
+          revision?: number
+          secoes_editadas?: Json | null
+          sent_at?: string | null
+          sent_by_user_id?: string | null
+          status?: string
+          substitui_id?: string | null
+          template_slug?: string | null
+          template_slug_sugerido?: string | null
+          template_snapshot?: Json | null
+          template_version?: number | null
+          titulo?: string
+          total_cents?: number
+          ultima_falha_envio?: string | null
+          updated_at?: string
+          valid_until?: string | null
+          versao?: number
+          version_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_proposals_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_proposals_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_proposals_drafted_by_agent_id_fkey"
+            columns: ["drafted_by_agent_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_proposals_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_proposals_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_proposals_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_proposals_retorno_id_fkey"
+            columns: ["retorno_id"]
+            isOneToOne: false
+            referencedRelation: "cron_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_proposals_substitui_id_fkey"
+            columns: ["substitui_id"]
+            isOneToOne: false
+            referencedRelation: "crm_proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_stages: {
         Row: {
           agent_stage_hint: string | null
@@ -7871,6 +8150,62 @@ export type Database = {
           },
         ]
       }
+      proposal_templates: {
+        Row: {
+          base_slug: string | null
+          base_version: number | null
+          created_at: string
+          descricao: string | null
+          id: string
+          is_active: boolean
+          nome: string | null
+          organization_id: string
+          section_order: string[]
+          sections: Json
+          slug: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          base_slug?: string | null
+          base_version?: number | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          is_active?: boolean
+          nome?: string | null
+          organization_id: string
+          section_order?: string[]
+          sections?: Json
+          slug: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          base_slug?: string | null
+          base_version?: number | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          is_active?: boolean
+          nome?: string | null
+          organization_id?: string
+          section_order?: string[]
+          sections?: Json
+          slug?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_templates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prospecting_campaigns: {
         Row: {
           agent_setup: Json
@@ -9870,6 +10205,10 @@ export type Database = {
           p_pointer: string
         }
         Returns: string
+      }
+      fn_proposta_aloca_numero: {
+        Args: { p_org: string; p_ano: number }
+        Returns: number
       }
       fn_role_at_least: {
         Args: { p_min: string; p_org: string }

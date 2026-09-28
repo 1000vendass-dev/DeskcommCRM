@@ -197,6 +197,13 @@ const MODULOS_NA_TELA: ReadonlyArray<{ modulo: ModuloOpcional; id: string; rotul
     descricao:
       "Ligado, cada empresa pode montar roteiros de perguntas que a IA conduz durante a conversa (nome, CPF, interesse…), e as respostas aparecem na ficha do cliente. Desligado, a tela, o menu e o roteiro no atendimento da IA somem.",
   },
+  {
+    modulo: "propostas",
+    id: "modulo-propostas",
+    rotulo: "Propostas comerciais",
+    descricao:
+      "Ligado, cada empresa pode ligar em Configurações › Propostas o módulo de proposta comercial: a IA levanta o que o cliente precisa, monta a proposta pelos modelos da empresa e o PDF sai pelo WhatsApp. Desligado, nenhuma empresa vê a tela, o menu nem as ferramentas do agente.",
+  },
 ];
 
 export function FormularioDeModulos({ ligados }: { ligados: readonly ModuloOpcional[] }) {
