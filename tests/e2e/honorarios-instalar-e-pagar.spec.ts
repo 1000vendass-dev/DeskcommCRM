@@ -14,8 +14,10 @@
  *   4. clica DUAS VEZES em "Pagar" — o clique duplo que pagava em dobro;
  *   5. o caixa tem UM lançamento daquela parcela, na conta escolhida.
  *
- * ⚠️ Instalar é da INSTALAÇÃO e não se desfaz (desinstalar preserva dados): esta
- * spec é a última da parte dela, para nenhuma vizinha ver o menu com a porta nova.
+ * ⚠️ Instalar é da INSTALAÇÃO e não se desfaz: as specs que rodam depois desta,
+ * na mesma parte, veem o menu com a porta nova. A ordem de execução não segue a
+ * lista do workflow; na primeira rodada verde (job 108983924934) ela foi a 39ª
+ * de 77 e a parte inteira passou.
  */
 import { expect, test } from "./helpers/test";
 

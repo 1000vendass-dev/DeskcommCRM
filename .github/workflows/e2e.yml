@@ -1086,10 +1086,12 @@ jobs:
       # maior, acima). Semeia o próprio canal, contato, conversa escalada e caso
       # pelo service role e apaga tudo no fim, então não depende de vizinha.
       #
-      # `honorarios-instalar-e-pagar` entrou em 2026-09-28 (#1578) e fica em
-      # ÚLTIMO de propósito: instalar o módulo é da instalação e não se desfaz, e
-      # depois dele o menu de Análise tem uma porta a mais. Nenhuma vizinha desta
-      # parte roda depois. PREVISÃO, não medida: ~1,5 min (um login do dono).
+      # `honorarios-instalar-e-pagar` entrou em 2026-09-28 (#1578). Instalar o
+      # módulo é da instalação e não se desfaz: depois dele o menu de Análise
+      # tem uma porta a mais e o pacote Atender, duas capacidades a mais. A
+      # posição na lista NÃO decide a ordem de execução — no job 108983924934
+      # ela rodou em 39º de 77, e a parte inteira passou (77 passed). Medido:
+      # 16,1 s de caso.
       SPECS_PARTE_5: >-
         inbox-busca-e-filtros-dizem-a-verdade.spec.ts
         extensoes-da-instalacao.spec.ts
