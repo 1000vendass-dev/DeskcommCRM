@@ -364,6 +364,33 @@ if [ -f supabase/baseline.sql ]; then
   # cima de decisão deliberada, e falso positivo derruba a confiança no aviso
   # inteiro. Vale a ÚLTIMA operação de cada regra no arquivo: quem termina
   # criada é esperada; quem termina apagada, não.
+  #
+  # ── E A COMPARAÇÃO RODA EM ORDEM DE BYTES, SEMPRE ─────────────────────────
+  #
+  # ⛔ `sort` e `comm` precisam concordar na ordenação, e sob um locale UTF-8
+  # eles não concordam. O `en_US.UTF-8` — padrão de muita VPS — ordena IGNORANDO
+  # pontuação: `_` e `|` não pesam, e `org_voice_calls_admin_write|…` vai parar
+  # numa posição que o `comm` não espera. Ele mesmo denuncia, na stderr —
+  # "comm: input is not in sorted order" —, e o que devolve depois é lixo.
+  #
+  # MEDIDO numa instalação real, 2026-09-28: com as 114 regras TODAS no banco, a
+  # comparação acusou 2 faltando (`org_voice_calls_admin_write` e
+  # `org_voice_calls_select`). O alarme falso faz o script tentar recriar as
+  # duas, o banco responde "already exists", a conferência seguinte tropeça no
+  # mesmo erro de ordenação — e a atualização PARA, deixando o aviso de
+  # manutenção de pé. O CRM passou 8 horas em 503 com o banco íntegro, e a tela
+  # mandava o dono procurar regra que nunca faltou.
+  #
+  # A cura é forçar o locale da comparação para `C`, que é ordem de bytes: aí o
+  # `sort` produz exatamente o que o `comm` espera, em qualquer ambiente.
+  #
+  # ⚠️ `LC_COLLATE=C` NÃO basta, e a diferença custa uma sessão de depuração:
+  # o POSIX dá precedência a `LC_ALL` sobre `LC_COLLATE`, então basta alguém
+  # exportar `LC_ALL=…UTF-8` — systemd, um `docker exec`, o terminal de quem
+  # roda o update à mão — para o pin virar enfeite e o defeito voltar inteiro.
+  # MEDIDO, com as 114 regras reais: `LC_ALL=C` devolve 0 em qualquer condição;
+  # `LC_COLLATE=C` devolve 0 com `LC_ALL` vazio e 2 com `LC_ALL` preenchido.
+  # `LC_ALL=C` vale só para os comandos abaixo — não alcança as mensagens.
   esperadas="$(awk '
     match($0, /drop policy if exists "?[a-zA-Z0-9_]+"? on public\.[a-zA-Z0-9_]+/) {
       linha = substr($0, RSTART, RLENGTH); acao = "drop"
@@ -376,13 +403,13 @@ if [ -f supabase/baseline.sql ]; then
       estado[linha] = acao; acao = ""
     }
     END { for (k in estado) if (estado[k] == "create") print k }
-  ' supabase/baseline.sql | sort -u)"
+  ' supabase/baseline.sql | LC_ALL=C sort -u)"
 
   existentes="$(pg_container -i postgres:17-alpine psql "$(url_do_schema)" -t -A -F'|' -c \
     "select p.polname, c.relname from pg_policy p join pg_class c on c.oid=p.polrelid
-       join pg_namespace n on n.oid=c.relnamespace where n.nspname='public';" 2>/dev/null | sort -u)"
+       join pg_namespace n on n.oid=c.relnamespace where n.nspname='public';" 2>/dev/null | LC_ALL=C sort -u)"
 
-  faltando="$(comm -23 <(printf '%s\n' "$esperadas") <(printf '%s\n' "$existentes") || true)"
+  faltando="$(LC_ALL=C comm -23 <(printf '%s\n' "$esperadas") <(printf '%s\n' "$existentes") || true)"
 
   if [ -n "$faltando" ]; then
     # ── RECRIAR AS QUE FALTAM, NUNCA REAPLICAR O ARQUIVO ─────────────────────
@@ -436,8 +463,10 @@ if [ -f supabase/baseline.sql ]; then
 
     existentes="$(pg_container -i postgres:17-alpine psql "$(url_do_schema)" -t -A -F'|' -c \
       "select p.polname, c.relname from pg_policy p join pg_class c on c.oid=p.polrelid
-         join pg_namespace n on n.oid=c.relnamespace where n.nspname='public';" 2>/dev/null | sort -u)"
-    faltando="$(comm -23 <(printf '%s\n' "$esperadas") <(printf '%s\n' "$existentes") || true)"
+         join pg_namespace n on n.oid=c.relnamespace where n.nspname='public';" 2>/dev/null | LC_ALL=C sort -u)"
+    # Mesma ordenação da primeira conferência, e pelo mesmo motivo: `LC_ALL=C`
+    # é o que faz `sort` e `comm` concordarem. Ver o bloco acima.
+    faltando="$(LC_ALL=C comm -23 <(printf '%s\n' "$esperadas") <(printf '%s\n' "$existentes") || true)"
   fi
 
   if [ -n "$faltando" ]; then
