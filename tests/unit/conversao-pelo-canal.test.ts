@@ -17,6 +17,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { conversaoDeVendaHandler } from "@/lib/conversoes/envio.handler";
+import { vendaPeloCanalLigada } from "@/lib/conversoes/venda-pelo-canal";
 import { zernioReportConversion } from "@/lib/channels/zernio/conversoes";
 import { resolveZernioCreds } from "@/lib/channels/zernio/credentials";
 import type { EventRow } from "@/lib/event-log/dispatcher";
@@ -130,10 +131,19 @@ const gravados: Record<string, unknown>[] = [];
 
 type ConexaoDireta = "ausente" | "ligada" | "desligada";
 
-function fakeAdmin(t: { sessao: unknown; conexao?: ConexaoDireta; conversasIlegiveis?: boolean }) {
+const tabelasLidas: string[] = [];
+
+function fakeAdmin(t: {
+  sessao: unknown;
+  conexao?: ConexaoDireta;
+  conversasIlegiveis?: boolean;
+  /** A chave "Enviar vendas pelo canal da conversa" (doc 76). Padrão aqui: ligada. */
+  vendaPeloCanal?: boolean;
+}) {
   const conexao = t.conexao ?? "ausente";
   return {
     from(tabela: string) {
+      tabelasLidas.push(tabela);
       const linhas: Record<string, unknown> = {
         crm_leads: {
           id: LEAD,
@@ -148,6 +158,7 @@ function fakeAdmin(t: { sessao: unknown; conexao?: ConexaoDireta; conversasIlegi
           source_metadata: { ad_platform: "meta_ads", ad_source_id: "CTWA_X" },
         },
         channel_sessions: t.sessao,
+        organizations: { settings: { conversions: { report_via_channel: t.vendaPeloCanal ?? true } } },
         ad_platform_connections:
           conexao === "ausente"
             ? null
@@ -207,10 +218,36 @@ const CANAL_COM_PONTE = { provider: "zernio", zernio_account_id: "ACC" };
 describe("o handler escolhe UM caminho", () => {
   beforeEach(() => {
     gravados.length = 0;
+    tabelasLidas.length = 0;
   });
 
-  it("sem conexão direta e conversa num canal com a capacidade: vai pelo canal", async () => {
-    vi.mocked(createAdminClient).mockReturnValue(fakeAdmin({ sessao: CANAL_COM_PONTE }) as never);
+  it("com a chave DESLIGADA (o padrão), nada sai para o provedor e nem as conversas são lidas", async () => {
+    vi.mocked(createAdminClient).mockReturnValue(
+      fakeAdmin({ sessao: CANAL_COM_PONTE, vendaPeloCanal: false }) as never,
+    );
+    const f = vi.spyOn(globalThis, "fetch");
+
+    const r = await conversaoDeVendaHandler.handle(evento);
+
+    expect(r).toMatchObject({ status: "skipped", detail: "sem_conexao" });
+    expect(f).not.toHaveBeenCalled();
+    expect(tabelasLidas).toContain("organizations");
+    expect(tabelasLidas).not.toContain("conversations");
+    expect(tabelasLidas).not.toContain("channel_sessions");
+    expect(gravados.at(-1)).toMatchObject({ status: "skipped", reason: "sem_conexao" });
+  });
+
+  it("organização sem a chave gravada conta como desligada", async () => {
+    expect(vendaPeloCanalLigada({})).toBe(false);
+    expect(vendaPeloCanalLigada(null)).toBe(false);
+    expect(vendaPeloCanalLigada({ conversions: { report_via_channel: "true" } })).toBe(false);
+    expect(vendaPeloCanalLigada({ conversions: { report_via_channel: true } })).toBe(true);
+  });
+
+  it("chave LIGADA, sem conexão direta e conversa num canal com a capacidade: vai pelo canal", async () => {
+    vi.mocked(createAdminClient).mockReturnValue(
+      fakeAdmin({ sessao: CANAL_COM_PONTE, vendaPeloCanal: true }) as never,
+    );
     const f = vi.spyOn(globalThis, "fetch").mockResolvedValue(resposta({ eventsReceived: 1, eventsFailed: 0 }));
 
     const r = await conversaoDeVendaHandler.handle(evento);

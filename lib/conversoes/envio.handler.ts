@@ -52,6 +52,7 @@ import type {
 } from "@/lib/plataformas-de-anuncio/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { lerAtribuicao } from "./leitura-da-atribuicao";
+import { lerVendaPeloCanal } from "./venda-pelo-canal";
 import { ehEventoDeEtapa } from "./regras-google";
 import { lerRegistro, registraEnvio } from "./registro-de-envio";
 
@@ -231,9 +232,12 @@ export async function processarConversao(
       !registro?.remote_request_id &&
       lead.value_cents !== null
     ) {
-      let canal;
+      // A chave vem ANTES de tudo (doc 76): desligada — o padrão —, nem as
+      // conversas são lidas, e nada sai para o provedor.
+      let canal = null;
       try {
-        canal = await canalQueReportaConversao(admin, row.organization_id, lead.contact_id);
+        if (await lerVendaPeloCanal(admin, row.organization_id))
+          canal = await canalQueReportaConversao(admin, row.organization_id, lead.contact_id);
       } catch (err) {
         // Instabilidade na leitura não pode virar a pendência `sem_conexao`
         // de uma venda que tem caminho: espera e tenta de novo.
