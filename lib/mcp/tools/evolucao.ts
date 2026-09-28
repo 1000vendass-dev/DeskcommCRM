@@ -34,16 +34,6 @@ const buscarInputShape = {
   assistente_id: z.string().uuid().optional(),
 };
 
-/**
- * Limiar de similaridade — o MESMO default do banco desde a migration 0097.
- *
- * Era 0.72 aqui, e o produto tinha TRÊS limiares para o mesmo acervo: 0.40 na
- * RPC, 0.72 no turno do agente e 0.72 nesta capacidade. Duas pessoas
- * perguntando a mesma coisa pelo mesmo material recebiam respostas diferentes
- * conforme a porta por onde entraram.
- */
-
-
 export const crmSearchKnowledge: McpToolDefinition<typeof buscarInputShape> = {
   name: "crm_search_knowledge",
   description:
