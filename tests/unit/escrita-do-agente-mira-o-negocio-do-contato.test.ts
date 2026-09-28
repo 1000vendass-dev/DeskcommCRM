@@ -64,7 +64,10 @@ function banco(doContato: Negocio[], opts: { erro?: boolean } = {}) {
   };
 }
 
-async function escrever(supabase: unknown, leadId: string, contatoDoTurno: string | undefined = CONTATO) {
+// `null` e não `undefined` para dizer "sem conversa": `undefined` ATIVA o valor
+// padrão do parâmetro, e o caso do Operador mediria o contrário do que diz.
+async function escrever(supabase: unknown, leadId: string, contato: string | null = CONTATO) {
+  const contatoDoTurno = contato ?? undefined;
   const ator = { type: "ai_agent", id: "ag-1", role: "ai_operator" };
   const tools = pickToolsFromMcp({
     toolIds: ["crm_update_lead"],
@@ -137,7 +140,7 @@ describe("a escrita do agente mira o negócio do contato da conversa", () => {
   });
 
   it("sem contato do turno (Operador, rota, automação), o id segue como veio", async () => {
-    await escrever(banco([{ id: DA_CONVERSA, status: "open" }]), DE_OUTRO_CLIENTE, undefined);
+    await escrever(banco([{ id: DA_CONVERSA, status: "open" }]), DE_OUTRO_CLIENTE, null);
     expect(chegou()).toBe(DE_OUTRO_CLIENTE);
   });
 });
