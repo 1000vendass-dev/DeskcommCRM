@@ -41180,7 +41180,7 @@ create trigger trg_redigir_b2b_ao_anonimizar
   when (new.is_anonymized is true and old.is_anonymized is distinct from true)
   execute function public.fn_redigir_b2b_do_contato_anonimizado();
 
--- ---- grupos de WhatsApp na inbox (migration 0478) ----
+-- ---- grupos de WhatsApp na inbox (migration 0482) ----
 -- Grupos de WhatsApp na inbox: histórico e resposta manual, IA nunca responde.
 -- Spec: docs/superpowers/specs/2026-09-23-grupos-na-inbox-design.md
 
@@ -41255,7 +41255,7 @@ declare c public.conversations;
 begin
  select * into c from public.conversations where organization_id=p_org and id=p_conversation;
  if not found or c.assigned_to_user_id is not null or c.status not in('open','pending','claimed','ai_handling') then return;end if;
- if c.is_group then return; end if; -- grupos: nunca roteados (migration 0478)
+ if c.is_group then return; end if; -- grupos: nunca roteados (migration 0482)
  insert into public.event_log(organization_id,event_type,entity_kind,entity_id,payload)
  values(p_org,'conversation.routing_requested','conversation',c.id,
   jsonb_build_object('organization_id',p_org,'conversation_id',c.id,'channel_session_id',c.channel_session_id))
@@ -41675,7 +41675,7 @@ begin
   -- channel_session_groups.subject — o NOME do grupo, e a FK contact_id aponta
   -- para o placeholder do grupo (contacts.kind = 'whatsapp_group'), nunca para
   -- o titular real sendo anonimizado neste caminho — mas a FK para contacts e o
-  -- nome da coluna casam o padrão automático do escopo (migration 0478), e
+  -- nome da coluna casam o padrão automático do escopo (migration 0482), e
   -- nulificar não perde nada operacional: número, conversa e liga/desliga ficam.
   update public.channel_session_groups set
     subject = null
@@ -41751,7 +41751,7 @@ as $fn_comando$
 $fn_comando$;
 
 comment on function public.fn_comando_da_conversa(text, uuid, timestamptz, boolean, boolean, timestamptz, boolean)
-  is 'Quem manda na conversa. Espelho SQL de comandoDaConversa() (lib/inbox/comando-da-conversa.ts); as duas são casadas por tests/invariants/comando-da-conversa-espelha-o-ts.test.ts. Grupo sem dono é aguardando (migration 0478).';
+  is 'Quem manda na conversa. Espelho SQL de comandoDaConversa() (lib/inbox/comando-da-conversa.ts); as duas são casadas por tests/invariants/comando-da-conversa-espelha-o-ts.test.ts. Grupo sem dono é aguardando (migration 0482).';
 
 -- `comando_da_conversa` segue a forma da 0404 (issue #1571, upstream):
 -- SECURITY DEFINER para a contagem das abas não reavaliar a RLS de `contacts`
@@ -41782,7 +41782,7 @@ as $comando$
 $comando$;
 
 comment on function public.comando_da_conversa(public.conversations)
-  is 'Campo calculado exposto pelo PostgREST: ?select=comando_da_conversa e ?comando_da_conversa=in.(...). Resolve o contato e carimba now(); a regra em si é fn_comando_da_conversa. SECURITY DEFINER desde a 0404 (issue #1571: a contagem das abas reavaliava a RLS de contacts 2x por conversa); parâmetro SEM NOME de propósito — com nome a PostgREST a exporia em /rpc, e ali uma linha fabricada leria force_human/is_blocked de outro tenant. Passa is_group desde a 0478 (grupos de WhatsApp na inbox).';
+  is 'Campo calculado exposto pelo PostgREST: ?select=comando_da_conversa e ?comando_da_conversa=in.(...). Resolve o contato e carimba now(); a regra em si é fn_comando_da_conversa. SECURITY DEFINER desde a 0404 (issue #1571: a contagem das abas reavaliava a RLS de contacts 2x por conversa); parâmetro SEM NOME de propósito — com nome a PostgREST a exporia em /rpc, e ali uma linha fabricada leria force_human/is_blocked de outro tenant. Passa is_group desde a 0482 (grupos de WhatsApp na inbox).';
 
 revoke execute on function public.fn_comando_da_conversa(text, uuid, timestamptz, boolean, boolean, timestamptz, boolean) from public, anon;
 revoke execute on function public.comando_da_conversa(public.conversations) from public, anon;
@@ -41924,7 +41924,7 @@ revoke execute on function public.fn_redigir_conversas_ao_anonimizar() from anon
 revoke execute on function public.fn_redigir_conversas_ao_anonimizar() from authenticated;
 
 notify pgrst, 'reload schema';
--- ---- fim grupos de WhatsApp na inbox (migration 0478) ----
+-- ---- fim grupos de WhatsApp na inbox (migration 0482) ----
 
 -- ---- VARREDURA anon: função nova nasce exposta em quem ATUALIZA (migration 0116) ----
 --

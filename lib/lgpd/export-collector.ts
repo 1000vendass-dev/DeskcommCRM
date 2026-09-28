@@ -123,7 +123,7 @@ export interface CheckpointRow {
 }
 
 /**
- * Vínculo do titular com um grupo de WhatsApp (migration 0478).
+ * Vínculo do titular com um grupo de WhatsApp (migration 0482).
  *
  * A FK `channel_session_groups.contact_id` só aponta para o CONTATO PLACEHOLDER
  * do grupo (`contacts.kind = 'whatsapp_group'`), nunca para uma pessoa real — é
@@ -592,14 +592,14 @@ export interface ExportPayload {
    */
   campaign_suppressions: CampaignSuppressionRow[];
   /**
-   * Grupos de WhatsApp vinculados ao titular (migration 0478) — ver o
+   * Grupos de WhatsApp vinculados ao titular (migration 0482) — ver o
    * docstring de `ChannelSessionGroupRow`. Obrigatório, não opcional, pela
    * mesma razão de `case_chat_messages`: campo obrigatório faz um caminho de
    * export novo NÃO COMPILAR se esquecer.
    */
   channel_session_groups: ChannelSessionGroupRow[];
   /**
-   * Mensagens que o titular escreveu em GRUPOS de WhatsApp (migration 0478).
+   * Mensagens que o titular escreveu em GRUPOS de WhatsApp (migration 0482).
    * Moram na conversa do placeholder do grupo, não na dele, então
    * `messages_recent` não as vê. Casadas pelo autor em `metadata.group_sender`
    * — telefone (grafias com e sem o nono dígito) ou lid (`contacts.wa_lid`) —,
@@ -1282,7 +1282,7 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
   }
 
   // Grupos de WhatsApp — `contact_id` direto em `channel_session_groups`
-  // (migration 0478). Ver o docstring de `ChannelSessionGroupRow`: a FK só
+  // (migration 0482). Ver o docstring de `ChannelSessionGroupRow`: a FK só
   // aponta para o CONTATO PLACEHOLDER do grupo, então este bloco só devolve
   // linha quando o titular do pedido é esse placeholder — o mesmo escopo que a
   // redação usa (`fn_lgpd_cascade_redact_contact`, `contact_id = p_contact_id`).

@@ -320,7 +320,7 @@ const PROVA_PROPRIA: readonly Excecao[] = [
       "agent e de anon são recusados; o service_role grava e altera. \"nenhuma " +
       "escrita concedida a anon/authenticated\": o catálogo não tem INSERT, " +
       "UPDATE, DELETE nem TRUNCATE para anon, authenticated ou PUBLIC. O " +
-      "isolamento é medido num sentido só (org de teste → outra). Migration 0478.",
+      "isolamento é medido num sentido só (org de teste → outra). Migration 0482.",
   },
 ];
 

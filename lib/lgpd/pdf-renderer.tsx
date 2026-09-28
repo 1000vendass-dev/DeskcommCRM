@@ -303,7 +303,7 @@ export function LgpdExportPdf({ data, unsignedWarning }: Props): React.ReactElem
           </View>
         ) : null}
 
-        {/* Mensagens em grupos de WhatsApp escritas pelo titular (migration 0478) */}
+        {/* Mensagens em grupos de WhatsApp escritas pelo titular (migration 0482) */}
         {data.group_messages_authored.length > 0 ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Mensagens em Grupos de WhatsApp</Text>

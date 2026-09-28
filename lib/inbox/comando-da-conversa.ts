@@ -78,7 +78,7 @@ export interface FatosDoComando {
    * atende grupo (o banco nem emite `message.received` para ele), então grupo sem
    * dono é conversa HUMANA esperando alguém — `aguardando`, na fila humana — e
    * nunca "Automático atendendo". Espelho SQL: `p_is_group` de
-   * `fn_comando_da_conversa` (migration 0478).
+   * `fn_comando_da_conversa` (migration 0482).
    */
   is_group?: boolean | null;
   /**
