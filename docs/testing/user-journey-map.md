@@ -1252,6 +1252,23 @@ espaço e acento, que era o gatilho do defeito #6.
 | 16 | `lib/audit/index.ts` | Falha de audit só fazia `console.error` — foi o que manteve #15 invisível | doutrina exige alerta no Sentry |
 | 17 | crons de follow-up/snooze | **95% do audit log** era batida de cron vazia (1.175 de 1.236 linhas em ~9h paradas) numa tabela append-only com retenção de 5 anos | contagem por `action` |
 
+## J35 — Achar onde se liga cada recurso opcional `[P1]` (2026-09-28)
+
+**Origem:** pedido do mantenedor (doc 73; desenho no doc 80) — "até agora não
+entendi onde ficam os lugares para ativar/desativar". Os módulos se ligavam numa
+tela chamada "Comportamento", as chaves da empresa em pelo menos nove telas, e
+os recursos que dependem do servidor em tela nenhuma.
+
+| Caso | Spec | Estado |
+|---|---|---|
+| Admin da empresa chega a Configurações › Recursos opcionais pelo hub, vê a lista e o **Ajustar** de "A conversa fica com quem atendeu" o leva a Distribuição de atendimento | `tests/e2e/recursos-opcionais.spec.ts` | CI (PARTE_2) |
+| Dono do servidor acha **Recursos opcionais** no menu do Admin; a tela tem Módulos, Comportamento e Depende do servidor (só leitura, "configurado"/"não configurado") | idem | CI (PARTE_2) |
+| Módulo/porta novo fora da lista reprova | `tests/unit/recursos-opcionais-catalogo.test.ts` | unit |
+
+**Não coberto pela tela:** gerente vendo a lista sem os botões de telas de admin
+(regra no `page.tsx`, sem spec); telefonia por SIP é "não dá para ver daqui" —
+ela vive nos contêineres, fora do alcance do app.
+
 ## Jornadas exercitadas (instalação final, virgem)
 
 | Jornada | Resultado |
