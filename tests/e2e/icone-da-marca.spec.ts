@@ -17,6 +17,17 @@ import { test, expect } from "./helpers/test";
  * spec não consome do teto de 60 logins/IP/300s que a suíte compartilha.
  */
 test.describe("o ícone e o título carregam a marca da instalação", () => {
+  test("o manifest usa o mesmo nome de instalação que a metadata do login", async ({ page }) => {
+    await page.goto("/login");
+    const nome = await page.locator('meta[name="application-name"]').getAttribute("content");
+    expect(nome).toBeTruthy();
+    const resposta = await page.request.get("/manifest.webmanifest");
+    expect(resposta.status()).toBe(200);
+    const manifest = await resposta.json();
+    expect(manifest.name).toBe(nome);
+    expect(manifest.short_name).toBe(nome);
+  });
+
   test("o manifest oferece ícones reais de aplicativo antes do login", async ({ page }) => {
     await page.goto("/login");
     const manifest = await (await page.request.get("/manifest.webmanifest")).json();
