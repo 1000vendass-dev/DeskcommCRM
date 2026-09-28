@@ -18,6 +18,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -490,21 +492,19 @@ export function InboxFilters({ value, onChange }: Props) {
                   {etiquetas.length > 1 && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuLabel>
-                        {value.tagMode === "ou" ? t("Qualquer uma (OU)") : t("Todas (E)")}
-                      </DropdownMenuLabel>
-                      <DropdownMenuItem
-                        onClick={() => onChange({ ...value, tagMode: undefined })}
+                      {/* Rádio, e não item comum: marca o modo ATIVO (e só ele) e
+                          expõe `aria-checked` a quem usa leitor de tela. */}
+                      <DropdownMenuRadioGroup
+                        value={value.tagMode === "ou" ? "ou" : "e"}
+                        onValueChange={(modo) =>
+                          onChange({ ...value, tagMode: modo === "ou" ? "ou" : undefined })
+                        }
                       >
-                        {value.tagMode === "ou" ? "✓ " : ""}
-                        {t("Todas (E)")}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => onChange({ ...value, tagMode: "ou" })}
-                      >
-                        {value.tagMode === "ou" ? "✓ " : ""}
-                        {t("Qualquer uma (OU)")}
-                      </DropdownMenuItem>
+                        <DropdownMenuRadioItem value="e">{t("Todas (E)")}</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="ou">
+                          {t("Qualquer uma (OU)")}
+                        </DropdownMenuRadioItem>
+                      </DropdownMenuRadioGroup>
                     </>
                   )}
                   <DropdownMenuSeparator />

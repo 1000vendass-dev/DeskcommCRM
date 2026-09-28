@@ -167,3 +167,32 @@ describe("não-regressão: o que a condicional protegia", () => {
     expect(gatilho()).toBeInTheDocument();
   });
 });
+
+describe("o modo E/OU marca só o modo ativo (#1274)", () => {
+  // O ✓ manual usava a MESMA condição (`tagMode === "ou"`) nos dois itens: com OU
+  // os dois apareciam marcados, com E nenhum. O rádio marca um só e expõe
+  // `aria-checked`, que é o que este caso mede.
+  async function abreComDuas(tagMode?: "ou") {
+    const user = userEvent.setup({ delay: null });
+    render(
+      <InboxFilters value={{ ...VALUE, tag: ["vip", "retorno"], tagMode }} onChange={() => {}} />,
+    );
+    await user.click(screen.getByRole("button", { name: GATILHO }));
+    return {
+      e: screen.getByRole("menuitemradio", { name: "Todas (E)" }),
+      ou: screen.getByRole("menuitemradio", { name: "Qualquer uma (OU)" }),
+    };
+  }
+
+  it("com OU ativo, só o OU está marcado", async () => {
+    const { e, ou } = await abreComDuas("ou");
+    expect(ou).toHaveAttribute("aria-checked", "true");
+    expect(e).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("sem modo (E, o padrão), só o E está marcado", async () => {
+    const { e, ou } = await abreComDuas();
+    expect(e).toHaveAttribute("aria-checked", "true");
+    expect(ou).toHaveAttribute("aria-checked", "false");
+  });
+});

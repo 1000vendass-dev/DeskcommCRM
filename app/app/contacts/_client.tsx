@@ -12,6 +12,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -197,14 +199,13 @@ export function ContactsListClient() {
             {tags.length > 1 && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setTagMode(undefined)}>
-                  {tagMode === "ou" ? "✓ " : ""}
-                  {t("Todas (E)")}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTagMode("ou")}>
-                  {tagMode === "ou" ? "✓ " : ""}
-                  {t("Qualquer uma (OU)")}
-                </DropdownMenuItem>
+                <DropdownMenuRadioGroup
+                  value={tagMode === "ou" ? "ou" : "e"}
+                  onValueChange={(modo) => setTagMode(modo === "ou" ? "ou" : undefined)}
+                >
+                  <DropdownMenuRadioItem value="e">{t("Todas (E)")}</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="ou">{t("Qualquer uma (OU)")}</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
               </>
             )}
             <DropdownMenuSeparator />

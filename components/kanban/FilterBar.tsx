@@ -9,6 +9,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -332,14 +334,15 @@ export function FilterBar({ filters, onChange, leads, settings }: FilterBarProps
           {marcadoresEscolhidos.length > 1 && (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => onChange({ ...filters, tagMode: undefined })}>
-                {filters.tagMode === "ou" ? "✓ " : ""}
-                {t("Todas (E)")}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onChange({ ...filters, tagMode: "ou" })}>
-                {filters.tagMode === "ou" ? "✓ " : ""}
-                {t("Qualquer uma (OU)")}
-              </DropdownMenuItem>
+              <DropdownMenuRadioGroup
+                value={filters.tagMode === "ou" ? "ou" : "e"}
+                onValueChange={(modo) =>
+                  onChange({ ...filters, tagMode: modo === "ou" ? "ou" : undefined })
+                }
+              >
+                <DropdownMenuRadioItem value="e">{t("Todas (E)")}</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="ou">{t("Qualquer uma (OU)")}</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
             </>
           )}
           <DropdownMenuSeparator />
