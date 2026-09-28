@@ -538,6 +538,25 @@ export const DICIONARIO: Traducoes = {
   "Logo para o tema escuro (opcional)": { es: "Logo para el tema oscuro (opcional)" },
   "Remover logo escuro": { es: "Eliminar logo oscuro" },
   "Use uma versão legível sobre fundo escuro. Ela aparece sem moldura branca. Sem ela, o logo padrão mantém a proteção de contraste. PNG ou JPG, até 512 KB.": { es: "Usa una versión legible sobre fondo oscuro. Se muestra sin marco blanco. Sin ella, el logo predeterminado conserva la protección de contraste. PNG o JPG, hasta 512 KB." },
+  // /admin/marca — ícone da aba (favicon), migration 0443.
+  "Ícone da aba (favicon)": { es: "Ícono de la pestaña (favicon)" },
+  "Ícone da aba": { es: "Ícono de la pestaña" },
+  "Remover ícone": { es: "Eliminar ícono" },
+  "Ícone da aba atualizado.": { es: "Ícono de la pestaña actualizado." },
+  "Ícone da aba removido.": { es: "Ícono de la pestaña eliminado." },
+  "Não consegui trocar o ícone da aba agora.": { es: "No pude cambiar el ícono de la pestaña ahora." },
+  "Sua sessão expirou. Entre de novo para trocar o ícone da aba.": {
+    es: "Tu sesión expiró. Vuelve a entrar para cambiar el ícono de la pestaña.",
+  },
+  "Você não tem permissão para trocar o ícone da aba.": {
+    es: "No tienes permiso para cambiar el ícono de la pestaña.",
+  },
+  "Imagem quadrada, de preferência 64×64 ou maior. PNG ou JPG, até": {
+    es: "Imagen cuadrada, preferiblemente de 64×64 o mayor. PNG o JPG, hasta",
+  },
+  "KB. Sem ícone próprio, a aba mostra a inicial do nome sobre a cor da marca.": {
+    es: "KB. Sin ícono propio, la pestaña muestra la inicial del nombre sobre el color de la marca.",
+  },
   // /admin/email — o servidor SMTP da instalação (PR #714, @betoarts, recorte).
   "Servidor de e-mail conectado e autenticado.": { es: "Servidor de correo conectado y autenticado." },
   "Preencha e salve o servidor e o remetente antes de testar.": {
@@ -1094,6 +1113,11 @@ export const DICIONARIO: Traducoes = {
   "aberto excepcionalmente": { es: "abierto excepcionalmente" },
   "Abrir atendimento": { es: "Abrir atención" },
   "Abra o atendimento e diga o que fazer: concluir, pedir informação ao cliente ou passar para uma pessoa.": { es: "Abre la atención e indica qué hacer: concluirla, pedir información al cliente o pasarla a una persona." },
+  // O caso aberto na Central, na hora (`lib/escalacao/caso-na-central.handler.ts`).
+  "A IA pediu ajuda à equipe": { es: "La IA pidió ayuda al equipo" },
+  "Abra o caso para responder. A IA continua atendendo o cliente enquanto isso.": {
+    es: "Abre el caso para responder. La IA sigue atendiendo al cliente mientras tanto.",
+  },
   "Um atendimento espera decisão da equipe": { es: "Una atención espera la decisión del equipo" },
   "Soltar o horário de um pedido não confirmado após (minutos)": { es: "Liberar el horario de una solicitud no confirmada después de (minutos)" },
   "Vale só para tipos de atendimento que pedem confirmação. Enquanto o pedido espera, o horário fica reservado e ninguém mais o pega; passado o prazo sem decisão, ele volta a ser oferecido. O cliente não é avisado, e o pedido continua na fila.": { es: "Solo aplica a los tipos de cita que requieren confirmación. Mientras la solicitud espera, el horario queda reservado y nadie más puede tomarlo. Si pasa el plazo sin una decisión, el horario vuelve a ofrecerse. El cliente no recibe aviso y la solicitud sigue en la fila." },
@@ -4599,6 +4623,9 @@ export const DICIONARIO: Traducoes = {
   "Se preencher, enviaremos uma assinatura para o outro sistema conferir que fomos nós.": {
     es: "Si lo completas, enviaremos una firma para que el otro sistema confirme que fuimos nosotros.",
   },
+  "Como o outro sistema confere a assinatura e reconhece reenvios: guia de integração em docs/integracao/webhooks-de-saida.md, na documentação do projeto.": {
+    es: "Cómo el otro sistema verifica la firma y reconoce los reenvíos: guía de integración en docs/integracao/webhooks-de-saida.md, en la documentación del proyecto.",
+  },
   "Incluir o responsável no corpo": { es: "Incluir al responsable en el cuerpo" },
   "Padrão: o aviso não diz quem atende. Ligue só se o outro sistema precisar do nome da equipe.": {
     es: "Por defecto, el aviso no dice quién atiende. Actívalo solo si el otro sistema necesita el nombre del equipo.",
@@ -5128,6 +5155,9 @@ export const DICIONARIO: Traducoes = {
     es: ": la respuesta del cliente no llega y la pantalla no muestra ningún aviso. El secreto aparece",
   },
   "uma única vez": { es: "una sola vez" },
+  "Na inscrição do webhook no provedor, preencha o filtro de contas (accountIds) com a Conta deste número: assim só chegam aqui os eventos dele.": {
+    es: "En la suscripción del webhook en el proveedor, completa el filtro de cuentas (accountIds) con la Cuenta de este número: así solo llegan aquí sus eventos.",
+  },
   " — se sair desta tela sem copiá-lo, reconecte para gerar outro.": {
     es: " — si sales de esta pantalla sin copiarlo, reconecta para generar otro.",
   },
@@ -8291,6 +8321,9 @@ export const DICIONARIO: Traducoes = {
   "O faturado soma comandas; o que entrou soma lançamentos pagos. Os dois não precisam bater.": {
     es: "Lo facturado suma órdenes de servicio y lo que entró suma movimientos pagados. Las dos cifras no tienen por qué coincidir.",
   },
+  "Moedas diferentes não se somam: cada uma tem o seu bloco.": {
+    es: "Las monedas distintas no se suman: cada una tiene su propio bloque.",
+  },
   "Por forma de pagamento": { es: "Por forma de pago" },
   "Nenhuma comanda no período.": { es: "Ninguna orden de servicio en el período." },
   "Comissão por pessoa": { es: "Comisión por persona" },
@@ -9227,6 +9260,49 @@ export const DICIONARIO: Traducoes = {
     es: "Las respuestas a los clientes están esperando. Recarga el saldo en la cuenta del proveedor: salen solas cuando vuelva el saldo, durante hasta 6 horas. Después de eso, la conversación que no se respondió aparece aquí en la Central.",
   },
   "Revisar credencial": { es: "Revisar credencial" },
+  // ─── lib/leads/aviso-de-etapa.ts + editor de etapas (migration 0440) ───
+  "Negócio entrou em": { es: "Negocio entró en" },
+  "Abra o negócio para dar o próximo passo. Este aviso foi pedido na configuração da etapa.": {
+    es: "Abre el negocio para dar el siguiente paso. Este aviso se pidió en la configuración de la etapa.",
+  },
+  "Avisar a equipe na Central quando um negócio entrar aqui": {
+    es: "Avisar al equipo en la Central cuando un negocio entre aquí",
+  },
+  "Avisar a equipe na Central quando um negócio entrar em": {
+    es: "Avisar al equipo en la Central cuando un negocio entre en",
+  },
+  // ─── sons dos avisos (migration 0441; app/app/settings/notifications/_sons.tsx) ───
+  "Sons dos avisos": { es: "Sonidos de los avisos" },
+  "Tocam com o site aberto quando o aviso chega na Central. MP3, OGG ou WAV de até 1 MB.": {
+    es: "Suenan con el sitio abierto cuando el aviso llega a la Central. MP3, OGG o WAV de hasta 1 MB.",
+  },
+  "Etapa que avisa": { es: "Etapa que avisa" },
+  "Quando um negócio entra numa etapa marcada para avisar na Central (por exemplo, o pedido confirmado).": {
+    es: "Cuando un negocio entra en una etapa marcada para avisar en la Central (por ejemplo, el pedido confirmado).",
+  },
+  "Precisa de uma pessoa": { es: "Necesita una persona" },
+  "Quando o assistente passa a conversa para alguém da equipe, ou fica sem saldo no provedor de IA.": {
+    es: "Cuando el asistente pasa la conversación a alguien del equipo, o se queda sin saldo en el proveedor de IA.",
+  },
+  "Som personalizado": { es: "Sonido personalizado" },
+  "Som do sistema": { es: "Sonido del sistema" },
+  "Ouvir": { es: "Escuchar" },
+  "Trocar som": { es: "Cambiar sonido" },
+  "Usar o do sistema": { es: "Usar el del sistema" },
+  "Som salvo": { es: "Sonido guardado" },
+  "Voltou ao som do sistema": { es: "Volvió al sonido del sistema" },
+  "Erro ao subir o som.": { es: "Error al subir el sonido." },
+  "Erro ao salvar o som.": { es: "Error al guardar el sonido." },
+  "Escolha o aviso e o arquivo de som.": { es: "Elige el aviso y el archivo de sonido." },
+  "O som pode ter no máximo 1 MB.": { es: "El sonido puede tener como máximo 1 MB." },
+  "O som precisa ser MP3, OGG ou WAV.": { es: "El sonido tiene que ser MP3, OGG o WAV." },
+  "Aviso desconhecido.": { es: "Aviso desconocido." },
+  // ─── lib/notifications/push-dos-avisos.ts (migration 0442) ───
+  "A IA passou uma conversa para a equipe": { es: "La IA pasó una conversación al equipo" },
+  "Abra a conversa para responder o cliente.": { es: "Abre la conversación para responder al cliente." },
+  "Recarregue o saldo na conta do provedor: as respostas saem sozinhas quando ele voltar.": {
+    es: "Recarga el saldo en la cuenta del proveedor: las respuestas salen solas cuando vuelva.",
+  },
   // `informativo` e `crítico` saem iguais nos dois idiomas — sem linha, por isso.
   "atenção": { es: "atención" },
   // ─── lib/ai/agent-inbox-copy.ts (copyDaPromessaSemDono) ───
@@ -12691,6 +12767,40 @@ export const DICIONARIO: Traducoes = {
   "Comandos pelo celular ligados — já valem no próximo atendimento.":
     { es: "Comandos desde el celular activados — ya valen en la próxima atención." },
   "Comandos pelo celular desligados.": { es: "Comandos desde el celular desactivados." },
+  // ─── #1540 — lembrete interno (cercas de espanhol) ───
+  "sem mensagem ao cliente": { es: "sin mensaje al cliente" },
+  "Título da tarefa": { es: "Título de la tarea" },
+  "Ligar para {{contact.name}} sobre {{lead.title}}": { es: "Llamar a {{contact.name}} sobre {{lead.title}}" },
+  "Vence em (dias)": { es: "Vence en (días)" },
+  "Atribuir a": { es: "Asignar a" },
+  "Dono do negócio": { es: "Dueño del negocio" },
+  "Este nó cria uma tarefa para a equipe — nenhuma mensagem sai para o cliente.":
+    { es: "Este nodo crea una tarea para el equipo — ningún mensaje sale al cliente." },
+  "Somente interno": { es: "Solo interno" },
+  "O fluxo inteiro não fala com o cliente: a publicação recusa qualquer nó que envie mensagem.":
+    { es: "El flujo entero no habla con el cliente: la publicación rechaza cualquier nodo que envíe un mensaje." },
+  "O lembrete sai quando se passarem N dias sem mensagem na direção escolhida. Chegando mensagem nova, o relógio zera — e um novo silêncio de N dias gera outro lembrete. Nada é enviado ao cliente.": { es: "El recordatorio sale cuando pasan N días sin mensaje en la dirección elegida. Llegando un mensaje nuevo, el reloj se reinicia — y un nuevo silencio de N días genera otro recordatorio. No se envía nada al cliente." },
+  "O lembrete sai quando se passarem N dias com o card na mesma etapa. Mudando a etapa, o relógio zera. Nada é enviado ao cliente.": { es: "El recordatorio sale cuando la tarjeta lleva N días en la misma etapa. Cambiando de etapa, el reloj se reinicia. No se envía nada al cliente." },
+  "Depois de N dias": { es: "Después de N días" },
+  "Silêncio de": { es: "Silencio de" },
+  "De quem é o silêncio": { es: "De quién es el silencio" },
+  "Não gerar lembrete quando o cliente tiver compromisso marcado": { es: "No generar recordatorio cuando el cliente tenga un compromiso marcado" },
+  "Quando ficar N dias sem mensagem": { es: "Cuando pasen N días sin mensaje" },
+  "Quando um lead ficar N dias na mesma etapa": { es: "Cuando un lead lleve N días en la misma etapa" },
+  "Criar tarefa interna (sem mensagem ao cliente)": { es: "Crear tarea interna (sin mensaje al cliente)" },
+  "A tarefa não foi criada: o evento que disparou a regra não trouxe um lead nem um contato para pendurar nela.": {
+    es: "La tarea no se creó: el evento que disparó la regla no trajo un lead ni un contacto donde colgarla.",
+  },
+  "A tarefa não foi criada: a pessoa escolhida como responsável não ficou resolvida para esta tarefa. Escolha outro responsável na automação.": {
+    es: "La tarea no se creó: la persona elegida como responsable no quedó resuelta para esta tarea. Elija otro responsable en la automatización.",
+  },
+  "A tarefa não foi criada: o título ficou vazio depois de preencher os campos do texto. Escreva um título que não dependa só de dado que faltou.": {
+    es: "La tarea no se creó: el título quedó vacío después de completar los campos del texto. Escriba un título que no dependa solo de un dato que faltó.",
+  },
+  "A tarefa não foi criada: o banco recusou a gravação. Tente de novo em alguns minutos; se persistir, abra a tarefa na agenda para ver o detalhe.": {
+    es: "La tarea no se creó: la base de datos rechazó el registro. Inténtelo de nuevo en unos minutos; si persiste, abra la tarea en la agenda para ver el detalle.",
+  },
+
   // ─── PREVISÃO PONDERADA DO FUNIL (issue #1535) ───
   "Previsão": { es: "Previsión" },
   "Ponderado": { es: "Ponderado" },
