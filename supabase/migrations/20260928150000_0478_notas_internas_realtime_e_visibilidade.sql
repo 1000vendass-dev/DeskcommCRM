@@ -1,6 +1,6 @@
 -- 20260928150000_0478_notas_internas_realtime_e_visibilidade.sql
 -- 0478 — as notas internas: o realtime que nunca chegava e a visibilidade que
--- não seguía a conversa (#1863, F1 + F2).
+-- não seguia a conversa (#1863, F1 + F2).
 --
 -- ─── O buraco que isto fecha ────────────────────────────────────────────────
 -- A nota interna (Onda 5.2) é o bloco de notas do atendimento: anotação de
@@ -38,10 +38,11 @@
 -- continua vendo tudo, porque a própria função já devolve `true` para eles.
 --
 -- ─── O que NÃO muda ────────────────────────────────────────────────────────
--- Sem coluna nova, sem backfill, sem dado tocado, sem policy de escrita nova.
--- A escrita (`conversation_notes_write`) continua exigindo papel `agent` da
--- própria organização; ela é filtrada indiretamente porque só é alcançável
--- pela mesma sessão que já passa pelo SELECT. Idempotente nas duas pontas.
+-- Sem coluna nova, sem backfill, sem dado tocado. A escrita
+-- (`conversation_notes_write`) continua exigindo papel `agent` da própria
+-- organização e passa a exigir TAMBÉM a visibilidade da conversa: ela é
+-- `for all`, e `for all` concede SELECT — sem a mesma condição, ela anularia
+-- a leitura nova (ver o ⚠️ abaixo). Idempotente nas duas pontas.
 
 -- ─── F1 · conversation_notes entra na publicação ────────────────────────────
 -- Mesmo desenho idempotente do `foreach` do baseline: checa
