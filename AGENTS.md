@@ -143,6 +143,15 @@ pnpm test:shell       # scripts do kit self-host (bash)
 pnpm gov:verify       # typecheck + lint + lint:channels + lint:role-rank + test:unit
 ```
 
+Um teste só:
+
+```bash
+pnpm vitest run lib/foo/bar.test.ts         # um arquivo unit
+pnpm vitest run -t "nome do caso"           # um caso pelo nome
+pnpm test:db tests/invariants/x.test.ts     # um invariante (o script repassa os args ao vitest)
+pnpm playwright test tests/e2e/x.spec.ts    # uma spec e2e
+```
+
 ⚠️ **`pnpm gov:verify` não cobre tudo.** Ele omite `test:db`, `test:e2e` **e** `test:shell`.
 Se a mudança toca schema/RLS/tabela tenant-aware, rode `pnpm test:db`. Se toca UI ou fluxo de
 usuário, rode `pnpm test:e2e` com evidência visual. Se toca `Dockerfile*`, `docker-compose*` ou
@@ -300,7 +309,7 @@ server; segredo em query string; `throw` cru na borda da API.
   **pnpm 9.15.9** (`packageManager`). Não use npm/yarn.
 - **TypeScript estrito** via `tsconfig.typecheck.json`; `strict`, `noUncheckedIndexedAccess`,
   `isolatedModules`, alias `@/*` → raiz. `pnpm typecheck` é a régua.
-- **ESLint flat config** (`eslint.config.mjs`, ESLint 9): `next/core-web-vitals`,
+- **ESLint flat config** (`eslint.config.mjs`, ESLint 10): `next/core-web-vitals`,
   `react-hooks`, `typescript-eslint`. `next lint` foi removido no Next 16 — o script chama o CLI.
 - **Prettier** com `prettier-plugin-tailwindcss`; classes Tailwind em ordem canônica.
 - **Tailwind 4** — configuração em CSS (`app/globals.css`), não em `tailwind.config.js`.

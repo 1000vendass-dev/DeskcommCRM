@@ -365,7 +365,7 @@ DeskcommCRM/
 │   ├── app/                # Rotas autenticadas: inbox, radar, kanban, contacts,
 │   │                       #   connections, ai/*, integrations, metrics, lgpd,
 │   │                       #   audit, team, settings
-│   └── api/v1/             # API REST canônica (196 route handlers)
+│   └── api/v1/             # API REST canônica
 ├── components/             # React (ui/, inbox/, kanban/, shell/, ...)
 ├── lib/                    # supabase/, waha/, channels/, ai/, agent-engine/,
 │                           #   api/, routing/, navigation/, env.ts
