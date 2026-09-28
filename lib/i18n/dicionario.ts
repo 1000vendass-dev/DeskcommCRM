@@ -9691,7 +9691,6 @@ export const DICIONARIO: Traducoes = {
   "Acervo": { es: "Acervo" },
   "Pergunte ao acervo…": { es: "Pregunta al acervo…" },
   "Perguntar ao acervo": { es: "Preguntar al acervo" },
-  "Buscar": { es: "Buscar" },
   "Buscando…": { es: "Buscando…" },
   "Parecimento com a pergunta": { es: "Parecido con la pregunta" },
   "Materiais consultados": { es: "Materiales consultados" },

@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 import { ok, fail } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/require-role";
+import { requireSupportWrite } from "@/lib/impersonate/support";
 import {
   LIMIAR_PADRAO_BUSCA,
   buscarConhecimento,
@@ -51,6 +52,15 @@ function numero(v: unknown, padrao: number, min: number, max: number): number {
 
 export async function POST(req: NextRequest): Promise<Response> {
   const requestId = randomUUID();
+
+  // A rota MUTA: a F2 da #1869 grava a pergunta em `knowledge_searches`.
+  // Sem esta guarda, o modo support_readonly seria ignorado por um handler que
+  // escreve — quem está acompanhando em leitura veria linhas novas nascendo
+  // métrica da própria instalação. `requireSupportWrite` (retorno não-nulo é a
+  // recusa) cuida do MODO DE ACOMPANHAMENTO; o `requireRole` abaixo cuida do
+  // PAPEL. Um não substitui o outro.
+  const support = await requireSupportWrite();
+  if (support) return support;
 
   // Papel mínimo do inbox: um atendente lê conversa e lê acervo.
   const authz = await requireRole("agent", { requestId, resource: "ai_knowledge" });
@@ -143,7 +153,12 @@ export async function POST(req: NextRequest): Promise<Response> {
       actorUserId: authz.user.id,
       organizationId,
       resourceType: "knowledge_source",
-      resourceId: knowledgeSourceIds[0] ?? "acervo",
+      // Uma busca atravessa VÁRIAS fontes — não existe "a" linha que seja o
+      // recurso desta ação, então `null` é o valor honesto (é o que o gate
+      // `audit-resource-id-e-uuid` recomenda, e o que outras 6 rotas fazem).
+      // `knowledgeSourceIds[0]` seria pior: pegaria a primeira fonte como se
+      // fosse ela a consultada. Os detalhes vivem no metadata.
+      resourceId: null,
       requestId,
       metadata: {
         fontes: knowledgeSourceIds.length,
