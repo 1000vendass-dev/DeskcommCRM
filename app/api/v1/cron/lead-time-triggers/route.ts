@@ -137,61 +137,94 @@ async function handle(req: NextRequest): Promise<Response> {
 
       const candidatos: Candidato[] = [];
 
+      // ═══ O TETO É O TAMANHO DA PÁGINA, NÃO O FIM DA VARREDURA (#1540) ═══
+      //
+      // `limit(TETO)` sem cursor varre os 200 mais ANTIGOS e para ali. Em 201
+      // negócios abertos em silêncio, os 200 mais antigos voltam a ocupar a
+      // janela a cada rodada como `ja_emitido`, e o mais novo nunca recebe o
+      // evento: a regra está salva, o operador espera, e nada acontece — sem
+      // erro e sem log. O cursor (`id > último`) anda página a página até o
+      // fim do conjunto, e a ordem é por `id`, que é TOTAL: `created_at` empatado
+      // (mesmo segundo, importação em lote) deixaria a página seguinte repetir
+      // ou pular linha.
+      //
+      // Por que o corte não vai para o SQL no silêncio: a âncora é a última
+      // MENSAGEM, que pode ser anterior ao próprio negócio (contato que já
+      // falava antes de o card nascer). `created_at <= agora - N dias`
+      // deixaria de fora justamente o contato que nunca respondeu. Na etapa
+      // parada o corte JÁ está no SQL (`stage_changed_at <= corte`), porque
+      // ali a âncora é a coluna filtrada.
+      let falhouNaConsulta = false;
+
       if (silencio) {
-        let consulta = admin
-          .from("crm_leads")
-          .select("id, contact_id, created_at")
-          .eq("organization_id", org)
-          .eq("status", "open")
-          .not("contact_id", "is", null)
-          .order("created_at", { ascending: true })
-          .limit(TETO_POR_ORGANIZACAO);
-        if (silencio.pipeline_id) consulta = consulta.eq("pipeline_id", silencio.pipeline_id);
-
-        const { data: leads, error } = await consulta;
-        if (error) {
-          logger.error("[lead-time-triggers] consulta de negócios falhou", {
-            organization_id: org,
-            rule_id: regra.id,
-            error: error.message,
-            requestId,
-          });
-          pular("consulta_falhou");
-          continue;
-        }
-        if (!leads?.length) continue;
-
-        const contatos = [...new Set(leads.map((l) => l.contact_id as string))];
         const coluna = colunaDaDirecao(silencio.direcao);
-        const { data: conversas, error: erroConversas } = await admin
-          .from("conversations")
-          .select(`contact_id, ${coluna}`)
-          .eq("organization_id", org)
-          .in("contact_id", contatos)
-          .limit(1_000);
-        if (erroConversas) {
-          pular("consulta_falhou");
-          continue;
-        }
+        let cursor: string | null = null;
 
-        // Um contato pode ter várias conversas: a âncora é a MAIS RECENTE delas.
-        const ultimaPorContato = new Map<string, string>();
-        for (const conversa of (conversas ?? []) as unknown as Array<Record<string, unknown>>) {
-          const valor = conversa[coluna];
-          if (typeof valor !== "string" || !valor) continue;
-          const atual = ultimaPorContato.get(conversa.contact_id as string);
-          if (!atual || valor > atual) ultimaPorContato.set(conversa.contact_id as string, valor);
-        }
+        for (;;) {
+          let consulta = admin
+            .from("crm_leads")
+            .select("id, contact_id, created_at")
+            .eq("organization_id", org)
+            .eq("status", "open")
+            .not("contact_id", "is", null)
+            .order("id", { ascending: true })
+            .limit(TETO_POR_ORGANIZACAO);
+          if (cursor) consulta = consulta.gt("id", cursor);
+          if (silencio.pipeline_id) consulta = consulta.eq("pipeline_id", silencio.pipeline_id);
 
-        for (const lead of leads) {
-          const ancora = ancoraDoSilencio(
-            ultimaPorContato.get(lead.contact_id as string) ?? null,
-            lead.created_at as string,
-            agora,
-            silencio.dias,
-          );
-          if (ancora) candidatos.push({ leadId: lead.id as string, contactId: lead.contact_id as string, ancora });
+          const { data: leads, error } = await consulta;
+          if (error) {
+            logger.error("[lead-time-triggers] consulta de negócios falhou", {
+              organization_id: org,
+              rule_id: regra.id,
+              error: error.message,
+              requestId,
+            });
+            pular("consulta_falhou");
+            falhouNaConsulta = true;
+            break;
+          }
+          if (!leads?.length) break;
+
+          const contatos = [...new Set(leads.map((l) => l.contact_id as string))];
+          // As conversas da PÁGINA, não das páginas juntas: o `.in()` do
+          // PostgREST é uma lista na URL, e junção de páginas num só `in()`
+          // trocaria o teto por um URL que o banco recusa.
+          const { data: conversas, error: erroConversas } = await admin
+            .from("conversations")
+            .select(`contact_id, ${coluna}`)
+            .eq("organization_id", org)
+            .in("contact_id", contatos)
+            .limit(1_000);
+          if (erroConversas) {
+            pular("consulta_falhou");
+            falhouNaConsulta = true;
+            break;
+          }
+
+          // Um contato pode ter várias conversas: a âncora é a MAIS RECENTE delas.
+          const ultimaPorContato = new Map<string, string>();
+          for (const conversa of (conversas ?? []) as unknown as Array<Record<string, unknown>>) {
+            const valor = conversa[coluna];
+            if (typeof valor !== "string" || !valor) continue;
+            const atual = ultimaPorContato.get(conversa.contact_id as string);
+            if (!atual || valor > atual) ultimaPorContato.set(conversa.contact_id as string, valor);
+          }
+
+          for (const lead of leads) {
+            const ancora = ancoraDoSilencio(
+              ultimaPorContato.get(lead.contact_id as string) ?? null,
+              lead.created_at as string,
+              agora,
+              silencio.dias,
+            );
+            if (ancora) candidatos.push({ leadId: lead.id as string, contactId: lead.contact_id as string, ancora });
+          }
+
+          if (leads.length < TETO_POR_ORGANIZACAO) break;
+          cursor = leads[leads.length - 1]!.id as string;
         }
+        if (falhouNaConsulta) continue;
 
         if (candidatos.length && silencio.proteger_pela_agenda) {
           const protecoes = await protecaoAgendaSupabase(
@@ -212,34 +245,44 @@ async function handle(req: NextRequest): Promise<Response> {
         }
       } else if (etapa) {
         const corte = new Date(agora.getTime() - etapa.dias * 86_400_000).toISOString();
-        let consulta = admin
-          .from("crm_leads")
-          .select("id, contact_id, stage_changed_at")
-          .eq("organization_id", org)
-          .eq("status", "open")
-          .not("stage_changed_at", "is", null)
-          .lte("stage_changed_at", corte)
-          .order("created_at", { ascending: true })
-          .limit(TETO_POR_ORGANIZACAO);
-        if (etapa.pipeline_id) consulta = consulta.eq("pipeline_id", etapa.pipeline_id);
-        if (etapa.stage_id) consulta = consulta.eq("stage_id", etapa.stage_id);
+        let cursor: string | null = null;
 
-        const { data: leads, error } = await consulta;
-        if (error) {
-          logger.error("[lead-time-triggers] consulta de negócios falhou", {
-            organization_id: org,
-            rule_id: regra.id,
-            error: error.message,
-            requestId,
-          });
-          pular("consulta_falhou");
-          continue;
-        }
+        for (;;) {
+          let consulta = admin
+            .from("crm_leads")
+            .select("id, contact_id, stage_changed_at")
+            .eq("organization_id", org)
+            .eq("status", "open")
+            .not("stage_changed_at", "is", null)
+            .lte("stage_changed_at", corte)
+            .order("id", { ascending: true })
+            .limit(TETO_POR_ORGANIZACAO);
+          if (cursor) consulta = consulta.gt("id", cursor);
+          if (etapa.pipeline_id) consulta = consulta.eq("pipeline_id", etapa.pipeline_id);
+          if (etapa.stage_id) consulta = consulta.eq("stage_id", etapa.stage_id);
 
-        for (const lead of leads ?? []) {
-          const ancora = ancoraDaEtapa(lead.stage_changed_at as string | null, agora, etapa.dias);
-          if (ancora) candidatos.push({ leadId: lead.id as string, contactId: lead.contact_id as string | null, ancora });
+          const { data: leads, error } = await consulta;
+          if (error) {
+            logger.error("[lead-time-triggers] consulta de negócios falhou", {
+              organization_id: org,
+              rule_id: regra.id,
+              error: error.message,
+              requestId,
+            });
+            pular("consulta_falhou");
+            falhouNaConsulta = true;
+            break;
+          }
+
+          for (const lead of leads ?? []) {
+            const ancora = ancoraDaEtapa(lead.stage_changed_at as string | null, agora, etapa.dias);
+            if (ancora) candidatos.push({ leadId: lead.id as string, contactId: lead.contact_id as string | null, ancora });
+          }
+
+          if (!leads || leads.length < TETO_POR_ORGANIZACAO) break;
+          cursor = leads[leads.length - 1]!.id as string;
         }
+        if (falhouNaConsulta) continue;
 
         if (candidatos.length && etapa.proteger_pela_agenda) {
           const contatos = candidatos.map((c) => c.contactId).filter((c): c is string => Boolean(c));

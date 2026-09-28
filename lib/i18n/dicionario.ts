@@ -12735,6 +12735,11 @@ export const DICIONARIO: Traducoes = {
   "Vence em (dias)": { es: "Vence en (días)" },
   "Atribuir a": { es: "Asignar a" },
   "Dono do negócio": { es: "Dueño del negocio" },
+  "Este nó cria uma tarefa para a equipe — nenhuma mensagem sai para o cliente.":
+    { es: "Este nodo crea una tarea para el equipo — ningún mensaje sale al cliente." },
+  "Somente interno": { es: "Solo interno" },
+  "O fluxo inteiro não fala com o cliente: a publicação recusa qualquer nó que envie mensagem.":
+    { es: "El flujo entero no habla con el cliente: la publicación rechaza cualquier nodo que envíe un mensaje." },
   "O lembrete sai quando se passarem N dias sem mensagem na direção escolhida. Chegando mensagem nova, o relógio zera — e um novo silêncio de N dias gera outro lembrete. Nada é enviado ao cliente.": { es: "El recordatorio sale cuando pasan N días sin mensaje en la dirección elegida. Llegando un mensaje nuevo, el reloj se reinicia — y un nuevo silencio de N días genera otro recordatorio. No se envía nada al cliente." },
   "O lembrete sai quando se passarem N dias com o card na mesma etapa. Mudando a etapa, o relógio zera. Nada é enviado ao cliente.": { es: "El recordatorio sale cuando la tarjeta lleva N días en la misma etapa. Cambiando de etapa, el reloj se reinicia. No se envía nada al cliente." },
   "Depois de N dias": { es: "Después de N días" },

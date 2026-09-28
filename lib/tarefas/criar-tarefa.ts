@@ -23,6 +23,7 @@ import { logger } from "@/lib/logger";
 import { nomeDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { truncar } from "@/lib/notifications/push_payload";
 import { enviarPushAoUsuario } from "@/lib/notifications/web_push";
+import { registraAtividadeDaTarefa } from "@/lib/tarefas/atividade";
 import { PRIORIDADES_DA_TAREFA, type PrioridadeDaTarefa } from "@/lib/tarefas/tipos";
 
 /**
@@ -94,11 +95,12 @@ export function interpolarTitulo(
 }
 
 /**
- * Grava a tarefa, audita e (se houver responsável) manda o push.
+ * Grava a tarefa, audita, registra na linha do tempo do negócio e (se houver
+ * responsável) manda o push.
  *
- * A ordem importa: INSERT → audit → push. Se cair no meio, sobra a tarefa sem
- * o aviso — o cenário recuperável (a pessoa vê a tarefa na lista); a ordem
- * contrária deixaria push apontando para tarefa que não existe.
+ * A ordem importa: INSERT → audit → atividade → push. Se cair no meio, sobra a
+ * tarefa sem o aviso — o cenário recuperável (a pessoa vê a tarefa na lista); a
+ * ordem contrária deixaria push apontando para tarefa que não existe.
  *
  * `sem_dono` não é erro de infraestrutura: a regra pediu "dono do negócio" e o
  * negócio não tem dono. Não criamos tarefa órfã — ela não lembra ninguém, e a
@@ -190,6 +192,27 @@ export async function criarTarefaInterna(
       vence_em_dias: pedido.venceEmDias,
     },
     ...(pedido.requestId ? { requestId: pedido.requestId } : {}),
+  });
+
+  // O LAÇO DE RETORNO (#1540): a tarefa automática entra na linha do tempo do
+  // negócio do MESMO jeito que a criada pela tela (`POST /api/v1/tasks` →
+  // `registraAtividadeDaTarefa`). Sem esta chamada, o card do lead mostrava a
+  // conversa parada sem sinal nenhum de que o sistema marcou um retorno — e o
+  // operador perguntava se o follow-up tinha parado. O ator é `system`
+  // (`webhook_source` com a origem, o padrão de `nascimento-do-lead.ts`):
+  // quem criou foi a regra, não uma pessoa.
+  await registraAtividadeDaTarefa(db, {
+    organizationId: pedido.organizationId,
+    tarefa: {
+      id: tarefaId,
+      title: titulo,
+      due_date: dueDate,
+      priority: pedido.prioridade,
+      lead_id: lead?.id ?? null,
+      contact_id: contactId,
+    },
+    tipo: "task_created",
+    actor: { type: "webhook_source", id: pedido.origem },
   });
 
   if (assignedTo) {
