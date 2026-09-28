@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 import { requireRole } from "@/lib/auth/require-role";
+import type * as Embed from "@/lib/ai/embed";
 
 /**
  * POST /api/v1/ai/knowledge/busca — "perguntar ao acervo" pelo operador.
@@ -25,7 +26,7 @@ import { requireRole } from "@/lib/auth/require-role";
 
 vi.mock("@/lib/ai/embed", async (original) => ({
   // A classe de erro é a REAL: a rota decide o 409 por `instanceof`.
-  ...(await original<typeof import("@/lib/ai/embed")>()),
+  ...(await original<typeof Embed>()),
   embedText: vi.fn(async () => ({ embedding: new Array(1536).fill(0.1) })),
 }));
 vi.mock("@/lib/ai/dispatcher/rate-limit", () => ({
