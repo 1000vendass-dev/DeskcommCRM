@@ -130,6 +130,11 @@ export const DICIONARIO: Traducoes = {
       es: "Con el valor, Google puede optimizar por ingresos y no solo por volumen. Una venta sin valor se envía sin valor, nunca como cero.",
     },
   "Enviar o telefone do contato criptografado": { es: "Enviar el teléfono del contacto cifrado" },
+  "Enviar vendas pelo canal da conversa": { es: "Enviar ventas por el canal de la conversación" },
+  "Sem conexão direta com a Meta, a venda de quem veio de anúncio pode ir pelo canal intermediado do WhatsApp, quando ele já liga o seu conjunto de dados da Meta ao número. Saem para o provedor do canal o valor, a moeda, o telefone do cliente e a conversa. Vem desligado: ligue só se a sua política de privacidade cobre esse uso.":
+    {
+      es: "Sin conexión directa con Meta, la venta de quien vino de un anuncio puede ir por el canal intermediado de WhatsApp, cuando este ya vincula tu conjunto de datos de Meta al número. Al proveedor del canal salen el valor, la moneda, el teléfono del cliente y la conversación. Viene desactivado: actívalo solo si tu política de privacidad cubre ese uso.",
+    },
   "O telefone vai em SHA-256, nunca em claro, e ajuda o Google a ligar a conversão a quem clicou no anúncio. É dado pessoal: ligue só se a sua política de privacidade cobre esse uso.":
     {
       es: "El teléfono va en SHA-256, nunca en claro, y ayuda a Google a vincular la conversión con quien hizo clic en el anuncio. Es un dato personal: actívalo solo si tu política de privacidad cubre ese uso.",
@@ -2764,6 +2769,11 @@ export const DICIONARIO: Traducoes = {
   "Enviando...": { es: "Enviando..." },
   // ─── lib/ai/case-copy.ts (status, ações e timeline dos casos humanos) ───
   "Aguardando você": { es: "Esperando tu respuesta" },
+  // Os contadores do menu (`components/shell/ContadorDeCasos.tsx` e `ContadorDaFila.tsx`).
+  "1 caso esperando você": { es: "1 caso esperándote" },
+  "casos esperando você": { es: "casos esperándote" },
+  "1 conversa esperando uma pessoa": { es: "1 conversación esperando a una persona" },
+  "conversas esperando uma pessoa": { es: "conversaciones esperando a una persona" },
   "Virou atendimento humano": { es: "Pasó a atención humana" },
   "Aguardando o cliente responder — a IA avisa você quando tiver a informação.": {
     es: "Esperando la respuesta del cliente. La IA te avisará cuando tenga la información.",
@@ -9887,6 +9897,7 @@ export const DICIONARIO: Traducoes = {
 
   // Formulário da conexão de conversões
   "Conexão salva.": { es: "Conexión guardada." },
+  "Não consegui salvar agora.": { es: "No pude guardar ahora." },
   "Identificador do destino de conversões": { es: "Identificador del destino de conversiones" },
   "Só números. Você encontra no gerenciador de anúncios, na fonte de dados que recebe as conversões.":
     { es: "Solo números. Lo encuentras en el administrador de anuncios, en la fuente de datos que recibe las conversiones." },
