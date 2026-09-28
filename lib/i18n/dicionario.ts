@@ -130,6 +130,11 @@ export const DICIONARIO: Traducoes = {
       es: "Con el valor, Google puede optimizar por ingresos y no solo por volumen. Una venta sin valor se envía sin valor, nunca como cero.",
     },
   "Enviar o telefone do contato criptografado": { es: "Enviar el teléfono del contacto cifrado" },
+  "Enviar vendas pelo canal da conversa": { es: "Enviar ventas por el canal de la conversación" },
+  "Sem conexão direta com a Meta, a venda de quem veio de anúncio pode ir pelo canal intermediado do WhatsApp, quando ele já liga o seu conjunto de dados da Meta ao número. Saem para o provedor do canal o valor, a moeda, o telefone do cliente e a conversa. Vem desligado: ligue só se a sua política de privacidade cobre esse uso.":
+    {
+      es: "Sin conexión directa con Meta, la venta de quien vino de un anuncio puede ir por el canal intermediado de WhatsApp, cuando este ya vincula tu conjunto de datos de Meta al número. Al proveedor del canal salen el valor, la moneda, el teléfono del cliente y la conversación. Viene desactivado: actívalo solo si tu política de privacidad cubre ese uso.",
+    },
   "O telefone vai em SHA-256, nunca em claro, e ajuda o Google a ligar a conversão a quem clicou no anúncio. É dado pessoal: ligue só se a sua política de privacidade cobre esse uso.":
     {
       es: "El teléfono va en SHA-256, nunca en claro, y ayuda a Google a vincular la conversión con quien hizo clic en el anuncio. Es un dato personal: actívalo solo si tu política de privacidad cubre ese uso.",
@@ -539,7 +544,7 @@ export const DICIONARIO: Traducoes = {
   "Remover logo escuro": { es: "Eliminar logo oscuro" },
   "Use uma versão legível sobre fundo escuro. Ela aparece sem moldura branca. Sem ela, o logo padrão mantém a proteção de contraste. PNG ou JPG, até 512 KB.": { es: "Usa una versión legible sobre fondo oscuro. Se muestra sin marco blanco. Sin ella, el logo predeterminado conserva la protección de contraste. PNG o JPG, hasta 512 KB." },
   // /admin/marca — ícone da aba (favicon), migration 0443.
-  "Ícone da aba (favicon)": { es: "Ícono de la pestaña (favicon)" },
+  "Ícone do aplicativo e do navegador": { es: "Ícono de la aplicación y del navegador" },
   "Ícone da aba": { es: "Ícono de la pestaña" },
   "Remover ícone": { es: "Eliminar ícono" },
   "Ícone da aba atualizado.": { es: "Ícono de la pestaña actualizado." },
@@ -551,11 +556,11 @@ export const DICIONARIO: Traducoes = {
   "Você não tem permissão para trocar o ícone da aba.": {
     es: "No tienes permiso para cambiar el ícono de la pestaña.",
   },
-  "Imagem quadrada, de preferência 64×64 ou maior. PNG ou JPG, até": {
-    es: "Imagen cuadrada, preferiblemente de 64×64 o mayor. PNG o JPG, hasta",
+  "Imagem quadrada, de preferência 512×512 ou maior. PNG ou JPG, até": {
+    es: "Imagen cuadrada, preferiblemente de 512×512 o mayor. PNG o JPG, hasta",
   },
-  "KB. Sem ícone próprio, a aba mostra a inicial do nome sobre a cor da marca.": {
-    es: "KB. Sin ícono propio, la pestaña muestra la inicial del nombre sobre el color de la marca.",
+  "KB. Usada no navegador e no aplicativo instalado. Sem arquivo, mantém o desenho da marca.": {
+    es: "KB. Se usa en el navegador y en la aplicación instalada. Sin archivo, conserva el dibujo de la marca.",
   },
   // /admin/email — o servidor SMTP da instalação (PR #714, @betoarts, recorte).
   "Servidor de e-mail conectado e autenticado.": { es: "Servidor de correo conectado y autenticado." },
@@ -2765,6 +2770,11 @@ export const DICIONARIO: Traducoes = {
   "Enviando...": { es: "Enviando..." },
   // ─── lib/ai/case-copy.ts (status, ações e timeline dos casos humanos) ───
   "Aguardando você": { es: "Esperando tu respuesta" },
+  // Os contadores do menu (`components/shell/ContadorDeCasos.tsx` e `ContadorDaFila.tsx`).
+  "1 caso esperando você": { es: "1 caso esperándote" },
+  "casos esperando você": { es: "casos esperándote" },
+  "1 conversa esperando uma pessoa": { es: "1 conversación esperando a una persona" },
+  "conversas esperando uma pessoa": { es: "conversaciones esperando a una persona" },
   "Virou atendimento humano": { es: "Pasó a atención humana" },
   "Aguardando o cliente responder — a IA avisa você quando tiver a informação.": {
     es: "Esperando la respuesta del cliente. La IA te avisará cuando tenga la información.",
@@ -9942,6 +9952,7 @@ export const DICIONARIO: Traducoes = {
 
   // Formulário da conexão de conversões
   "Conexão salva.": { es: "Conexión guardada." },
+  "Não consegui salvar agora.": { es: "No pude guardar ahora." },
   "Identificador do destino de conversões": { es: "Identificador del destino de conversiones" },
   "Só números. Você encontra no gerenciador de anúncios, na fonte de dados que recebe as conversões.":
     { es: "Solo números. Lo encuentras en el administrador de anuncios, en la fuente de datos que recibe las conversiones." },
