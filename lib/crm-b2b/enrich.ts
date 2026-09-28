@@ -13,6 +13,17 @@ import { logger } from "@/lib/logger";
 
 type SB = SupabaseClient;
 
+/**
+ * A resposta da BrasilAPI traz o quadro de sócios (`qsa`): nome e parte do CPF
+ * de gente que não é cliente de ninguém aqui. Nenhuma tela usa, e guardar seria
+ * dado pessoal sem finalidade nem caminho de anonimização — sai antes de gravar.
+ */
+function semSocios(raw: unknown): Record<string, unknown> | null {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null;
+  const { qsa: _qsa, ...resto } = raw as Record<string, unknown>;
+  return resto;
+}
+
 export async function enrichCompanyFromBrasilApi(
   supabase: SB,
   opts: { organizationId: string; companyId: string; cnpj?: string | null },
@@ -83,7 +94,7 @@ export async function enrichCompanyFromBrasilApi(
       enrichment_status: "completed",
       enrichment_error: null,
       enriched_at: new Date().toISOString(),
-      brasilapi_raw: result.raw as Record<string, unknown>,
+      brasilapi_raw: semSocios(result.raw),
     })
     .eq("organization_id", organizationId)
     .eq("id", companyId);

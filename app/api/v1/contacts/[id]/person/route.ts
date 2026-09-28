@@ -8,6 +8,7 @@ import {
   handleRouteError,
   ok,
   requestIdOf,
+  seModuloB2bDesligado,
 } from "@/lib/crm-b2b/route-helpers";
 import { createClient } from "@/lib/supabase/server";
 
@@ -22,6 +23,8 @@ const bodySchema = z.object({
 /** PATCH /api/v1/contacts/:id/person — associa contact a people (same org). */
 export async function PATCH(req: NextRequest, { params }: Ctx): Promise<Response> {
   const requestId = requestIdOf(req);
+  const desligado = await seModuloB2bDesligado(requestId);
+  if (desligado) return desligado;
   const authz = await requireRole("agent", { requestId, resource: "contacts" });
   if (!authz.ok) return authz.response;
   const { id } = await params;

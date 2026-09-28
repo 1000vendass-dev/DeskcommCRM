@@ -93,6 +93,7 @@ export async function processCompaniesPeopleImport(
     try {
       const outcome = await processOneRow(supabase, {
         organizationId,
+        batchId,
         userId,
         mapped,
         companyByKey,
@@ -131,11 +132,17 @@ export async function processCompaniesPeopleImport(
     }
   }
 
-  if (enrich) {
-    for (const companyId of companiesToEnrich) {
-      // Não bloqueia o lote: falha de enriquecimento fica no status da empresa.
-      void enrichCompanyFromBrasilApi(supabase, { organizationId, companyId });
-    }
+  if (enrich && companiesToEnrich.size > 0) {
+    // Não bloqueia o lote: falha de enriquecimento fica no status da empresa.
+    // UMA consulta por vez: disparar todas juntas mandava até 2.000 pedidos
+    // simultâneos à BrasilAPI, que é pública e limita por origem.
+    // ponytail: fila em memória do processo; um worker em event_log se o
+    // reinício no meio do lote (empresa presa em `pending`) aparecer medido.
+    void (async () => {
+      for (const companyId of companiesToEnrich) {
+        await enrichCompanyFromBrasilApi(supabase, { organizationId, companyId });
+      }
+    })();
   }
 
   const processed = successful + failed + conflict;
@@ -164,6 +171,7 @@ async function processOneRow(
   supabase: SB,
   ctx: {
     organizationId: string;
+    batchId: string;
     userId: string;
     mapped: Record<MappingField, string>;
     companyByKey: Map<string, string>;
@@ -330,7 +338,7 @@ async function processOneRow(
       if (existing.person_id && personId && existing.person_id !== personId) {
         return {
           status: "conflict",
-          error: `Telefone ${phoneE164} já vinculado a outra pessoa.`,
+          error: "Telefone já vinculado a outra pessoa.",
           companyId,
           personId,
           contactId: existing.id,
@@ -360,7 +368,7 @@ async function processOneRow(
           email: mapped.email.trim() || null,
           person_id: personId ?? null,
           source: "import_csv",
-          source_metadata: { import_batch_id: true },
+          source_metadata: { import_batch_id: ctx.batchId },
           created_by_user_id: userId,
         })
         .select("id")
@@ -370,7 +378,7 @@ async function processOneRow(
         if (error?.code === "23505") {
           return {
             status: "conflict",
-            error: `Telefone ${phoneE164} já existe (conflito de unicidade).`,
+            error: "Telefone já cadastrado (outro envio chegou antes).",
             companyId,
             personId,
             phoneE164,

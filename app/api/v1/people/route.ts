@@ -10,6 +10,7 @@ import {
   handleRouteError,
   ok,
   requestIdOf,
+  seModuloB2bDesligado,
 } from "@/lib/crm-b2b/route-helpers";
 import { createClient } from "@/lib/supabase/server";
 
@@ -17,6 +18,8 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest): Promise<Response> {
   const requestId = requestIdOf(req);
+  const desligado = await seModuloB2bDesligado(requestId);
+  if (desligado) return desligado;
   const authz = await requireRole("viewer", { requestId, resource: "people" });
   if (!authz.ok) return authz.response;
 
@@ -37,6 +40,8 @@ export async function GET(req: NextRequest): Promise<Response> {
 
 export async function POST(req: NextRequest): Promise<Response> {
   const requestId = requestIdOf(req);
+  const desligado = await seModuloB2bDesligado(requestId);
+  if (desligado) return desligado;
   const authz = await requireRole("manager", { requestId, resource: "people" });
   if (!authz.ok) return authz.response;
 

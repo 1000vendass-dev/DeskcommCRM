@@ -18,26 +18,10 @@ export function CompanyDetailClient({ id }: Props) {
     contacts: Array<Record<string, unknown>>;
   } | null>(null);
   const [enriching, setEnriching] = useState(false);
-  const [campaigns, setCampaigns] = useState<
-    Array<{
-      recipient_id: string;
-      campaign_id: string;
-      campaign_name: string | null;
-      person: string | null;
-      phone: string;
-      status: string;
-      sent_at: string | null;
-      replied_at: string | null;
-    }>
-  >([]);
-
   const load = useCallback(async () => {
     const res = await fetch(`/api/v1/companies/${id}`);
     const json = await res.json();
     if (res.ok) setData(json.data);
-    const cRes = await fetch(`/api/v1/companies/${id}/campaigns`);
-    const cJson = await cRes.json();
-    if (cRes.ok && Array.isArray(cJson.data)) setCampaigns(cJson.data);
   }, [id]);
 
   useEffect(() => {
@@ -149,43 +133,6 @@ export function CompanyDetailClient({ id }: Props) {
           )}
         </Card>
 
-        <Card className="space-y-2 p-4 md:col-span-2">
-          <h2 className="font-medium">{t("Campanhas")}</h2>
-          {campaigns.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {t("Nenhuma participação em campanha ainda.")}
-            </p>
-          ) : (
-            <ul className="space-y-2 text-sm">
-              {campaigns.map((row) => (
-                <li
-                  key={row.recipient_id}
-                  className="flex flex-wrap items-baseline justify-between gap-2 border-b pb-2"
-                >
-                  <div>
-                    <Link
-                      href={`/app/whatsapp-campaigns/${row.campaign_id}`}
-                      className="font-medium hover:underline"
-                    >
-                      {row.campaign_name || row.campaign_id.slice(0, 8)}
-                    </Link>
-                    <div className="text-muted-foreground">
-                      {row.person || "—"} · {row.phone} · {row.status}
-                      {row.replied_at
-                        ? ` · ${t("Resposta")}: ${new Date(row.replied_at).toLocaleString()}`
-                        : ""}
-                    </div>
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {row.sent_at
-                      ? new Date(row.sent_at).toLocaleDateString()
-                      : "—"}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
       </div>
     </div>
   );

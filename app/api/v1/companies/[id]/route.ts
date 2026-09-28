@@ -10,6 +10,7 @@ import {
   handleRouteError,
   ok,
   requestIdOf,
+  seModuloB2bDesligado,
 } from "@/lib/crm-b2b/route-helpers";
 import { createClient } from "@/lib/supabase/server";
 
@@ -19,6 +20,8 @@ type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(req: NextRequest, { params }: Ctx): Promise<Response> {
   const requestId = requestIdOf(req);
+  const desligado = await seModuloB2bDesligado(requestId);
+  if (desligado) return desligado;
   const authz = await requireRole("viewer", { requestId, resource: "companies" });
   if (!authz.ok) return authz.response;
   const { id } = await params;
@@ -34,6 +37,8 @@ export async function GET(req: NextRequest, { params }: Ctx): Promise<Response> 
 
 export async function PATCH(req: NextRequest, { params }: Ctx): Promise<Response> {
   const requestId = requestIdOf(req);
+  const desligado = await seModuloB2bDesligado(requestId);
+  if (desligado) return desligado;
   const authz = await requireRole("agent", { requestId, resource: "companies" });
   if (!authz.ok) return authz.response;
   const { id } = await params;

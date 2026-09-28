@@ -7,6 +7,7 @@ import {
   handleRouteError,
   ok,
   requestIdOf,
+  seModuloB2bDesligado,
 } from "@/lib/crm-b2b/route-helpers";
 import { createClient } from "@/lib/supabase/server";
 
@@ -17,6 +18,8 @@ type Ctx = { params: Promise<{ id: string }> };
 /** POST /api/v1/companies/:id/enrich — reprocessa BrasilAPI (manager+). */
 export async function POST(req: NextRequest, { params }: Ctx): Promise<Response> {
   const requestId = requestIdOf(req);
+  const desligado = await seModuloB2bDesligado(requestId);
+  if (desligado) return desligado;
   const authz = await requireRole("manager", { requestId, resource: "companies" });
   if (!authz.ok) return authz.response;
   const { id } = await params;

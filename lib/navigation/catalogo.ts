@@ -249,6 +249,8 @@ export const NAV_CATALOG = [
     // SEM sidebar: o CRM já tem Funis/Contatos/Tarefas no menu diário; este trio
     // mora no hub "Ver tudo em CRM" para não reabrir a corrida por pixel.
     minRole: "viewer",
+    // Módulo opcional da instalação, desligado por padrão (doc 68, #1621).
+    modulo: "crm_b2b",
   },
   {
     href: "/app/people",
@@ -258,6 +260,8 @@ export const NAV_CATALOG = [
     group: "crm",
     section: "O dia a dia da venda",
     minRole: "viewer",
+    // Módulo opcional da instalação, desligado por padrão (doc 68, #1621).
+    modulo: "crm_b2b",
   },
   {
     // Extraída do PR #418 (@clinicacentrodosorrisosc-code). Fica no CRM e no
@@ -342,6 +346,8 @@ export const NAV_CATALOG = [
     group: "crm",
     section: "Preparar a venda",
     minRole: "manager",
+    // Módulo opcional da instalação, desligado por padrão (doc 68, #1621).
+    modulo: "crm_b2b",
   },
   {
     href: "/app/proposals",
