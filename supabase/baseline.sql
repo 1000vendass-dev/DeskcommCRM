@@ -36800,6 +36800,276 @@ alter table public.meta_templates
 comment on column public.meta_templates.saved_values is
   'Valores que o operador salvou para reaproveitar em todo disparo deste modelo, chaveados como template_values (slotKey: header:1, button0:1). Só link de mídia: a rota de escrita recusa valor de texto, que costuma ser dado de pessoa. Sobrevive à sincronização, que não lista esta coluna no upsert.';
 
+-- ---- honorários: primeiro módulo oficial via ADR-0002 (migration 0480) ----
+-- ⚠️ ANTES DA VARREDURA anon: cria função. Corpo completo e o porquê de cada
+-- decisão (D2/D4/D5/D8) em supabase/migrations/20260928150200_0480_honorarios_modulo_oficial.sql —
+-- criar a função aqui NÃO cria tabela nenhuma; as tabelas só nascem quando um
+-- administrador da instalação chama fn_modulo_instalar('honorarios', ...).
+
+create or replace function public.fn_honorarios_provisionar()
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $f$
+begin
+  create table if not exists public.honorarios_contratos (
+    id uuid primary key default gen_random_uuid(),
+    organization_id uuid not null references public.organizations(id) on delete cascade,
+
+    -- Preservado mesmo se o lead for excluído (mesma decisão de
+    -- `financial_entries.sale_id`): o contrato é registro financeiro e sobrevive
+    -- à linha operacional que o originou.
+    lead_id uuid references public.crm_leads(id) on delete set null,
+
+    -- `text` + CHECK, não enum (doutrina: enum é difícil de estender).
+    modelo text not null check (modelo in ('fixo', 'exito', 'misto')),
+
+    valor_fixo_cents bigint check (valor_fixo_cents is null or valor_fixo_cents > 0),
+    percentual_exito numeric(5,2) check (percentual_exito is null or (percentual_exito > 0 and percentual_exito <= 100)),
+    repasse_advogado_pct numeric(5,2) check (repasse_advogado_pct is null or (repasse_advogado_pct >= 0 and repasse_advogado_pct <= 100)),
+
+    -- Modelo declara o campo que faz sentido: fixo pede valor, êxito pede
+    -- percentual, misto pede os dois. Não impede o resto de ficar em branco.
+    constraint honorarios_contratos_modelo_tem_o_campo check (
+      (modelo = 'fixo' and valor_fixo_cents is not null)
+      or (modelo = 'exito' and percentual_exito is not null)
+      or (modelo = 'misto' and valor_fixo_cents is not null and percentual_exito is not null)
+    ),
+
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+  );
+
+  create index if not exists honorarios_contratos_org_idx
+    on public.honorarios_contratos (organization_id);
+  create index if not exists honorarios_contratos_lead_idx
+    on public.honorarios_contratos (organization_id, lead_id) where lead_id is not null;
+
+  create table if not exists public.honorarios_parcelas (
+    id uuid primary key default gen_random_uuid(),
+    organization_id uuid not null references public.organizations(id) on delete cascade,
+    contrato_id uuid not null references public.honorarios_contratos(id) on delete cascade,
+
+    numero integer not null check (numero > 0),
+    vencimento date not null,
+    valor_cents bigint not null check (valor_cents > 0),
+
+    -- Preservada mesmo se o lançamento do caixa for desfeito — a MESMA decisão
+    -- de `financial_entries.sale_id`: o link é conveniência de navegação, nunca
+    -- a fonte da verdade do valor ou da data.
+    financial_entry_id uuid references public.financial_entries(id) on delete set null,
+
+    status text not null default 'pendente' check (status in ('pendente', 'pago', 'atrasado')),
+
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+
+    constraint honorarios_parcelas_numero_unico unique (contrato_id, numero)
+  );
+
+  create index if not exists honorarios_parcelas_org_idx
+    on public.honorarios_parcelas (organization_id);
+  create index if not exists honorarios_parcelas_contrato_idx
+    on public.honorarios_parcelas (organization_id, contrato_id);
+  create index if not exists honorarios_parcelas_vencimento_idx
+    on public.honorarios_parcelas (organization_id, vencimento) where status = 'pendente';
+
+  -- ── RLS POR OPERAÇÃO (D5, ligada aqui e não pela rotina automática) ────────
+  -- Molde da 0464 (propostas): uma policy por operação, espelhando as ROTAS,
+  -- porque o PostgREST é porta tão aberta quanto elas (o JWT da sessão fala com
+  -- ele direto; ver 0150) e o baseline dá GRANT ALL a `authenticated`.
+  --   SELECT  qualquer papel da organização (GET /honorarios/... é `viewer`);
+  --   INSERT  `manager` (POST de contrato e de parcela é `manager`);
+  --   UPDATE  `manager` — nenhuma rota edita, e dinheiro não é coisa que
+  --           `agent` configure (mesmo piso do caixa núcleo, migration 0350);
+  --   DELETE  `manager`, e PARCELA PAGA NÃO SE APAGA: nem ela, nem o contrato
+  --           que a tem (o `on delete cascade` levaria a parcela junto, e a
+  --           cascata de FK não passa por RLS).
+  -- A policy anterior era UMA só, `for all`, com USING = membro e WITH CHECK =
+  -- manager+. DELETE só avalia o USING: `viewer` e `agent` apagavam contrato
+  -- (com as parcelas) ou parcela paga (revisão do #1578).
+  --
+  -- Parcela paga é imutável pela sessão, e a sessão não marca parcela como
+  -- paga: `pago` com `financial_entry_id` só nasce em fn_honorarios_parcela_pagar
+  -- (definer, dona da tabela, não passa por aqui), que lança o caixa junto.
+  -- Deixar a sessão escrever `status`/`financial_entry_id` à mão desfaria esse
+  -- par: "pago" sem lançamento, ou "pendente" de novo para pagar duas vezes.
+  -- A parcela só aponta para contrato da própria organização (a FK só confere
+  -- que o contrato existe).
+  alter table public.honorarios_contratos enable row level security;
+  drop policy if exists tenant_isolation_honorarios_contratos_all on public.honorarios_contratos;
+
+  drop policy if exists honorarios_contratos_select on public.honorarios_contratos;
+  create policy honorarios_contratos_select on public.honorarios_contratos
+    for select using (
+      organization_id in (select public.fn_user_org_ids()) or public.fn_is_platform_admin()
+    );
+
+  drop policy if exists honorarios_contratos_insert on public.honorarios_contratos;
+  create policy honorarios_contratos_insert on public.honorarios_contratos
+    for insert
+    with check (public.fn_is_platform_admin()
+                or (organization_id in (select public.fn_user_org_ids())
+                    and public.fn_role_at_least(organization_id, 'manager')));
+
+  drop policy if exists honorarios_contratos_update on public.honorarios_contratos;
+  create policy honorarios_contratos_update on public.honorarios_contratos
+    for update
+    using (public.fn_is_platform_admin()
+           or (organization_id in (select public.fn_user_org_ids())
+               and public.fn_role_at_least(organization_id, 'manager')))
+    with check (public.fn_is_platform_admin()
+                or (organization_id in (select public.fn_user_org_ids())
+                    and public.fn_role_at_least(organization_id, 'manager')));
+
+  drop policy if exists honorarios_contratos_delete on public.honorarios_contratos;
+  create policy honorarios_contratos_delete on public.honorarios_contratos
+    for delete
+    using ((public.fn_is_platform_admin()
+            or (organization_id in (select public.fn_user_org_ids())
+                and public.fn_role_at_least(organization_id, 'manager')))
+           and not exists (select 1 from public.honorarios_parcelas p
+                            where p.contrato_id = honorarios_contratos.id and p.status = 'pago'));
+  revoke all on public.honorarios_contratos from anon;
+
+  alter table public.honorarios_parcelas enable row level security;
+  drop policy if exists tenant_isolation_honorarios_parcelas_all on public.honorarios_parcelas;
+
+  drop policy if exists honorarios_parcelas_select on public.honorarios_parcelas;
+  create policy honorarios_parcelas_select on public.honorarios_parcelas
+    for select using (
+      organization_id in (select public.fn_user_org_ids()) or public.fn_is_platform_admin()
+    );
+
+  drop policy if exists honorarios_parcelas_insert on public.honorarios_parcelas;
+  create policy honorarios_parcelas_insert on public.honorarios_parcelas
+    for insert
+    with check ((public.fn_is_platform_admin()
+                 or (organization_id in (select public.fn_user_org_ids())
+                     and public.fn_role_at_least(organization_id, 'manager')))
+                and status <> 'pago' and financial_entry_id is null
+                and exists (select 1 from public.honorarios_contratos c
+                             where c.id = contrato_id
+                               and c.organization_id = honorarios_parcelas.organization_id));
+
+  drop policy if exists honorarios_parcelas_update on public.honorarios_parcelas;
+  create policy honorarios_parcelas_update on public.honorarios_parcelas
+    for update
+    using ((public.fn_is_platform_admin()
+            or (organization_id in (select public.fn_user_org_ids())
+                and public.fn_role_at_least(organization_id, 'manager')))
+           and status <> 'pago')
+    with check ((public.fn_is_platform_admin()
+                 or (organization_id in (select public.fn_user_org_ids())
+                     and public.fn_role_at_least(organization_id, 'manager')))
+                and status <> 'pago' and financial_entry_id is null
+                and exists (select 1 from public.honorarios_contratos c
+                             where c.id = contrato_id
+                               and c.organization_id = honorarios_parcelas.organization_id));
+
+  drop policy if exists honorarios_parcelas_delete on public.honorarios_parcelas;
+  create policy honorarios_parcelas_delete on public.honorarios_parcelas
+    for delete
+    using ((public.fn_is_platform_admin()
+            or (organization_id in (select public.fn_user_org_ids())
+                and public.fn_role_at_least(organization_id, 'manager')))
+           and status <> 'pago');
+  revoke all on public.honorarios_parcelas from anon;
+
+  comment on table public.honorarios_contratos is
+    'Modelo de cobrança do caso (fixo/êxito/misto). Financeiro real (contas, lançamentos) é o caixa núcleo — este módulo só descreve o contrato.';
+  comment on table public.honorarios_parcelas is
+    'Calendário de parcelas do contrato. Pagar uma parcela cria um financial_entries e liga por financial_entry_id; não há tabela de "pagamento" própria.';
+
+  -- RLS já ligada por nós, então esta rotina não mexe mais nelas (D5) — só
+  -- aplica as travas de suporte, que dependem de RLS já estar de pé.
+  perform public.fn_proteger_modulo_provisionado();
+end;
+$f$;
+
+revoke execute on function public.fn_honorarios_provisionar() from public, anon, authenticated;
+grant execute on function public.fn_honorarios_provisionar() to service_role;
+
+-- ---- fn_honorarios_parcela_pagar: pagamento atômico (migration 0480, achado da revisão do PR #1578) ----
+-- D7 (ADR-0002): `record`, não `honorarios_parcelas%rowtype` — compila mesmo antes do módulo
+-- instalado. Mesmo desenho de fn_finalizar_comanda (migration 0351): security definer + for
+-- update + fn_role_at_least, para a transição pendente→pago ser atômica (dois cliques na
+-- mesma parcela não lançam duas vezes no caixa).
+create or replace function public.fn_honorarios_parcela_pagar(
+  p_org uuid,
+  p_parcela uuid,
+  p_account_id uuid,
+  p_account_plan_id uuid default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_parcela record;
+  v_entry uuid;
+begin
+  if auth.uid() is null or not public.fn_role_at_least(p_org, 'manager') then
+    raise exception 'honorarios_forbidden' using errcode = '42501';
+  end if;
+
+  select * into v_parcela from public.honorarios_parcelas
+   where id = p_parcela and organization_id = p_org
+   for update;
+
+  if not found then
+    raise exception 'parcela_nao_encontrada' using errcode = 'P0002';
+  end if;
+  if v_parcela.status = 'pago' then
+    raise exception 'parcela_ja_paga' using errcode = '22023';
+  end if;
+
+  -- A conta e o plano vêm do corpo da requisição, e a função é definer: sem esta
+  -- conferência a FK aceitaria a conta de OUTRA organização e o dinheiro desta
+  -- entraria no extrato de lá. fn_finalizar_comanda resolve a conta pela forma de
+  -- pagamento filtrada por p_org; aqui a conta chega direto, então o filtro é este.
+  if not exists (
+    select 1 from public.financial_accounts
+     where id = p_account_id and organization_id = p_org and is_active
+  ) then
+    raise exception 'conta_invalida' using errcode = '22023';
+  end if;
+  if p_account_plan_id is not null and not exists (
+    select 1 from public.account_plans
+     where id = p_account_plan_id and organization_id = p_org and is_active
+  ) then
+    raise exception 'conta_invalida' using errcode = '22023';
+  end if;
+
+  insert into public.financial_entries
+    (organization_id, account_id, account_plan_id, direction, amount_cents,
+     description, status, paid_at, origin, created_by_user_id)
+  values (
+    p_org, p_account_id, p_account_plan_id, 'in', v_parcela.valor_cents,
+    format('Parcela %s de honorários', v_parcela.numero), 'paid', now(), 'manual', auth.uid()
+  )
+  returning id into v_entry;
+
+  update public.honorarios_parcelas
+     set status = 'pago', financial_entry_id = v_entry
+   where id = p_parcela;
+
+  return jsonb_build_object(
+    'id', v_parcela.id,
+    'contrato_id', v_parcela.contrato_id,
+    'numero', v_parcela.numero,
+    'valor_cents', v_parcela.valor_cents,
+    'status', 'pago',
+    'financial_entry_id', v_entry
+  );
+end;
+$$;
+
+revoke execute on function public.fn_honorarios_parcela_pagar(uuid, uuid, uuid, uuid) from public, anon;
+grant execute on function public.fn_honorarios_parcela_pagar(uuid, uuid, uuid, uuid) to authenticated;
+
 -- ---- canal de WhatsApp Datafy (migration 0387) ----
 -- Recorte do PR #1130, de @vgamkt. As COLUNAS e o VOCABULÁRIO dos CHECKs de
 -- `channel_sessions` (provider e ref) e de `webhook_events_log` vivem nos blocos
@@ -40724,6 +40994,462 @@ grant execute on function public.fn_lgpd_cascade_redact_contact(uuid,uuid,uuid) 
 
 notify pgrst, 'reload schema';
 
+-- ---- empresas, pessoas que decidem e importação de planilha (migration 0448, de @renatofortal, #1621) ----
+--
+-- Módulo opcional desligado por padrão (`MODULO_CRM_B2B`, doc 68). RLS por
+-- operação espelhando as rotas; racional no cabeçalho da migration 0448.
+create table if not exists public.companies (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  legal_name text,
+  trade_name text,
+  cnpj text,
+  normalized_cnpj text,
+  registration_status text,
+  legal_nature text,
+  company_size text,
+  share_capital numeric,
+  opened_at date,
+  main_cnae_code text,
+  main_cnae_description text,
+  secondary_cnaes jsonb not null default '[]'::jsonb,
+  street text,
+  number text,
+  complement text,
+  district text,
+  city text,
+  state text,
+  zip_code text,
+  email text,
+  phone text,
+  enrichment_status text not null default 'pending'
+    check (enrichment_status in ('pending', 'processing', 'completed', 'failed')),
+  enriched_at timestamptz,
+  enrichment_error text,
+  brasilapi_raw jsonb,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint companies_normalized_cnpj_digits
+    check (normalized_cnpj is null or normalized_cnpj ~ '^\d{14}$')
+);
+
+create index if not exists idx_companies_org_updated
+  on public.companies (organization_id, updated_at desc);
+
+create index if not exists idx_companies_org_trade
+  on public.companies (organization_id, trade_name);
+
+create unique index if not exists companies_org_normalized_cnpj_uidx
+  on public.companies (organization_id, normalized_cnpj)
+  where normalized_cnpj is not null;
+
+alter table public.companies enable row level security;
+
+drop policy if exists tenant_isolation_companies_all on public.companies;
+drop policy if exists companies_select on public.companies;
+create policy companies_select on public.companies
+  for select using (organization_id in (select public.fn_user_org_ids()));
+drop policy if exists companies_insert on public.companies;
+create policy companies_insert on public.companies
+  for insert with check (organization_id in (select public.fn_user_org_ids())
+                         and public.fn_role_at_least(organization_id, 'manager'));
+drop policy if exists companies_update on public.companies;
+create policy companies_update on public.companies
+  for update
+  using (organization_id in (select public.fn_user_org_ids())
+         and public.fn_role_at_least(organization_id, 'agent'))
+  with check (organization_id in (select public.fn_user_org_ids())
+              and public.fn_role_at_least(organization_id, 'agent'));
+drop policy if exists companies_delete on public.companies;
+create policy companies_delete on public.companies
+  for delete using (organization_id in (select public.fn_user_org_ids())
+                    and public.fn_role_at_least(organization_id, 'manager'));
+
+revoke all on table public.companies from anon;
+grant select, insert, update, delete on table public.companies to authenticated;
+grant all on table public.companies to service_role;
+
+drop trigger if exists trg_companies_set_updated_at on public.companies;
+create trigger trg_companies_set_updated_at
+  before update on public.companies
+  for each row execute function public.fn_set_updated_at();
+
+-- ---------------------------------------------------------------------------
+-- 2. people
+-- ---------------------------------------------------------------------------
+create table if not exists public.people (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  full_name text not null,
+  normalized_name text,
+  email text,
+  notes text,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint people_full_name_nao_vazio check (length(btrim(full_name)) > 0)
+);
+
+create index if not exists idx_people_org_name
+  on public.people (organization_id, normalized_name);
+
+create index if not exists idx_people_org_updated
+  on public.people (organization_id, updated_at desc);
+
+alter table public.people enable row level security;
+
+drop policy if exists tenant_isolation_people_all on public.people;
+drop policy if exists people_select on public.people;
+create policy people_select on public.people
+  for select using (organization_id in (select public.fn_user_org_ids()));
+drop policy if exists people_insert on public.people;
+create policy people_insert on public.people
+  for insert with check (organization_id in (select public.fn_user_org_ids())
+                         and public.fn_role_at_least(organization_id, 'manager'));
+drop policy if exists people_update on public.people;
+create policy people_update on public.people
+  for update
+  using (organization_id in (select public.fn_user_org_ids())
+         and public.fn_role_at_least(organization_id, 'agent'))
+  with check (organization_id in (select public.fn_user_org_ids())
+              and public.fn_role_at_least(organization_id, 'agent'));
+drop policy if exists people_delete on public.people;
+create policy people_delete on public.people
+  for delete using (organization_id in (select public.fn_user_org_ids())
+                    and public.fn_role_at_least(organization_id, 'manager'));
+
+revoke all on table public.people from anon;
+grant select, insert, update, delete on table public.people to authenticated;
+grant all on table public.people to service_role;
+
+drop trigger if exists trg_people_set_updated_at on public.people;
+create trigger trg_people_set_updated_at
+  before update on public.people
+  for each row execute function public.fn_set_updated_at();
+
+-- ---------------------------------------------------------------------------
+-- 3. company_people
+-- ---------------------------------------------------------------------------
+create table if not exists public.company_people (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  company_id uuid not null references public.companies(id) on delete cascade,
+  person_id uuid not null references public.people(id) on delete cascade,
+  job_title text,
+  department text,
+  is_decision_maker boolean not null default false,
+  is_primary boolean not null default false,
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint company_people_company_person_uidx unique (company_id, person_id)
+);
+
+create index if not exists idx_company_people_org
+  on public.company_people (organization_id);
+
+create index if not exists idx_company_people_person
+  on public.company_people (organization_id, person_id);
+
+create index if not exists idx_company_people_company
+  on public.company_people (organization_id, company_id);
+
+alter table public.company_people enable row level security;
+
+drop policy if exists tenant_isolation_company_people_all on public.company_people;
+drop policy if exists company_people_select on public.company_people;
+create policy company_people_select on public.company_people
+  for select using (organization_id in (select public.fn_user_org_ids()));
+drop policy if exists company_people_insert on public.company_people;
+create policy company_people_insert on public.company_people
+  for insert with check (organization_id in (select public.fn_user_org_ids())
+                         and public.fn_role_at_least(organization_id, 'manager'));
+drop policy if exists company_people_update on public.company_people;
+create policy company_people_update on public.company_people
+  for update
+  using (organization_id in (select public.fn_user_org_ids())
+         and public.fn_role_at_least(organization_id, 'agent'))
+  with check (organization_id in (select public.fn_user_org_ids())
+              and public.fn_role_at_least(organization_id, 'agent'));
+drop policy if exists company_people_delete on public.company_people;
+create policy company_people_delete on public.company_people
+  for delete using (organization_id in (select public.fn_user_org_ids())
+                    and public.fn_role_at_least(organization_id, 'manager'));
+
+revoke all on table public.company_people from anon;
+grant select, insert, update, delete on table public.company_people to authenticated;
+grant all on table public.company_people to service_role;
+
+drop trigger if exists trg_company_people_set_updated_at on public.company_people;
+create trigger trg_company_people_set_updated_at
+  before update on public.company_people
+  for each row execute function public.fn_set_updated_at();
+
+-- Mesma organization entre vínculo, company e person (anti cross-tenant por FK).
+create or replace function public.fn_company_people_same_org()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_company_org uuid;
+  v_person_org uuid;
+begin
+  select organization_id into v_company_org
+    from public.companies where id = new.company_id;
+  select organization_id into v_person_org
+    from public.people where id = new.person_id;
+
+  if v_company_org is null then
+    raise exception 'company_people: company_id inexistente';
+  end if;
+  if v_person_org is null then
+    raise exception 'company_people: person_id inexistente';
+  end if;
+  if new.organization_id is distinct from v_company_org
+     or new.organization_id is distinct from v_person_org then
+    raise exception 'company_people: organization_id deve coincidir com company e person';
+  end if;
+  return new;
+end;
+$$;
+
+revoke execute on function public.fn_company_people_same_org() from public, anon;
+-- trigger functions are owned; no grant needed for callers
+
+drop trigger if exists trg_company_people_same_org on public.company_people;
+create trigger trg_company_people_same_org
+  before insert or update on public.company_people
+  for each row execute function public.fn_company_people_same_org();
+
+-- ---------------------------------------------------------------------------
+-- 4. contacts.person_id (aditivo, nullable)
+-- ---------------------------------------------------------------------------
+alter table public.contacts
+  add column if not exists person_id uuid references public.people(id) on delete set null;
+
+create index if not exists idx_contacts_org_person
+  on public.contacts (organization_id, person_id)
+  where person_id is not null;
+
+create or replace function public.fn_contacts_person_same_org()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_person_org uuid;
+begin
+  if new.person_id is null then
+    return new;
+  end if;
+  select organization_id into v_person_org
+    from public.people where id = new.person_id;
+  if v_person_org is null then
+    raise exception 'contacts.person_id: pessoa inexistente';
+  end if;
+  if new.organization_id is distinct from v_person_org then
+    raise exception 'contacts.person_id: organization_id deve coincidir com a pessoa';
+  end if;
+  return new;
+end;
+$$;
+
+revoke execute on function public.fn_contacts_person_same_org() from public, anon;
+
+drop trigger if exists trg_contacts_person_same_org on public.contacts;
+create trigger trg_contacts_person_same_org
+  before insert or update of person_id, organization_id on public.contacts
+  for each row execute function public.fn_contacts_person_same_org();
+
+-- ---------------------------------------------------------------------------
+-- 5. import_batches / import_rows
+-- ---------------------------------------------------------------------------
+create table if not exists public.import_batches (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  kind text not null default 'companies_people'
+    check (kind in ('companies_people', 'contacts')),
+  filename text not null,
+  status text not null default 'pending'
+    check (status in ('pending', 'processing', 'completed', 'failed')),
+  total_rows integer not null default 0,
+  processed_rows integer not null default 0,
+  successful_rows integer not null default 0,
+  failed_rows integer not null default 0,
+  conflict_rows integer not null default 0,
+  column_mapping jsonb not null default '{}'::jsonb,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  completed_at timestamptz,
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_import_batches_org_created
+  on public.import_batches (organization_id, created_at desc);
+
+alter table public.import_batches enable row level security;
+
+drop policy if exists tenant_isolation_import_batches_all on public.import_batches;
+drop policy if exists import_batches_select on public.import_batches;
+create policy import_batches_select on public.import_batches
+  for select using (organization_id in (select public.fn_user_org_ids()));
+drop policy if exists import_batches_insert on public.import_batches;
+create policy import_batches_insert on public.import_batches
+  for insert with check (organization_id in (select public.fn_user_org_ids())
+                         and public.fn_role_at_least(organization_id, 'manager'));
+drop policy if exists import_batches_update on public.import_batches;
+create policy import_batches_update on public.import_batches
+  for update
+  using (organization_id in (select public.fn_user_org_ids())
+         and public.fn_role_at_least(organization_id, 'manager'))
+  with check (organization_id in (select public.fn_user_org_ids())
+              and public.fn_role_at_least(organization_id, 'manager'));
+drop policy if exists import_batches_delete on public.import_batches;
+create policy import_batches_delete on public.import_batches
+  for delete using (organization_id in (select public.fn_user_org_ids())
+                    and public.fn_role_at_least(organization_id, 'manager'));
+
+revoke all on table public.import_batches from anon;
+grant select, insert, update, delete on table public.import_batches to authenticated;
+grant all on table public.import_batches to service_role;
+
+drop trigger if exists trg_import_batches_set_updated_at on public.import_batches;
+create trigger trg_import_batches_set_updated_at
+  before update on public.import_batches
+  for each row execute function public.fn_set_updated_at();
+
+create table if not exists public.import_rows (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  batch_id uuid not null references public.import_batches(id) on delete cascade,
+  row_number integer not null,
+  raw_data jsonb not null default '{}'::jsonb,
+  normalized_data jsonb not null default '{}'::jsonb,
+  status text not null default 'pending'
+    check (status in ('pending', 'processing', 'success', 'conflict', 'failed')),
+  error text,
+  company_id uuid references public.companies(id) on delete set null,
+  person_id uuid references public.people(id) on delete set null,
+  contact_id uuid references public.contacts(id) on delete set null,
+  created_at timestamptz not null default now(),
+  constraint import_rows_batch_row_uidx unique (batch_id, row_number)
+);
+
+create index if not exists idx_import_rows_batch_status
+  on public.import_rows (batch_id, status);
+
+create index if not exists idx_import_rows_org
+  on public.import_rows (organization_id);
+
+alter table public.import_rows enable row level security;
+
+drop policy if exists tenant_isolation_import_rows_all on public.import_rows;
+drop policy if exists import_rows_select on public.import_rows;
+create policy import_rows_select on public.import_rows
+  for select using (organization_id in (select public.fn_user_org_ids()));
+drop policy if exists import_rows_insert on public.import_rows;
+create policy import_rows_insert on public.import_rows
+  for insert with check (organization_id in (select public.fn_user_org_ids())
+                         and public.fn_role_at_least(organization_id, 'manager'));
+drop policy if exists import_rows_update on public.import_rows;
+create policy import_rows_update on public.import_rows
+  for update
+  using (organization_id in (select public.fn_user_org_ids())
+         and public.fn_role_at_least(organization_id, 'manager'))
+  with check (organization_id in (select public.fn_user_org_ids())
+              and public.fn_role_at_least(organization_id, 'manager'));
+drop policy if exists import_rows_delete on public.import_rows;
+create policy import_rows_delete on public.import_rows
+  for delete using (organization_id in (select public.fn_user_org_ids())
+                    and public.fn_role_at_least(organization_id, 'manager'));
+
+revoke all on table public.import_rows from anon;
+grant select, insert, update, delete on table public.import_rows to authenticated;
+grant all on table public.import_rows to service_role;
+
+create or replace function public.fn_import_rows_same_org()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_batch_org uuid;
+begin
+  select organization_id into v_batch_org
+    from public.import_batches where id = new.batch_id;
+  if v_batch_org is null then
+    raise exception 'import_rows: batch_id inexistente';
+  end if;
+  if new.organization_id is distinct from v_batch_org then
+    raise exception 'import_rows: organization_id deve coincidir com o batch';
+  end if;
+  return new;
+end;
+$$;
+
+revoke execute on function public.fn_import_rows_same_org() from public, anon;
+
+drop trigger if exists trg_import_rows_same_org on public.import_rows;
+create trigger trg_import_rows_same_org
+  before insert or update on public.import_rows
+  for each row execute function public.fn_import_rows_same_org();
+
+-- ---- a anonimização (LGPD) alcança a pessoa e a linha de planilha (migration 0449) ----
+--
+-- Gatilho na virada de `is_anonymized`, molde de trg_redigir_tarefas_ao_anonimizar.
+-- Racional (e por que não um passo na cascata) no cabeçalho da migration 0449.
+create or replace function public.fn_redigir_b2b_do_contato_anonimizado()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  update public.import_rows
+     set raw_data = '{}'::jsonb,
+         normalized_data = '{}'::jsonb,
+         error = null
+   where organization_id = new.organization_id
+     and (contact_id = new.id
+          or (new.person_id is not null and person_id = new.person_id));
+
+  if new.person_id is not null then
+    update public.people
+       set full_name = 'Pessoa anonimizada #' || substring(new.person_id::text from 1 for 8),
+           normalized_name = null,
+           email = null,
+           notes = null
+     where organization_id = new.organization_id
+       and id = new.person_id;
+
+    update public.company_people
+       set job_title = null,
+           department = null,
+           notes = null
+     where organization_id = new.organization_id
+       and person_id = new.person_id;
+  end if;
+  return new;
+end;
+$$;
+
+-- Função de gatilho não exige EXECUTE de quem dispara o UPDATE; revogar das
+-- três origens a mantém fora da lista de exceções do invariante de hardening.
+revoke execute on function public.fn_redigir_b2b_do_contato_anonimizado() from public, anon, authenticated;
+grant  execute on function public.fn_redigir_b2b_do_contato_anonimizado() to service_role;
+
+drop trigger if exists trg_redigir_b2b_ao_anonimizar on public.contacts;
+create trigger trg_redigir_b2b_ao_anonimizar
+  after update of is_anonymized on public.contacts
+  for each row
+  when (new.is_anonymized is true and old.is_anonymized is distinct from true)
+  execute function public.fn_redigir_b2b_do_contato_anonimizado();
+
 -- ---- VARREDURA anon: função nova nasce exposta em quem ATUALIZA (migration 0116) ----
 --
 -- ⚠️ DE PROPÓSITO, NENHUMA FUNÇÃO É CRIADA DEPOIS DESTE BLOCO. Apêndice que cria
@@ -41633,6 +42359,15 @@ begin
       );
   end if;
 end $$;
+
+-- ---- índice de cooldown do gatilho de silêncio (migration 0481) ----
+--
+-- Racional inteiro na migration 0481: a consulta de cooldown de
+-- `loadContactIdsEmCooldown` (lib/followup/silence-sweep.ts) filtra
+-- `followup_enrollments` por (organization_id, pointer_id, contact_id,
+-- updated_at) a cada tick do cron, e não havia índice cobrindo `pointer_id`.
+create index if not exists idx_followup_enrollments_pointer_contact_cooldown
+  on public.followup_enrollments (organization_id, pointer_id, contact_id, updated_at);
 
 -- ---- ponteiros legados de skills (migration 0422) ----
 alter table public.skill_pointers

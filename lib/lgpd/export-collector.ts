@@ -256,6 +256,36 @@ export interface CaptureRow {
   received_at: string;
 }
 
+/**
+ * Contrato de honorários (advocacia) — módulo opcional, ADR-0002 D8: todo
+ * módulo com dados declara sua seção de export, mesmo sem estar na cascata de
+ * redação (achado da revisão do PR #1578). O vínculo é `lead_id`, não
+ * `contact_id` direto — o contrato pertence ao CASO, não à pessoa em geral —
+ * por isso deriva dos ids de `leads` já coletados acima, e não de uma consulta
+ * própria por contato.
+ */
+export interface HonorariosContratoRow {
+  id: string;
+  lead_id: string | null;
+  modelo: string;
+  valor_fixo_cents: number | null;
+  percentual_exito: number | null;
+  repasse_advogado_pct: number | null;
+  created_at: string;
+}
+
+/** O calendário de parcelas do contrato acima — o titular tem direito de ver
+ * o que foi combinado e o que já foi pago, do mesmo jeito que vê `sales`. */
+export interface HonorariosParcelaRow {
+  id: string;
+  contrato_id: string;
+  numero: number;
+  vencimento: string;
+  valor_cents: number;
+  status: string;
+  financial_entry_id: string | null;
+}
+
 export interface AuditRow {
   id: string;
   action: string;
@@ -501,6 +531,14 @@ export interface ExportPayload {
   messages_count_total: number;
   messages_recent: MessageRow[];
   leads: LeadRow[];
+  /**
+   * Módulo opcional de honorários (advocacia, ADR-0002). Vazio nas instalações
+   * que não o instalaram, ou quando o titular não tem contrato — nunca ausente:
+   * campo obrigatório é o que faz um caminho de export novo não compilar se
+   * esquecer, a mesma razão de `case_chat_messages`.
+   */
+  honorarios_contratos: HonorariosContratoRow[];
+  honorarios_parcelas: HonorariosParcelaRow[];
   orders: OrderRow[];
   activities: ActivityRow[];
   checkpoints: CheckpointRow[];
@@ -593,6 +631,41 @@ export interface ExportPayload {
     decided_at: string | null;
     motivo_recusa: string | null;
   }>;
+  /**
+   * Empresas e pessoas (migrations 0448/0449, metade B2B do #1621): a PESSOA
+   * para quem o contato aponta, os vínculos dela com empresas e as linhas de
+   * planilha que falaram dela. A 0449 redige as três quando o titular pede
+   * anonimização; o que se apaga a pedido dele é o que se entrega a pedido dele
+   * (Art. 18 II). Opcional como `reply_drafts`: o tipo é montado à mão nos
+   * testes de PDF, e quem vigia o esquecimento é
+   * `tests/unit/lgpd-exporta-o-que-redige.test.ts`, que lê o catálogo.
+   */
+  b2b?: {
+    pessoa: {
+      id: string;
+      full_name: string;
+      email: string | null;
+      notes: string | null;
+      created_at: string;
+    } | null;
+    vinculos: Array<{
+      company_id: string;
+      job_title: string | null;
+      department: string | null;
+      is_decision_maker: boolean;
+      notes: string | null;
+    }>;
+    linhas_importadas: Array<{
+      id: string;
+      batch_id: string;
+      row_number: number;
+      status: string;
+      raw_data: unknown;
+      normalized_data: unknown;
+      error: string | null;
+      created_at: string;
+    }>;
+  };
   reply_drafts?: Array<{
     id: string;
     status: string;
@@ -910,6 +983,49 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
     }
   }
 
+  // Honorários — módulo opcional (ADR-0002/D8). Deriva dos ids de `leads` já
+  // coletados: o contrato é `lead_id`, não `contact_id` direto.
+  //
+  // Módulo pode não estar instalado nesta instalação — a tabela então não
+  // existe (42P01) — e o bloco sai vazio nesse caso, sem falhar o export
+  // inteiro por causa de um módulo que a organização nem ligou.
+  let honorarios_contratos: HonorariosContratoRow[] = [];
+  let honorarios_parcelas: HonorariosParcelaRow[] = [];
+  const leadIds = leads.map((l) => l.id);
+  if (leadIds.length > 0) {
+    const { data, error } = await admin
+      .from("honorarios_contratos")
+      .select(
+        "id, lead_id, modelo, valor_fixo_cents, percentual_exito, repasse_advogado_pct, created_at",
+      )
+      .eq("organization_id", organizationId)
+      .in("lead_id", leadIds);
+    // Qualquer OUTRO erro lança: o worker marca a tentativa como falha e tenta de
+    // novo, em vez de entregar ao titular um export sem o contrato como se fosse
+    // completo (ADR-0002 D8 — seção de módulo ilegível nunca sai como completa).
+    if (error) {
+      if (error.code !== "42P01") {
+        throw new Error(`honorarios_contratos_load_failed: ${error.message}`);
+      }
+    } else if (data) {
+      honorarios_contratos = data;
+      const contratoIds = data.map((c) => c.id);
+      if (contratoIds.length > 0) {
+        const { data: parcelas, error: erroParcelas } = await admin
+          .from("honorarios_parcelas")
+          .select("id, contrato_id, numero, vencimento, valor_cents, status, financial_entry_id")
+          .eq("organization_id", organizationId)
+          .in("contrato_id", contratoIds)
+          .order("numero", { ascending: true });
+        if (erroParcelas) {
+          throw new Error(`honorarios_parcelas_load_failed: ${erroParcelas.message}`);
+        } else if (parcelas) {
+          honorarios_parcelas = parcelas;
+        }
+      }
+    }
+  }
+
   // Orders (contact_id when available, otherwise external_customer_id).
   let orders: OrderRow[] = [];
   {
@@ -1064,6 +1180,54 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
       });
     } else if (data) {
       proposals = data.map(({ pdf_path, ...p }) => ({ ...p, tem_pdf: Boolean(pdf_path) }));
+    }
+  }
+
+  // Empresas e pessoas (0448/0449) — ver o comentário do campo `b2b` no tipo.
+  // A pessoa vem de `contacts.person_id`; as linhas de planilha casam pelo
+  // contato OU pela pessoa, o MESMO escopo da redação da 0449. Erro lança:
+  // um relatório sem este bloco diria ao titular que não guardamos o que
+  // guardamos.
+  let b2b: ExportPayload["b2b"];
+  if (contactId) {
+    const { data: vinculo, error: eVinculo } = await admin
+      .from("contacts")
+      .select("person_id")
+      .eq("organization_id", organizationId)
+      .eq("id", contactId)
+      .maybeSingle();
+    if (eVinculo) throw eVinculo;
+    const personId = vinculo?.person_id ?? null;
+    let pessoa: NonNullable<ExportPayload["b2b"]>["pessoa"] = null;
+    let vinculos: NonNullable<ExportPayload["b2b"]>["vinculos"] = [];
+    if (personId) {
+      const { data: p, error: eP } = await admin
+        .from("people")
+        .select("id, full_name, email, notes, created_at")
+        .eq("organization_id", organizationId)
+        .eq("id", personId)
+        .maybeSingle();
+      if (eP) throw eP;
+      pessoa = p;
+      const { data: v, error: eV } = await admin
+        .from("company_people")
+        .select("company_id, job_title, department, is_decision_maker, notes")
+        .eq("organization_id", organizationId)
+        .eq("person_id", personId)
+        .limit(500);
+      if (eV) throw eV;
+      vinculos = v ?? [];
+    }
+    const { data: linhas, error: eL } = await admin
+      .from("import_rows")
+      .select("id, batch_id, row_number, status, raw_data, normalized_data, error, created_at")
+      .eq("organization_id", organizationId)
+      .or(personId ? `contact_id.eq.${contactId},person_id.eq.${personId}` : `contact_id.eq.${contactId}`)
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (eL) throw eL;
+    if (pessoa || vinculos.length > 0 || (linhas ?? []).length > 0) {
+      b2b = { pessoa, vinculos, linhas_importadas: linhas ?? [] };
     }
   }
 
@@ -1576,6 +1740,8 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
     messages_count_total,
     messages_recent,
     leads,
+    honorarios_contratos,
+    honorarios_parcelas,
     orders,
     activities,
     checkpoints,
@@ -1600,6 +1766,7 @@ export async function collectExportData(args: CollectArgs): Promise<ExportPayloa
     campaign_suppressions,
     conversation_drafts,
     contact_field_proposals,
+    b2b,
   };
 }
 
@@ -1624,6 +1791,8 @@ function emptyPayload(
     messages_count_total: 0,
     messages_recent: [],
     leads: [],
+    honorarios_contratos: [],
+    honorarios_parcelas: [],
     orders: [],
     activities: [],
     checkpoints: [],
