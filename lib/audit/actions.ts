@@ -197,6 +197,7 @@ export const AUDIT_ACTIONS = [
   "ai.credential_deleted",
   "ai.credential_revalidated",
   "ai.knowledge_reindex_all",
+  "ai.knowledge_searched",
   "ai_agent.created",
   "ai_agent.updated",
   "ai_agent.archived",

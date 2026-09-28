@@ -42589,3 +42589,24 @@ alter table public.platform_branding add constraint platform_branding_favicon_pa
 comment on column public.platform_branding.favicon_path is
   'Ícone da aba do navegador, subido pela tela. Caminho em brand-logos; null mantém o ícone desenhado (cor + inicial).';
 
+
+-- ---- busca humana na telemetria: author_kind (migration 0484) ----
+-- 0484 — a busca HUMANA do acervo entra na telemetria (F2 da #1869).
+-- `knowledge_searches` só recebia o caminho do agente; o grafico de
+-- `/app/ai/evolution` conta linhas sem filtrar, entao a linha humana
+-- aparece sozinha — mas so se alguem gravar.
+-- `author_kind` segue o vocabulario da 0281 ('human','ai'); NAO usa
+-- `agent_id is null`, que e `on delete set null` desde a 0181 e nao
+-- distingue 'foi o operador' de 'o agente foi apagado depois'.
+-- DEFAULT 'ai' e o proprio backfill: toda linha existente veio do
+-- agente. Sem check acoplando author_user_id: quebraria o set null.
+alter table public.knowledge_searches
+  add column if not exists author_kind text not null default 'ai'
+  check (author_kind in ('human', 'ai'));
+alter table public.knowledge_searches
+  add column if not exists author_user_id uuid
+  references auth.users(id) on delete set null;
+comment on column public.knowledge_searches.author_kind is
+  'Quem perguntou: ''ai'' = turno do agente ou a ferramenta MCP crm_search_knowledge; ''human'' = o operador na tela "Perguntar ao acervo" (F1 da #1869). Vocabulário da 0281.';
+comment on column public.knowledge_searches.author_user_id is
+  'Operador que perguntou no caminho humano. null no caminho do agente, e também quando a pessoa sai do sistema — on delete set null preserva a pergunta, por isso não há check acoplando esta coluna à author_kind.';

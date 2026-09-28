@@ -9607,6 +9607,26 @@ export const DICIONARIO: Traducoes = {
   "Usando a chave que veio na instalação.": { es: "Usando la clave que vino con la instalación." },
   "A chave escolhida no painel de Provedores para este ponto não está utilizável (desativada, apagada ou ainda não validada). Seguindo com a próxima chave disponível.": { es: "La clave que elegiste en el panel de Proveedores para este punto no se puede usar (está desactivada, eliminada o aún sin validar). Se usará la siguiente clave disponible." },
 
+  // ─── Acervo: perguntar pelo operador (components/inbox/AcervoSearch.tsx,
+  // e a rota app/api/v1/ai/knowledge/busca). A chave é o texto em português;
+  // espanhol é idioma "completo", então faltar `es` reprova i18n-espanhol-cobre-a-tela. ───
+  "Acervo": { es: "Acervo" },
+  "Pergunte ao acervo…": { es: "Pregunta al acervo…" },
+  "Perguntar ao acervo": { es: "Preguntar al acervo" },
+  "Buscar": { es: "Buscar" },
+  "Buscando…": { es: "Buscando…" },
+  "Parecimento com a pergunta": { es: "Parecido con la pregunta" },
+  "Materiais consultados": { es: "Materiales consultados" },
+  "limiar": { es: "umbral" },
+  "A mesma busca que a IA faz — com a mesma origem de cada trecho.": { es: "La misma búsqueda que hace la IA, con el origen de cada fragmento." },
+  "Pergunte como a IA perguntaria — a resposta vem com a origem de cada trecho.": { es: "Pregunta como lo haría la IA: la respuesta trae el origen de cada fragmento." },
+  "Não consegui consultar o acervo.": { es: "No pude consultar el acervo." },
+  "Não foi possível ler o acervo.": { es: "No fue posible leer el acervo." },
+  "Não foi possível consultar o acervo.": { es: "No fue posible consultar el acervo." },
+  "Este acervo ainda não tem material publicado.": { es: "Este acervo todavía no tiene material publicado." },
+  "A base não tem essa informação.": { es: "La base no tiene esa información." },
+  "Há algo parecido no acervo, mas ainda abaixo do limiar — tente outras palavras.": { es: "Hay algo parecido en el acervo, pero todavía bajo el umbral: prueba con otras palabras." },
+  "Digite pelo menos 2 caracteres.": { es: "Escribe al menos 2 caracteres." },
   // ─── Acervo: a listagem (app/app/ai/knowledge/sources/_client.tsx) ───
   //
   // Este arquivo escapou das DUAS varreduras do merge: não é arquivo NOVO (a

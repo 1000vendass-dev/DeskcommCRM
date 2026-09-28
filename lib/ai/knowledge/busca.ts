@@ -18,6 +18,19 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { embedText } from "@/lib/ai/embed";
 import { MODELO_DE_EMBEDDING } from "@/lib/ai/embeddings/chave";
 
+/**
+ * Limiar do CAMINHO DO HUMANO — o mesmo que a ferramenta MCP `crm_search_knowledge`
+ * usa. Mora aqui, e não em `lib/mcp/tools/evolucao.ts`, por um motivo prático: a
+ * operação é única, e uma constante duplicada é o primeiro passo para a busca do
+ * operador e a da IA divergirem sobre o mesmo acervo.
+ *
+ * O turno do agente NÃO usa este valor: ele lê `ai_agents.config.rag_similarity_threshold`
+ * (padrão 0,72 no jsonb, calibrado na 0097). Quem pergunta na tela pode escolher
+ * escopar por agente e herdar o limiar dele — é o caminho que devolve a MESMA
+ * resposta que a IA daria.
+ */
+export const LIMIAR_PADRAO_BUSCA = 0.4;
+
 export interface TrechoEncontrado {
   chunk_id: string;
   knowledge_source_id: string | null;

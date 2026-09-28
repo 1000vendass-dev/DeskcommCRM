@@ -14,6 +14,7 @@
 import { z } from "zod";
 
 import {
+  LIMIAR_PADRAO_BUSCA,
   buscarConhecimento,
   resolverAcervoDoAgente,
 } from "@/lib/ai/knowledge/busca";
@@ -41,7 +42,7 @@ const buscarInputShape = {
  * perguntando a mesma coisa pelo mesmo material recebiam respostas diferentes
  * conforme a porta por onde entraram.
  */
-const LIMIAR_PADRAO = 0.4;
+
 
 export const crmSearchKnowledge: McpToolDefinition<typeof buscarInputShape> = {
   name: "crm_search_knowledge",
@@ -82,7 +83,7 @@ export const crmSearchKnowledge: McpToolDefinition<typeof buscarInputShape> = {
       knowledgeSourceIds: fontes,
       pergunta: input.pergunta,
       topK: input.quantidade,
-      limiar: LIMIAR_PADRAO,
+      limiar: LIMIAR_PADRAO_BUSCA,
     });
 
     return {
