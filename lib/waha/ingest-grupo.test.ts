@@ -97,11 +97,11 @@ function envelope(payload: WahaPayload): WahaEnvelope {
 }
 
 const RECEBIDA: WahaPayload = {
-  id: `false_${GRUPO}_3EB0AAA_70192801575156@lid`,
+  id: `false_${GRUPO}_3EB0AAA_100000000000001@lid`,
   from: GRUPO,
   fromMe: false,
   body: "bom dia, grupo",
-  participant: "70192801575156@lid",
+  participant: "100000000000001@lid",
   _data: { pushName: "Maria", key: { participantAlt: "5521999990000@s.whatsapp.net" } },
 };
 
@@ -150,7 +150,7 @@ describe("grupo LIGADO — a mensagem entra com o remetente e sem os efeitos da 
       direction: "inbound",
       external_id: RECEBIDA.id,
       body: "bom dia, grupo",
-      metadata: { group_sender: { name: "Maria", phone: "+5521999990000", lid: "70192801575156" } },
+      metadata: { group_sender: { name: "Maria", phone: "+5521999990000", lid: "100000000000001" } },
     });
     expect(b.rpcs.map((r) => r.fn)).toEqual(["fn_mark_conversation_message"]);
     // Nenhum contato por participante: o upsert de contato individual nem é chamado.
@@ -194,7 +194,7 @@ describe("grupo LIGADO — a mensagem entra com o remetente e sem os efeitos da 
 
 describe("remetenteDoGrupo — quem escreveu, tirado do autor e nunca do `from`", () => {
   it("autor @lid com participantAlt: lid e telefone real", () => {
-    expect(remetenteDoGrupo(RECEBIDA)).toEqual({ name: "Maria", phone: "+5521999990000", lid: "70192801575156" });
+    expect(remetenteDoGrupo(RECEBIDA)).toEqual({ name: "Maria", phone: "+5521999990000", lid: "100000000000001" });
   });
 
   it("autor com telefone: o telefone vem do próprio autor", () => {
@@ -206,10 +206,10 @@ describe("remetenteDoGrupo — quem escreveu, tirado do autor e nunca do `from`"
   });
 
   it("autor em `_data.key.participant` (forma do Baileys) também é lido", () => {
-    expect(remetenteDoGrupo({ from: GRUPO, _data: { key: { participant: "70192801575156@lid" } } })).toEqual({
+    expect(remetenteDoGrupo({ from: GRUPO, _data: { key: { participant: "100000000000001@lid" } } })).toEqual({
       name: null,
       phone: null,
-      lid: "70192801575156",
+      lid: "100000000000001",
     });
   });
 
