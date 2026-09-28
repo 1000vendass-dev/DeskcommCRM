@@ -916,6 +916,9 @@ export const AUDIT_ACTIONS = [
   // o dado que importa quando alguém pergunta "por que este cliente voltou a
   // receber?".
   "contact.unblocked",
+  // "Enviar vendas pelo canal da conversa" (doc 76, PR #1819): ligar faz o
+  // valor da venda e o telefone do cliente saírem para o provedor do canal.
+  "conversions.report_via_channel_updated",
 ] as const;
 
 /** Um código de auditoria. Derivado de `AUDIT_ACTIONS` — não redigite a lista. */
