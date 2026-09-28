@@ -40,6 +40,8 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   servidor avisa no log e volta a usar a URL pública, em vez de derrubar a
   instalação. É runtime puro: trocar o valor não pede rebuild da imagem.
 
+  Contribuição de @webtecnica (#1786, fecha #1082).
+
 ### Alterado
 
 - **README em inglês volta a acompanhar o português e o CONTRIBUTING ganha versão em inglês** A decisão do mantenedor de 16/09/2026 (#890) manda `README.md` e `CONTRIBUTING.md` serem
@@ -56,7 +58,11 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   a seção `🧹 Desinstalar` e o comentário das extensões do Postgres continuam fora do
   inglês — drift pré-existente, fora dos dois itens que a decisão nomeou.
 
-  Contribuição de @webtecnica (#890).
+  Contribuição de @webtecnica (#1841, issue #890).
+
+- **O lint da suíte passa a rodar o ESLint 10, e sai a versão que o registro do npm aposentou** O `pnpm lint`, executado pelo check obrigatório `verify`, rodava o ESLint 9.39.5, marcado como sem suporte pelo registro do npm. Agora roda o 10.11.0, que produz as mesmas mensagens, arquivo por arquivo, sem nenhuma regra mudada; o `AGENTS.md` declara a major nova e um teste passa a conferi-la. O ESLint não roda no produto: nada muda na imagem nem para quem opera a instalação.
+
+  Levantamento de @melgarafael (#297). Contribuição de @in100tiva (#1840).
 
 ### Corrigido
 
@@ -98,7 +104,7 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
   sujeito precisa abrir a mensagem ou a frase: numa mensagem sem pontuação como
   "vou bloquear o numero não me liga mais", o pedido continua bloqueando.
 
-  Contribuição de @webtecnica (#1825)
+  Contribuição de @webtecnica (#1825).
 
 ## [1.58.1] — 2026-09-28
 
