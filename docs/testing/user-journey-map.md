@@ -3123,3 +3123,20 @@ o CI só publica artefato em falha). Medido no run 36309605444, parte 3, head
 | J34.3 | Termo em 2 de 4 mensagens (uma em maiúsculas) | contador "Resultados nas mensagens carregadas: 2"; as 2 bolhas com o anel no `box-shadow` COMPUTADO (`0 0 0 4px`, cor ≠ fundo), uma enviada e uma recebida; as outras 2 sem anel | PASS — anel `rgb(28, 26, 22) 0 0 0 4px` sobre recebida `rgb(245, 243, 238)` e enviada `rgb(80, 109, 72)`; sem anel nas outras |
 | J34.4 | Esc fecha | campo, contador e marcas somem; o foco volta à lupa | PASS |
 | J34.5 | Trocar de conversa pela lista, sem recarregar | a conversa B (que tem o termo) abre sem campo, sem contador e sem marca; abrir a busca nela começa vazia | PASS |
+
+## J37 — Navegar pelo celular com a barra de abas `[P1]` (2026-10-06)
+
+No celular (abaixo de 768px) a navegação é a barra de baixo: Conversas, Funis,
+Agenda e Mais. Spec: `tests/e2e/abas-do-celular.spec.ts` (job e2e, parte 6),
+logado como `agent`, banco fresco do `baseline.sql`. Regras puras em
+`lib/navigation/abas-do-celular.test.ts`. Medido localmente em 390×844 e 1280×800:
+`2 passed`.
+
+| # | Caso | Expectativa | Resultado |
+|---|------|-------------|-----------|
+| J37.1 | Abrir o Inbox no celular | barra visível, "Conversas" com `aria-current="page"` (`evidence/fuzil-abas-do-celular/01-conversas-390.png`) | PASS |
+| J37.2 | O conteúdo não fica atrás da barra | barra ≥56px; `<main data-rodape-ocupado>` ≥56 | PASS |
+| J37.3 | Tocar em Funis e em Agenda | navega e acende a aba (`evidence/fuzil-abas-do-celular/02-funis-390.png`, `evidence/fuzil-abas-do-celular/03-agenda-390.png`) | PASS |
+| J37.4 | Tocar em Mais | abre o menu completo "Navegação principal"; Esc fecha (`evidence/fuzil-abas-do-celular/04-mais-390.png`) | PASS |
+| J37.5 | Abrir uma conversa (`?id=`) | a barra some; "Conversas" volta e a barra reaparece (`evidence/fuzil-abas-do-celular/05-conversa-aberta-390.png`) | PASS |
+| J37.6 | Desktop 1280px | barra escondida e `data-rodape-ocupado="0"` | PASS |
