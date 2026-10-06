@@ -1541,6 +1541,9 @@ export const DICIONARIO: Traducoes = {
   "Nova versão": { es: "Nueva versión" },
   disponível: { es: "disponible" },
   "Abrir navegação": { es: "Abrir navegación" },
+  // Barra de abas do celular (components/shell/BarraDeAbasDoCelular.tsx).
+  Mais: { es: "Más" },
+  "Navegação do app": { es: "Navegación de la app" },
   "Buscar telas": { es: "Buscar pantallas" },
   "Buscar telas do sistema…": { es: "Buscar pantallas del sistema…" },
   Telas: { es: "Pantallas" },

@@ -1,8 +1,9 @@
 "use client";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar } from "@/components/shell/TopBar";
 import { BarraDeProgressoNavegacao } from "@/components/shell/BarraDeProgressoNavegacao";
+import { BarraDeAbasDoCelular } from "@/components/shell/BarraDeAbasDoCelular";
 import { useSinalDePresenca } from "@/hooks/atendimento/useSinalDePresenca";
 import { useInboundMessageAlerts } from "@/hooks/notifications/useInboundMessageAlerts";
 import { useInboundCallAlerts } from "@/hooks/calls/useInboundCallAlerts";
@@ -84,6 +85,16 @@ export function AppShell({ sidebarCollapsed, podeAtender, children }: AppShellPr
           {children}
         </main>
       </div>
+      {/*
+        No celular, a navegação é a barra de abas embaixo (Conversas, Funis,
+        Agenda, Mais). Ela declara a própria altura no contrato do rodapé, e é
+        por isso que o `<main>` acima não precisa saber que ela existe.
+        `Suspense` porque ela lê a URL (`useSearchParams`) para sumir dentro de
+        uma conversa aberta.
+      */}
+      <Suspense fallback={null}>
+        <BarraDeAbasDoCelular />
+      </Suspense>
     </div>
   );
 }

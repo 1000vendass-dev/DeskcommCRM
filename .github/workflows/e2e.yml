@@ -1151,6 +1151,7 @@ jobs:
       #
       # NÃO MEDIDO até aquele run: se as 11 specs passam na vizinhança nova.
       SPECS_PARTE_6: >-
+        abas-do-celular.spec.ts
         agenda-google-meet.spec.ts
         agenda-presenca-recuperacao.spec.ts
         filtro-por-marcador-pela-tela.spec.ts
